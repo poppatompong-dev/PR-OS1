@@ -1,0 +1,26 @@
+node_modules/
+.next/
+out/
+dist/
+.env
+.env.local
+.env.*.local
+*.log
+coverage/
+.vercel/
+.turbo/
+
+# Local agent/runtime artifacts
+.agents/
+.backup/
+*.tsbuildinfo
+devserver.*.log
+
+# Local interview/transcription assets - keep the handoff summary only
+models/
+*.mp3
+*.wav
+*.docx
+transcripts/*
+!transcripts/
+!transcripts/interview_summary.md
