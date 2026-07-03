@@ -1,6 +1,6 @@
 # Implementation Status
 
-สถานะการพัฒนา PR-OS (อัปเดตต่อเนื่องตามงานจริง) — ล่าสุด 30 มิถุนายน 2569
+สถานะการพัฒนา PR-OS (อัปเดตต่อเนื่องตามงานจริง) — ล่าสุด 3 กรกฎาคม 2569
 
 ระบบเชื่อมต่อ **Supabase จริง** (Auth + PostgreSQL + RLS + SECURITY DEFINER functions) แล้ว และทำงานบนแผนฟรีทั้งหมด (ดู `docs/13-setup-free-tier.md`)
 
@@ -41,18 +41,24 @@
 
 ### การแจ้งเตือน (queue)
 - สร้างคิวอัตโนมัติเมื่อ เผยแพร่(`assignment`) / แก้ไขสำคัญ(`change`) / ยกเลิก(`cancellation`) ผ่าน `enqueue_event_notifications()` + กันซ้ำ
-- ประมวลผลคิวผ่าน `process_notification_queue()`
+- ตัวประมวลผลจริง `processDueNotifications()` (`src/lib/notifications/queue.ts`) — ดึงคิวที่ถึงเวลา, ส่ง LINE ผ่าน Messaging API / Email ผ่าน Resend, เช็คโควต้า LINE รายเดือน, fallback ไป email ตาม settings (ตั้งเปิด/ปิดได้ในหน้า `/settings`), อัปเดตสถานะจริง `sent`/`failed`
+  - ปุ่ม "ประมวลผลคิว" ในหน้า `/settings` เรียกฟังก์ชันนี้ตรง ๆ แล้ว (เดิมเรียก RPC จำลอง `process_notification_queue` — เลิกใช้แล้ว เก็บ SQL ไว้เป็น reference เฉย ๆ)
+  - endpoint `POST /api/notifications/process` ให้ cron ภายนอกเรียกได้ (เช็ค header `x-notifications-secret` เทียบกับ `NOTIFICATIONS_CRON_SECRET`) — route นี้เป็น public path ใน middleware เพราะไม่มี session cookie
+  - หน้า `/mobile/my-tasks` มีปุ่ม "เชื่อมต่อ LINE" ให้ assignee ผูกบัญชีเอง (ซ่อนถ้า LINE Login ยังไม่ได้ตั้งค่า หรือผูกแล้ว)
+  - **ยังทำงานในโหมดจำลองอยู่จนกว่าจะตั้งค่า env vars จริง** — ดูหัวข้อ "ยังเหลือ/ข้อจำกัด" ด้านล่าง
 
 ## ⚠️ ยังเหลือ / ข้อจำกัด
-- **ส่งแจ้งเตือนจริง**: ตัวประมวลผลเป็น **โหมดจำลอง** (mark `skipped`) — ต้องตั้งค่า LINE Messaging API token + Email provider แล้วแทนที่ body ของ `process_notification_queue` ด้วยการส่งจริง + ตั้ง cron (pg_cron/pg_net)
+- **ส่งแจ้งเตือนจริง — รอ credential**: โค้ดส่งจริงพร้อมแล้ว แต่ `LINE_LOGIN_CHANNEL_ID`/`LINE_LOGIN_CHANNEL_SECRET`/`LINE_MESSAGING_CHANNEL_ACCESS_TOKEN`/`RESEND_API_KEY`/`NOTIFICATIONS_CRON_SECRET` ยังไม่ถูกตั้งใน `.env.local` จึงยังคง mark `skipped` (โหมดจำลอง) อยู่จนกว่าเจ้าของโปรเจกต์จะใส่ค่าจริง
+- **migration `0009_notification_delivery_settings.sql` ยังไม่ได้รันบน Supabase project จริง** — ต้องรันใน SQL Editor ก่อน ไม่งั้น toggle fallback ใหม่ในหน้า settings จะยังบันทึกไม่ได้ตามคาด
+- **ยังไม่เขียน pg_cron migration** ให้ยิง `/api/notifications/process` อัตโนมัติ — บล็อกอยู่ที่ต้องรู้ production URL ก่อน (deploy Vercel หรือยัง?)
+- **ยังไม่ enqueue "reminder"** (แจ้งเตือนล่วงหน้าก่อนงาน) — ตอนนี้ enqueue แค่ assignment/change/cancellation
 - **ไฟล์แนบ**: ยังไม่ทำ (private Storage bucket + signed URL)
 - **Display token**: จอมอนิเตอร์ยังเปิดให้ anon เรียก RPC ได้ (ระดับข้อมูลปลอดภัย) — ยังไม่ได้ทำ token gating
 - **Export PDF/Excel** ในรายงาน: ยังไม่ทำ
-- `/events/sample-event`: หน้า mock เก่า (ไม่มีลิงก์ไปแล้ว) — รอลบ
 - สร้างบัญชี auth จากในแอป: ยังต้องทำผ่าน Supabase dashboard (service_role key ของโปรเจกต์นี้ใช้ไม่ได้)
 
 ## Migrations
-`0001` schema · `0002` auth/RLS/views · `0003` monitor feed · `0004` DB hardening (triggers/index/constraints/has_changes) · `0005` accounts · `0006` notifications · `0007` username login · `0008` monitor assignees (ชื่อผู้รับผิดชอบ + เวลาสิ้นสุด ในฟีดจอ)
+`0001` schema · `0002` auth/RLS/views · `0003` monitor feed · `0004` DB hardening (triggers/index/constraints/has_changes) · `0005` accounts · `0006` notifications · `0007` username login · `0008` monitor assignees (ชื่อผู้รับผิดชอบ + เวลาสิ้นสุด ในฟีดจอ) · `0009` notification delivery settings (fallback toggles + same-day reminder flag — **ยังไม่ได้รันบน Supabase จริง**)
 
 ## บัญชีทดสอบ
 - admin: username `admin`
@@ -63,11 +69,10 @@
 
 ## ▶️ รอบถัดไป (เริ่มที่นี่ครั้งหน้า)
 ลำดับที่แนะนำเมื่อกลับมาทำต่อ:
-1. **Notifications ส่งจริง** — ตั้งค่า LINE Messaging API token + Email provider, แทน body ของ `process_notification_queue` ด้วยการส่งจริง (mark `sent`/`failed`), เพิ่ม reminder ล่วงหน้า, ตั้ง cron (pg_cron + pg_net) ให้ส่งอัตโนมัติ
+1. **Notifications ส่งจริง** — ใส่ credential จริงใน `.env.local` (ดูรายชื่อ env var ในหัวข้อด้านบน), รัน migration `0009` บน Supabase จริง, ทดสอบส่งแบบ end-to-end (queued→sent), เพิ่ม reminder ล่วงหน้า, ตั้ง cron (pg_cron + pg_net หรือ Vercel Cron) ให้เรียก `/api/notifications/process` อัตโนมัติ (ต้องรู้ production URL ก่อน)
 2. **ไฟล์แนบ** — private Storage bucket + signed URL (ไม่ให้หลุดบนจอมอนิเตอร์)
 3. **Export รายงาน PDF/Excel** ในหน้า `/reports`
 4. **Display token** สำหรับจอมอนิเตอร์ (hardening) + ทำให้ราคา/ข่าว/อากาศบนจอเป็นข้อมูลจริง (API) แทน static
-5. ลบหน้า mock เก่า `/events/sample-event`
 
 ## Quality gates (ผ่านล่าสุด)
 `npm run build` ✓ · `npm run lint` ✓ · `npm run typecheck` ✓ · RLS verified ผ่าน rolled-back simulations

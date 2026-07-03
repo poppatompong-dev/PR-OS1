@@ -150,7 +150,8 @@ Prototype routes:
 - `/monitor` - operational monitor
 - `/schedule` - schedule table
 - `/events/new` - new event form
-- `/events/sample-event` - sample detail
+- `/events/[id]` - event detail (publish/cancel/complete/delete + assignees)
+- `/events/[id]/edit` - edit event (significant-change detection resets ack)
 - `/mobile/my-tasks` - assignee mobile view
 - `/reports` - management reports
 - `/settings` - master data/settings prototype

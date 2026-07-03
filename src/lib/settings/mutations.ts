@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { can, getSessionUser, type AppRole } from "@/lib/auth/roles";
+import { processDueNotifications } from "@/lib/notifications/queue";
 
 function emptyToNull(value: FormDataEntryValue | null): string | null {
   const text = String(value ?? "").trim();
@@ -20,8 +21,10 @@ async function requireAdmin() {
   return { supabase, user };
 }
 
-function done(error?: string): never {
-  redirect(error ? `/settings?error=${encodeURIComponent(error)}` : "/settings");
+function done(error?: string, notice?: string): never {
+  if (error) redirect(`/settings?error=${encodeURIComponent(error)}`);
+  if (notice) redirect(`/settings?notice=${encodeURIComponent(notice)}`);
+  redirect("/settings");
 }
 
 export async function addPerson(formData: FormData) {
@@ -119,11 +122,19 @@ export async function setMasterActive(formData: FormData) {
 }
 
 export async function processNotificationQueue() {
-  const { supabase } = await requireAdmin();
-  const { error } = await supabase.rpc("process_notification_queue");
-  if (error) done(error.message);
+  await requireAdmin();
+  // Note: don't call done()/redirect() inside this try block — Next.js
+  // implements redirect() by throwing, and a catch here would swallow it.
+  let notice: string | undefined;
+  let error: string | undefined;
+  try {
+    const summary = await processDueNotifications();
+    notice = `ประมวลผล ${summary.processed} รายการ — ส่งแล้ว ${summary.sent}, ล้มเหลว ${summary.failed}, ข้าม ${summary.skipped}`;
+  } catch (err) {
+    error = err instanceof Error ? err.message : "ประมวลผลคิวไม่สำเร็จ";
+  }
   revalidatePath("/settings");
-  done();
+  done(error, notice);
 }
 
 export async function updateNotificationSettings(formData: FormData) {
@@ -139,6 +150,21 @@ export async function updateNotificationSettings(formData: FormData) {
     {
       key: "default_reminder_hours",
       value: Number(formData.get("defaultReminderHours") ?? 24) || 24,
+      updated_by: user.id,
+    },
+    {
+      key: "same_day_reminder_enabled",
+      value: formData.get("sameDayReminderEnabled") === "on",
+      updated_by: user.id,
+    },
+    {
+      key: "fallback_to_email_when_line_fails",
+      value: formData.get("fallbackWhenLineFails") === "on",
+      updated_by: user.id,
+    },
+    {
+      key: "fallback_to_email_when_quota_exceeded",
+      value: formData.get("fallbackWhenQuotaExceeded") === "on",
       updated_by: user.id,
     },
   ];

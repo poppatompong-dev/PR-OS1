@@ -192,13 +192,21 @@ Rules:
 
 ## Notifications
 
+### POST /api/notifications/process
+
+Implemented in `src/app/api/notifications/process/route.ts`. Triggers `processDueNotifications()` — sends every queued notification whose `scheduled_for` has passed via LINE Messaging API / Resend email, applying quota guard and fallback settings.
+
+Not session-gated (no user is logged in when an external cron calls it); instead requires header `x-notifications-secret` to match `NOTIFICATIONS_CRON_SECRET`. Returns `401` if missing/mismatched. Intended caller: pg_cron + pg_net (or any external scheduler) once a production URL exists — not yet wired up.
+
+Also reachable manually from `/settings` via the "ประมวลผลคิว" button (calls the same underlying function server-side, bypassing the secret check since it's already behind `requireAdmin()`).
+
 ### POST /api/notifications/test
 
-Admin-only endpoint for testing LINE or Email template.
+Not yet implemented. Admin-only endpoint for testing LINE or Email template.
 
 ### GET /api/notifications/quota
 
-Returns monthly quota usage by channel.
+Not yet implemented. Returns monthly quota usage by channel.
 
 ## Master Data
 

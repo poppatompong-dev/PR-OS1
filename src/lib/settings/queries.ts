@@ -133,6 +133,9 @@ export type NotificationSettings = {
   emailEnabled: boolean;
   lineMonthlyQuota: number;
   defaultReminderHours: number;
+  sameDayReminderEnabled: boolean;
+  fallbackWhenLineFails: boolean;
+  fallbackWhenQuotaExceeded: boolean;
 };
 
 export async function getNotificationSettings(): Promise<NotificationSettings> {
@@ -140,11 +143,19 @@ export async function getNotificationSettings(): Promise<NotificationSettings> {
   const { data } = await supabase
     .from("settings")
     .select("key, value")
-    .in("key", ["line_enabled", "email_enabled", "line_monthly_quota", "default_reminder_hours"]);
+    .in("key", [
+      "line_enabled",
+      "email_enabled",
+      "line_monthly_quota",
+      "default_reminder_hours",
+      "same_day_reminder_enabled",
+      "fallback_to_email_when_line_fails",
+      "fallback_to_email_when_quota_exceeded",
+    ]);
 
   const map = new Map((data ?? []).map((r) => [r.key as string, r.value]));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const asBool = (v: any) => v === true || v === "true";
+  const asBool = (v: any, fallback = false) => (v === undefined ? fallback : v === true || v === "true");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const asNum = (v: any) => (typeof v === "number" ? v : Number(v));
 
@@ -153,5 +164,8 @@ export async function getNotificationSettings(): Promise<NotificationSettings> {
     emailEnabled: asBool(map.get("email_enabled")),
     lineMonthlyQuota: asNum(map.get("line_monthly_quota")) || 300,
     defaultReminderHours: asNum(map.get("default_reminder_hours")) || 24,
+    sameDayReminderEnabled: asBool(map.get("same_day_reminder_enabled"), false),
+    fallbackWhenLineFails: asBool(map.get("fallback_to_email_when_line_fails"), true),
+    fallbackWhenQuotaExceeded: asBool(map.get("fallback_to_email_when_quota_exceeded"), true),
   };
 }

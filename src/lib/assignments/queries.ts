@@ -26,6 +26,7 @@ export type MyTask = {
 export type MyAssignments = {
   displayName: string | null;
   personLinked: boolean;
+  lineLinked: boolean;
   tasks: MyTask[];
 };
 
@@ -36,10 +37,17 @@ export async function getMyAssignments(): Promise<MyAssignments> {
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
 
-  if (!user) return { displayName: null, personLinked: false, tasks: [] };
+  if (!user) return { displayName: null, personLinked: false, lineLinked: false, tasks: [] };
   if (!user.personId) {
-    return { displayName: user.displayName, personLinked: false, tasks: [] };
+    return { displayName: user.displayName, personLinked: false, lineLinked: false, tasks: [] };
   }
+
+  const { data: personRow } = await supabase
+    .from("people")
+    .select("line_user_id")
+    .eq("id", user.personId)
+    .maybeSingle();
+  const lineLinked = Boolean(personRow?.line_user_id);
 
   const { data, error } = await supabase
     .from("assignments")
@@ -96,5 +104,5 @@ export async function getMyAssignments(): Promise<MyAssignments> {
       ),
     );
 
-  return { displayName: user.displayName, personLinked: true, tasks };
+  return { displayName: user.displayName, personLinked: true, lineLinked, tasks };
 }

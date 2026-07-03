@@ -93,7 +93,7 @@ Rules:
 
 ## Screen 4: Event Detail
 
-Route: `/events/sample-event`
+Route: `/events/[id]`
 
 Purpose:
 

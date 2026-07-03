@@ -2,17 +2,18 @@ import { StatusPill } from "@/components/StatusPill";
 import { getMyAssignments } from "@/lib/assignments/queries";
 import { acknowledgeAssignment } from "@/lib/assignments/mutations";
 import { eventStatusLabel, formatThaiDate } from "@/lib/format";
-import { CheckCircle2, Clock3, MapPin } from "lucide-react";
+import { isLineLoginConfigured } from "@/lib/env";
+import { CheckCircle2, Clock3, MapPin, MessageCircle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function MyTasksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; line?: string }>;
 }) {
-  const { error } = await searchParams;
-  const { displayName, personLinked, tasks } = await getMyAssignments();
+  const { error, line } = await searchParams;
+  const { displayName, personLinked, lineLinked, tasks } = await getMyAssignments();
 
   return (
     <main className="mobile-shell">
@@ -24,6 +25,25 @@ export default async function MyTasksPage({
       </header>
 
       {error ? <div className="login-error">{error}</div> : null}
+      {line === "linked" ? (
+        <div
+          className="login-error"
+          style={{ background: "rgba(24,120,74,.1)", borderColor: "rgba(24,120,74,.35)", color: "var(--green)" }}
+        >
+          เชื่อมต่อบัญชี LINE สำเร็จ — พร้อมรับแจ้งเตือนงานทาง LINE แล้ว
+        </div>
+      ) : null}
+
+      {personLinked && !lineLinked && isLineLoginConfigured() ? (
+        <div className="mobile-card">
+          <h2>รับแจ้งเตือนงานทาง LINE</h2>
+          <p>เชื่อมต่อบัญชี LINE ของคุณเพื่อรับแจ้งเตือนงานที่ได้รับมอบหมายโดยตรง</p>
+          <a className="button coral" href="/api/auth/line/start">
+            <MessageCircle size={18} aria-hidden="true" />
+            เชื่อมต่อ LINE
+          </a>
+        </div>
+      ) : null}
 
       {!personLinked ? (
         <div className="mobile-card">

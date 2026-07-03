@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser, ROLE_LABELS_TH, type AppRole } from "@/lib/auth/roles";
+import { isEmailConfigured, isLineMessagingConfigured } from "@/lib/env";
 import {
   getAccounts,
   getAllPeople,
@@ -86,9 +87,9 @@ function MasterListPanel({
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; notice?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, notice } = await searchParams;
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
 
@@ -128,6 +129,14 @@ export default async function SettingsPage({
       </header>
 
       {error ? <div className="login-error">{error}</div> : null}
+      {notice ? (
+        <div
+          className="login-error"
+          style={{ background: "rgba(24,120,74,.1)", borderColor: "rgba(24,120,74,.35)", color: "var(--green)" }}
+        >
+          {notice}
+        </div>
+      ) : null}
 
       {/* ---- People management ---- */}
       <section className="staff-panel panel">
@@ -279,9 +288,20 @@ export default async function SettingsPage({
           </div>
         </div>
 
-        <div className="login-error" style={{ background: "rgba(164,95,8,.1)", borderColor: "rgba(164,95,8,.35)", color: "var(--amber)" }}>
-          ℹ️ การส่งจริงผ่าน LINE/Email ยังไม่เปิดใช้งาน (ยังไม่ตั้งค่า provider) — ปุ่ม “ประมวลผลคิว” จะทำงานในโหมดจำลอง
-        </div>
+        {isLineMessagingConfigured() || isEmailConfigured() ? (
+          <div
+            className="login-error"
+            style={{ background: "rgba(24,120,74,.1)", borderColor: "rgba(24,120,74,.35)", color: "var(--green)" }}
+          >
+            ✓ เชื่อมต่อ{isLineMessagingConfigured() ? " LINE" : ""}
+            {isLineMessagingConfigured() && isEmailConfigured() ? " และ" : ""}
+            {isEmailConfigured() ? " Email" : ""} แล้ว — ปุ่ม “ประมวลผลคิว” จะส่งข้อความจริง
+          </div>
+        ) : (
+          <div className="login-error" style={{ background: "rgba(164,95,8,.1)", borderColor: "rgba(164,95,8,.35)", color: "var(--amber)" }}>
+            ℹ️ การส่งจริงผ่าน LINE/Email ยังไม่เปิดใช้งาน (ยังไม่ตั้งค่า provider) — ปุ่ม “ประมวลผลคิว” จะทำงานในโหมดจำลอง
+          </div>
+        )}
 
         <form action={updateNotificationSettings} className="notif-settings">
           <label className="notif-check">
@@ -289,6 +309,18 @@ export default async function SettingsPage({
           </label>
           <label className="notif-check">
             <input type="checkbox" name="emailEnabled" defaultChecked={notifSettings.emailEnabled} /> เปิด Email (fallback)
+          </label>
+          <label className="notif-check">
+            <input type="checkbox" name="sameDayReminderEnabled" defaultChecked={notifSettings.sameDayReminderEnabled} />
+            เตือนซ้ำ 1 ชม. ก่อนงานในวันเดียวกัน
+          </label>
+          <label className="notif-check">
+            <input type="checkbox" name="fallbackWhenLineFails" defaultChecked={notifSettings.fallbackWhenLineFails} />
+            ส่ง Email แทนถ้า LINE ล้มเหลว
+          </label>
+          <label className="notif-check">
+            <input type="checkbox" name="fallbackWhenQuotaExceeded" defaultChecked={notifSettings.fallbackWhenQuotaExceeded} />
+            ส่ง Email แทนถ้าโควต้า LINE เต็ม
           </label>
           <label className="form-field">
             โควต้า LINE/เดือน
