@@ -24,6 +24,8 @@ Route: `/monitor`
 
 Purpose: operational display in PR office.
 
+> อัปเดต (1 ก.ค. 2569): จากความเห็นผู้ใช้จริง ค่าเริ่มต้นของจอเปลี่ยนเป็น **ตารางเรียบ ตัวใหญ่ อ่านง่าย** (วัน/เวลา/งาน/สถานที่/ผู้รับผิดชอบ/หมายเหตุ) แทนแบบลูกเล่นเยอะ ส่วนจอทีวีย้อนยุค 7 ช่องเก็บเป็นตัวเลือกที่ `/monitor?classic=1` ดู `docs/14-implementation-status.md`
+
 Shows:
 
 - Date and current refresh time

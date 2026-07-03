@@ -10,6 +10,7 @@ import {
   Settings,
   Smartphone,
 } from "lucide-react";
+import { UserMenu } from "@/components/UserMenu";
 
 const navItems = [
   { href: "/", label: "ภาพรวม", icon: LayoutDashboard },
@@ -49,6 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
+        <UserMenu />
       </aside>
       <main className="main-content">{children}</main>
     </div>

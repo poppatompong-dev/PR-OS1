@@ -8,6 +8,8 @@ This document defines the intended HTTP contract for the Next.js application lay
 
 All operational endpoints require authenticated users except monitor endpoints that use a display token.
 
+Login uses **username/password**. The app resolves the username to its account email server-side via the `get_login_email(username)` RPC (the email is never exposed to the browser), then performs Supabase email/password sign-in. Entering a full email also works.
+
 Recommended headers:
 
 ```http

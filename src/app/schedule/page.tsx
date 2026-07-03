@@ -1,16 +1,44 @@
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { EventTable } from "@/components/EventTable";
-import { events } from "@/data/mock-data";
-import { Download, PlusCircle, Search } from "lucide-react";
+import { getDepartments, getScheduleEvents } from "@/lib/events/queries";
+import { CalendarX2, Filter, PlusCircle, Search } from "lucide-react";
 
-export default function SchedulePage() {
+export const dynamic = "force-dynamic";
+
+const STATUS_OPTIONS = [
+  { value: "all", label: "ทุกสถานะ" },
+  { value: "draft", label: "ร่าง" },
+  { value: "published", label: "เผยแพร่" },
+  { value: "completed", label: "เสร็จสิ้น" },
+  { value: "canceled", label: "ยกเลิก" },
+];
+
+export default async function SchedulePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; departmentId?: string; search?: string }>;
+}) {
+  const sp = await searchParams;
+  const filters = {
+    status: sp.status ?? "all",
+    departmentId: sp.departmentId ?? "all",
+    search: sp.search ?? "",
+  };
+
+  const [events, departments] = await Promise.all([
+    getScheduleEvents(filters),
+    getDepartments(),
+  ]);
+
   return (
     <AppShell>
       <header className="page-header">
         <div>
           <h1 className="page-title">ตารางงานประชาสัมพันธ์</h1>
-          <p className="page-subtitle">ตารางนี้คือ mock ของหน้าทำงานหลักสำหรับ staff และ supervisor</p>
+          <p className="page-subtitle">
+            หน้าทำงานหลักสำหรับ staff และ supervisor • ข้อมูลจริงจากฐานข้อมูล ({events.length} งาน)
+          </p>
         </div>
         <Link className="button" href="/events/new">
           <PlusCircle size={18} aria-hidden="true" />
@@ -18,35 +46,46 @@ export default function SchedulePage() {
         </Link>
       </header>
 
-      <section className="toolbar" aria-label="Schedule filters">
+      <form className="toolbar" method="get" aria-label="Schedule filters">
         <div className="search-box">
           <Search size={18} aria-hidden="true" />
-          <input className="input" placeholder="ค้นหาชื่องานหรือสถานที่" />
+          <input
+            className="input"
+            name="search"
+            placeholder="ค้นหาชื่องาน"
+            defaultValue={filters.search}
+          />
         </div>
-        <select className="select" defaultValue="all">
-          <option value="all">ทุกสถานะ</option>
-          <option value="draft">ร่าง</option>
-          <option value="published">เผยแพร่</option>
-          <option value="canceled">ยกเลิก</option>
+        <select className="select" name="status" defaultValue={filters.status}>
+          {STATUS_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
-        <select className="select" defaultValue="all">
+        <select className="select" name="departmentId" defaultValue={filters.departmentId}>
           <option value="all">ทุกหน่วยงาน</option>
-          <option value="dep_001">สำนักปลัดเทศบาล</option>
-          <option value="dep_002">กองการศึกษา</option>
-          <option value="dep_003">กองสาธารณสุขฯ</option>
+          {departments.map((department) => (
+            <option key={department.id} value={department.id}>
+              {department.name}
+            </option>
+          ))}
         </select>
-        <select className="select" defaultValue="pending">
-          <option value="all">ทุกการรับทราบ</option>
-          <option value="pending">รอรับทราบ</option>
-          <option value="acknowledged">รับทราบแล้ว</option>
-        </select>
-        <button className="button secondary">
-          <Download size={18} aria-hidden="true" />
-          ส่งออก Excel
+        <button className="button" type="submit">
+          <Filter size={18} aria-hidden="true" />
+          กรอง
         </button>
-      </section>
+      </form>
 
-      <EventTable events={events} />
+      {events.length > 0 ? (
+        <EventTable events={events} />
+      ) : (
+        <div className="panel empty-state">
+          <CalendarX2 size={28} aria-hidden="true" />
+          <strong>ไม่พบงานตามเงื่อนไข</strong>
+          <p>ลองปรับตัวกรอง หรือกด “เพิ่มงาน” เพื่อบันทึกงานใหม่</p>
+        </div>
+      )}
     </AppShell>
   );
 }

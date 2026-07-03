@@ -1,49 +1,82 @@
 import { StatusPill } from "@/components/StatusPill";
-import { events, people } from "@/data/mock-data";
-import { ackStatusLabel, formatThaiDate } from "@/lib/format";
+import { getMyAssignments } from "@/lib/assignments/queries";
+import { acknowledgeAssignment } from "@/lib/assignments/mutations";
+import { eventStatusLabel, formatThaiDate } from "@/lib/format";
 import { CheckCircle2, Clock3, MapPin } from "lucide-react";
 
-const currentPerson = people[0];
-const myEvents = events.filter((event) =>
-  event.assignments.some((assignment) => assignment.person.id === currentPerson.id),
-);
+export const dynamic = "force-dynamic";
 
-export default function MyTasksPage() {
+export default async function MyTasksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+  const { displayName, personLinked, tasks } = await getMyAssignments();
+
   return (
     <main className="mobile-shell">
       <header className="page-header">
         <div>
           <h1 className="page-title">งานของฉัน</h1>
-          <p className="page-subtitle">{currentPerson.displayName}</p>
+          <p className="page-subtitle">{displayName ?? "ผู้ใช้งาน"}</p>
         </div>
       </header>
 
-      {myEvents.map((event) => {
-        const assignment = event.assignments.find((item) => item.person.id === currentPerson.id);
-        return (
-          <article className="mobile-card" key={event.id}>
+      {error ? <div className="login-error">{error}</div> : null}
+
+      {!personLinked ? (
+        <div className="mobile-card">
+          <h2>ยังไม่ได้ผูกบัญชีกับรายชื่อบุคลากร</h2>
+          <p>
+            บัญชีนี้ยังไม่ถูกผูกกับรายชื่อเจ้าหน้าที่ จึงยังไม่เห็นงานที่ได้รับมอบหมาย
+            กรุณาให้ผู้ดูแลระบบผูกบัญชีในหน้าตั้งค่า
+          </p>
+        </div>
+      ) : tasks.length === 0 ? (
+        <div className="mobile-card">
+          <h2>ยังไม่มีงานที่ได้รับมอบหมาย</h2>
+          <p>เมื่อมีงานมอบหมายให้คุณ งานจะแสดงที่นี่</p>
+        </div>
+      ) : (
+        tasks.map((task) => (
+          <article className="mobile-card" key={task.assignmentId}>
             <div className="toolbar">
-              <StatusPill label={assignment ? assignment.role.name : "มอบหมาย"} tone="teal" />
-              {event.hasChanges ? <StatusPill label="เปลี่ยนแปลง" tone="amber" /> : null}
+              <StatusPill label={task.roleName} tone="teal" />
+              {task.event.hasChanges ? <StatusPill label="เปลี่ยนแปลง" tone="amber" /> : null}
+              {task.event.status !== "published" ? (
+                <StatusPill label={eventStatusLabel(task.event.status)} tone="gray" />
+              ) : null}
             </div>
-            <h2>{event.title}</h2>
+            <h2>{task.event.title}</h2>
             <p className="inline-meta">
               <Clock3 size={18} aria-hidden="true" />
-              {formatThaiDate(event.eventDate)} เวลา {event.startTime}
+              {formatThaiDate(task.event.eventDate)} เวลา {task.event.startTime}
+              {task.event.endTime ? `-${task.event.endTime}` : ""}
             </p>
             <p className="inline-meta">
               <MapPin size={18} aria-hidden="true" />
-              {event.location.name}
+              {task.event.locationName}
             </p>
-            <p>{event.shortNote}</p>
-            <p>{assignment ? ackStatusLabel(assignment.ackStatus) : ""}</p>
-            <button className="button success">
-              <CheckCircle2 size={18} aria-hidden="true" />
-              รับทราบ
-            </button>
+            {task.event.shortNote ? <p>{task.event.shortNote}</p> : null}
+
+            {task.acknowledged ? (
+              <p className="ack-done">
+                <CheckCircle2 size={18} aria-hidden="true" /> รับทราบแล้ว
+              </p>
+            ) : (
+              <form action={acknowledgeAssignment}>
+                <input type="hidden" name="assignmentId" value={task.assignmentId} />
+                <input type="hidden" name="assignmentVersion" value={task.assignmentVersion} />
+                <button className="button success" type="submit">
+                  <CheckCircle2 size={18} aria-hidden="true" />
+                  รับทราบ
+                </button>
+              </form>
+            )}
           </article>
-        );
-      })}
+        ))
+      )}
     </main>
   );
 }

@@ -2,16 +2,36 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { EventTable } from "@/components/EventTable";
 import { MetricCard } from "@/components/MetricCard";
-import { events, reportSummary } from "@/data/mock-data";
+import { getReportData } from "@/lib/reports/queries";
 import { ArrowRight, BellRing, CalendarClock, FileText, PlusCircle, RadioTower, ShieldCheck, Tv } from "lucide-react";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+function todayInBangkok(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function addDays(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+export default async function HomePage() {
+  const today = todayInBangkok();
+  const report = await getReportData({ from: today, to: addDays(today, 30) });
+
   return (
     <AppShell>
       <header className="page-header">
         <div>
           <h1 className="page-title">ภาพรวมระบบ PR-OS</h1>
-          <p className="page-subtitle">Mock dashboard สำหรับตรวจทิศทางระบบก่อนพัฒนาจริง</p>
+          <p className="page-subtitle">สรุปงานและสถานะการรับทราบจากข้อมูลจริง (วันนี้ถึง 30 วันข้างหน้า)</p>
         </div>
         <Link className="button" href="/events/new">
           <PlusCircle size={18} aria-hidden="true" />
@@ -57,7 +77,7 @@ export default function HomePage() {
           <div className="preview-screen">
             <span className="loader-ring" />
             <strong>กำลังติดตาม</strong>
-            <small>{reportSummary.pendingAcknowledgements} รายการรอรับทราบ</small>
+            <small>{report.pendingAcks} รายการรอรับทราบ</small>
           </div>
           <div className="preview-caption">
             <strong>Live Assignment Signal</strong>
@@ -100,22 +120,20 @@ export default function HomePage() {
       </section>
 
       <section className="metric-grid" aria-label="KPI overview">
-        <MetricCard label="งานทั้งหมด" value={reportSummary.totalEvents} hint="ใน mock data ชุดนี้" tone="blue" />
-        <MetricCard label="เผยแพร่แล้ว" value={reportSummary.publishedEvents} hint="พร้อมขึ้นจอมอนิเตอร์" tone="green" />
-        <MetricCard label="รอรับทราบ" value={reportSummary.pendingAcknowledgements} hint="ต้องติดตามก่อนถึงวันงาน" tone="amber" />
-        <MetricCard label="เปลี่ยน/ยกเลิก" value={reportSummary.changedOrCanceled} hint="ต้องตรวจสอบการแจ้งเตือน" tone="red" />
+        <MetricCard label="งานทั้งหมด" value={report.totalEvents} hint="วันนี้ถึง 30 วันข้างหน้า" tone="blue" />
+        <MetricCard label="เผยแพร่แล้ว" value={report.publishedEvents} hint="พร้อมขึ้นจอมอนิเตอร์" tone="green" />
+        <MetricCard label="รอรับทราบ" value={report.pendingAcks} hint="ต้องติดตามก่อนถึงวันงาน" tone="amber" />
+        <MetricCard label="เปลี่ยน/ยกเลิก" value={report.changedOrCanceled} hint="ต้องตรวจสอบการแจ้งเตือน" tone="red" />
       </section>
 
       <section className="panel">
         <h2>Smart Summary</h2>
-        <p>
-          ช่วงนี้มีงานเผยแพร่แล้ว {reportSummary.publishedEvents} งาน และมีรายการรอรับทราบ{" "}
-          {reportSummary.pendingAcknowledgements} รายการ โดยผู้มีภาระงานสูงสุดในตัวอย่างคือ{" "}
-          {reportSummary.topWorkloadPerson} ควรตรวจงานที่มีการเปลี่ยนแปลงก่อนส่งแจ้งเตือนซ้ำ
-        </p>
+        <p>{report.smartSummary}</p>
       </section>
 
-      <EventTable events={events} />
+      <section className="panel" style={{ padding: 0, overflow: "hidden" }}>
+        <EventTable events={report.events.slice(0, 8)} />
+      </section>
     </AppShell>
   );
 }

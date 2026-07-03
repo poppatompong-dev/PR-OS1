@@ -1,27 +1,41 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { events, people } from "@/data/mock-data";
 import { formatThaiDate } from "@/lib/format";
 import { GOLD, OIL, OIL_UPDATED, WEATHER, NEWS, FUN_FACTS } from "@/lib/signage/data";
+import type { MonitorEvent, MonitorPerson } from "@/lib/monitor/types";
 
-const monitorEvents = events.filter((e) => e.status === "published");
-
-function stateColor(e: (typeof events)[number]) {
-  if (e.status === "canceled") return "#ff5b4d";
+function stateColor(e: MonitorEvent) {
   if (e.hasChanges) return "#ff9a5c";
-  const allAck = e.assignments.every((a) => a.ackStatus === "acknowledged");
-  return allAck ? "#46d38a" : "#7af0e0";
+  return e.allAck ? "#46d38a" : "#7af0e0";
 }
 
 /* ---------- หน้า 1: วาระงาน ---------- */
-export function ChannelAgenda({ activeIdx, tip }: { activeIdx: number; tip: string }) {
+export function ChannelAgenda({
+  events,
+  activeIdx,
+  tip,
+}: {
+  events: MonitorEvent[];
+  activeIdx: number;
+  tip: string;
+}) {
+  if (events.length === 0) {
+    return (
+      <div className="ch ch-center">
+        <div className="ch-hero">
+          <div className="ch-emoji big">🗓️</div>
+          <div className="ch-label">ไม่มีงานประชาสัมพันธ์ในช่วงนี้</div>
+          <div className="ch-sub">งานที่เผยแพร่จะแสดงที่นี่โดยอัตโนมัติ</div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="ch ch-agenda">
       <div className="ch-grid">
-        {monitorEvents.map((e, idx) => {
+        {events.map((e, idx) => {
           const c = stateColor(e);
-          const active = idx === activeIdx % monitorEvents.length;
-          const allAck = e.assignments.every((a) => a.ackStatus === "acknowledged");
+          const active = idx === activeIdx % events.length;
           return (
             <article className={`scr-card${active ? " is-active" : ""}`} key={e.id} style={{ ["--c" as any]: c }}>
               <div>
@@ -33,11 +47,11 @@ export function ChannelAgenda({ activeIdx, tip }: { activeIdx: number; tip: stri
                 <div className="scr-sub">{e.shortNote}</div>
               </div>
               <div className="scr-right">
-                <div className="loc">📍 {e.location.name}</div>
-                <div className="ppl">{e.ownerDepartment.shortName} · {e.assignments.map((a) => a.role.name).join(" + ")}</div>
+                <div className="loc">📍 {e.locationName}</div>
+                <div className="ppl">{e.departmentShort} · {e.roles.join(" + ")}</div>
                 {e.hasChanges
                   ? <span className="scr-pill" style={{ background: "rgba(224,138,46,.2)", color: "#e0892e" }}>● มีการเปลี่ยนแปลง</span>
-                  : <span className="scr-pill" style={{ background: "rgba(70,211,138,.18)", color: "#2a9d5c" }}>● {allAck ? "รับทราบครบ" : "พร้อมแสดง"}</span>}
+                  : <span className="scr-pill" style={{ background: "rgba(70,211,138,.18)", color: "#2a9d5c" }}>● {e.allAck ? "รับทราบครบ" : "พร้อมแสดง"}</span>}
               </div>
               {active ? <div className="scr-progress" style={{ gridColumn: "1 / -1" }}><i className="run" key={activeIdx} /></div> : null}
             </article>
@@ -144,12 +158,12 @@ export function ChannelFun() {
 }
 
 /* ---------- หน้า 7: ทีมงานประชาสัมพันธ์ ---------- */
-export function ChannelTeam() {
+export function ChannelTeam({ team }: { team: MonitorPerson[] }) {
   return (
     <div className="ch ch-news">
       <div className="ch-news-head">👥 ทีมงานประชาสัมพันธ์ · เทศบาลนครนครสวรรค์</div>
       <div className="team-grid">
-        {people.filter((p) => p.isActive).map((p, i) => (
+        {team.map((p, i) => (
           <div className="team-card" key={p.id} style={{ animationDelay: `${i * 0.08}s` }}>
             <div className="team-ava">{p.displayName.replace(/^(นางสาว|นาง|นาย)/, "").trim().charAt(0)}</div>
             <div className="team-info">

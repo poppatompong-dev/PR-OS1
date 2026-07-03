@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { PrEvent } from "@/types/domain";
 import { ackStatusLabel, eventStatusLabel, formatThaiDate, urgencyLabel } from "@/lib/format";
 import { StatusPill } from "@/components/StatusPill";
@@ -35,7 +36,9 @@ export function EventTable({ events }: { events: PrEvent[] }) {
                 </span>
               </td>
               <td>
-                <div className="table-title">{event.title}</div>
+                <Link className="table-title table-link" href={`/events/${event.id}`}>
+                  {event.title}
+                </Link>
                 <div className="table-note">
                   {urgencyLabel(event.urgency)}
                   {event.hasChanges ? " / มีการเปลี่ยนแปลง" : ""}

@@ -4,21 +4,22 @@
 
 PR-OS คือระบบบริหารจัดการงานประชาสัมพันธ์ของหน่วยงานเทศบาล มีเป้าหมายให้ฝ่ายประชาสัมพันธ์บันทึกงาน, มอบหมายผู้รับผิดชอบ, แสดงตารางงานบนจอมอนิเตอร์, รับทราบงานผ่านมือถือ, แจ้งเตือน, และสรุปรายงานผู้บริหารได้จากระบบเดียว
 
-สถานะปัจจุบัน: **Phase 0 developer handoff**  
-ยังเป็น prototype/mock data + เอกสารออกแบบ + schema draft ยังไม่ใช่ production และยังไม่เชื่อม Supabase จริง
+สถานะปัจจุบัน: **เชื่อม Supabase จริงแล้ว** (Auth + PostgreSQL + RLS + SECURITY DEFINER functions) ทำงานบนแผนฟรีทั้งหมด — core workflow (auth, event lifecycle, assignment/ack, monitor, reports, settings, notification queue แบบจำลอง) ใช้งานได้จริงแล้ว ดูรายละเอียดล่าสุดที่ `docs/14-implementation-status.md`
 
 ## Quick Start For Agents
 
 ก่อนแก้โค้ดทุกครั้ง ให้อ่านเอกสารตามลำดับนี้:
 
-1. `README.md` - ภาพรวม project, stack, วิธีรัน
-2. `docs/01-vision-and-scope.md` - วิสัยทัศน์และขอบเขต
-3. `docs/02-requirements-prd.md` - requirement หลักและ acceptance criteria
-4. `docs/04-data-model.md` - data model และ master data
-5. `docs/05-api-contract.md` - intended API behavior
-6. `docs/06-ui-screens.md` - screen specification
-7. `docs/07-implementation-plan.md` - roadmap การพัฒนาต่อ
-8. `docs/12-visual-design-direction.md` - visual direction, motion, typography
+1. `STATE.md` - loop state ปัจจุบัน: กำลังทำอะไร, รออะไรจาก human, งานถัดไป
+2. `docs/14-implementation-status.md` - สถานะละเอียด: ทำเสร็จแล้ว/ยังเหลืออะไร
+3. `README.md` - ภาพรวม project, stack, วิธีรัน
+4. `docs/01-vision-and-scope.md` - วิสัยทัศน์และขอบเขต
+5. `docs/02-requirements-prd.md` - requirement หลักและ acceptance criteria
+6. `docs/04-data-model.md` - data model และ master data
+7. `docs/05-api-contract.md` - intended API behavior
+8. `docs/06-ui-screens.md` - screen specification
+9. `docs/07-implementation-plan.md` - roadmap การพัฒนาต่อ
+10. `docs/12-visual-design-direction.md` - visual direction, motion, typography
 
 ถ้าคำขอเกี่ยวกับ notification ให้อ่าน `docs/09-notification-design.md` เพิ่มด้วย  
 ถ้าคำขอเกี่ยวกับ security/permission ให้อ่าน `docs/08-security-and-permissions.md` เพิ่มด้วย  
@@ -536,6 +537,42 @@ Important notes:
 - TypeUI is documented as an optional external design-system source only.
 - Do not install, enable, or connect TypeUI MCP until the project owner explicitly confirms.
 - `design-motion-principles` was identified as a possible external skill for motion review, but should be installed only after owner confirmation.
+
+## Loop Engineering Practice
+
+โปรเจกต์นี้เป็นงานเดี่ยว (solo dev + agent) ไม่ใช่ทีมที่มี CI/ticket queue ดังนั้นใช้ loop engineering เฉพาะส่วนที่คุ้มค่าจริง ไม่ใช่ full unattended automation
+
+### Maker → Verify → Checker → Human Gate
+
+งานที่ไม่ใช่เรื่องเล็กน้อยทุกชิ้น ให้ผ่านลำดับนี้ก่อนถือว่าเสร็จ:
+
+1. **Maker** — เขียน/แก้โค้ดหรือ doc ตามคำขอ
+2. **Verify** — รัน `npm.cmd run build` (และ typecheck/lint ถ้าเกี่ยวข้อง) ด้วยตัวเอง อย่าข้าม อย่าเดาว่าผ่าน
+3. **Checker** — ก่อนสรุปว่าเสร็จ ตรวจทานงานตัวเองแยกจากขั้นตอนเขียน (อ่าน diff ใหม่อีกรอบ หรือใช้ `/code-review` กับงานที่มีความเสี่ยง/ซับซ้อน) — ผู้เขียนไม่ควรเป็นผู้ตรวจงานตัวเองรอบเดียวจบ
+4. **Human Gate** — สิ่งต่อไปนี้ต้องรอ owner ยืนยันชัดเจนก่อนเสมอ แม้ระบบจะรันได้จริงก็ตาม:
+   - ส่งข้อความ LINE/Email จริงออกไปหาผู้ใช้จริง (ไม่ใช่โหมดจำลอง)
+   - แก้ schema/migration ที่จะรันกับ Supabase project จริง หรือกระทบข้อมูลจริง
+   - ลบ/เขียนทับข้อมูลจริงใน Supabase
+   - สร้าง/เปลี่ยน credential, secret, หรือสิทธิ์ access ใหม่
+   - push/force-push ไปยัง remote, หรือสร้าง cron/scheduled job ใหม่ที่ยิงออกไปหา external service
+
+### STATE.md
+
+`STATE.md` ที่ root ของ repo คือไฟล์ state ของ loop — สั้น เน้นสถานะปัจจุบัน/attempt ล่าสุด/สิ่งที่รอ human อยู่ แยกหน้าที่จาก `docs/14-implementation-status.md` ซึ่งเป็นสรุปละเอียดสำหรับอ่านทำความเข้าใจภาพรวม
+
+กติกา:
+
+- อัปเดต `STATE.md` ทุกครั้งที่จบงานสำคัญหรือจบ session ที่มีความคืบหน้า
+- ถ้างานถูก block เพราะรอ credential/decision จาก owner ให้บันทึกไว้ใน `STATE.md` ใต้หัวข้อ "รออะไรจาก human อยู่" ชัดเจน แทนที่จะเดาเอาเอง
+- prune รายการที่เสร็จ/ไม่เกี่ยวข้องแล้วออกจาก `STATE.md` อย่าปล่อยให้ state เก่าค้าง (state rot)
+
+### Scheduled loop
+
+มี scheduled loop แบบ report-only (L1 daily triage) ตั้งไว้ผ่าน Claude Code cron — ดูรายละเอียด job/cadence จริงใน `STATE.md` หัวข้อ "Scheduled loop" หลักการ:
+
+- Report-only เท่านั้น ห้ามแก้โค้ด/schema/ส่งข้อความจริงอัตโนมัติ
+- ถ้าเจอปัญหา ให้รายงานหา owner ไม่ใช่แก้เอง
+- ห้ามแตะไฟล์/งานที่อยู่ใน Human Gate ด้านบนโดยเด็ดขาด
 
 ## Communication Style For Future Agents
 

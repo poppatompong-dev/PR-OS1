@@ -1,0 +1,189 @@
+/* Clean, large, high-contrast table monitor (dark theme).
+   Designed to be read from a distance — no decorative motion. */
+
+.mt-stage {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 82% -5%, rgba(29, 90, 166, 0.22), transparent 420px),
+    #0a1120;
+  color: #eaf2fb;
+  padding: 30px 38px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  font-family: var(--font-ui);
+}
+
+.mt-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 18px;
+}
+
+.mt-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.mt-title h1 {
+  font-family: var(--font-display);
+  font-size: clamp(30px, 3.3vw, 54px);
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.08;
+}
+
+.mt-title p {
+  margin: 4px 0 0;
+  color: #9fb3c8;
+  font-size: clamp(15px, 1.4vw, 22px);
+}
+
+.mt-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #46d38a;
+  box-shadow: 0 0 0 6px rgba(70, 211, 138, 0.15);
+  animation: mtPulse 2.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.mt-clockwrap {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.mt-clock {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(36px, 4.2vw, 66px);
+  font-weight: 800;
+  color: #8ee8df;
+  line-height: 1;
+  text-shadow: 0 0 18px rgba(142, 232, 223, 0.28);
+}
+
+.mt-date {
+  color: #cfe0f0;
+  font-size: clamp(15px, 1.5vw, 24px);
+  margin-top: 6px;
+}
+
+.mt-refresh {
+  color: #7f93a8;
+  font-size: clamp(12px, 1vw, 16px);
+  margin-top: 3px;
+}
+
+.mt-tablewrap {
+  flex: 1;
+  overflow: auto;
+}
+
+.mt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: clamp(19px, 2vw, 32px);
+}
+
+.mt-table thead th {
+  position: sticky;
+  top: 0;
+  background: #12203a;
+  color: #a8cbf0;
+  text-align: left;
+  font-weight: 700;
+  font-size: clamp(15px, 1.5vw, 23px);
+  padding: 16px 18px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.16);
+  letter-spacing: 0.3px;
+}
+
+.mt-table tbody td {
+  padding: 18px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  vertical-align: top;
+  line-height: 1.35;
+}
+
+.mt-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.mt-table tbody tr.mt-newday td {
+  border-top: 2px solid rgba(142, 232, 223, 0.38);
+}
+
+/* Column widths + emphasis */
+.c-date { width: 9%; }
+.c-time { width: 12%; }
+.c-title { width: 29%; }
+.c-loc { width: 16%; }
+.c-people { width: 20%; }
+.c-note { width: 14%; }
+
+.c-date,
+.c-time {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: #8ee8df;
+  font-weight: 700;
+}
+
+.c-title {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.c-loc { color: #e2ecf6; }
+.c-people { color: #cfe0f0; }
+.c-note { color: #9fb3c8; }
+
+.mt-chg {
+  display: inline-block;
+  margin-left: 12px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(255, 154, 92, 0.18);
+  color: #ffb27a;
+  font-size: 0.58em;
+  font-weight: 700;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.mt-empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  font-size: clamp(24px, 2.6vw, 42px);
+  color: #7f93a8;
+}
+
+.mt-foot {
+  color: #6f8298;
+  font-size: clamp(12px, 1.1vw, 17px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 14px;
+}
+
+@keyframes mtPulse {
+  0%, 100% { box-shadow: 0 0 0 6px rgba(70, 211, 138, 0.15); }
+  50% { box-shadow: 0 0 0 11px rgba(70, 211, 138, 0.02); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mt-dot { animation: none; }
+}
+
+@media (max-width: 720px) {
+  .mt-head { flex-direction: column; }
+  .mt-clockwrap { text-align: left; }
+  .mt-table { font-size: 16px; }
+}
