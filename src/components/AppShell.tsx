@@ -13,13 +13,13 @@ import {
 import { UserMenu } from "@/components/UserMenu";
 
 const navItems = [
-  { href: "/", label: "ภาพรวม", icon: LayoutDashboard },
+  { href: "/", label: "ภาพรวมระบบ", icon: LayoutDashboard },
   { href: "/monitor", label: "จอมอนิเตอร์", icon: Monitor },
-  { href: "/schedule", label: "ตารางงาน", icon: CalendarDays },
-  { href: "/events/new", label: "เพิ่มงาน", icon: PlusCircle },
-  { href: "/mobile/my-tasks", label: "มือถือ", icon: Smartphone },
-  { href: "/reports", label: "รายงาน", icon: BarChart3 },
-  { href: "/settings", label: "ตั้งค่า", icon: Settings },
+  { href: "/schedule", label: "ตารางงาน / ปฏิทิน", icon: CalendarDays },
+  { href: "/events/new", label: "เพิ่มงานใหม่", icon: PlusCircle },
+  { href: "/mobile/my-tasks", label: "งานของฉัน (มือถือ)", icon: Smartphone },
+  { href: "/reports", label: "รายงานผู้บริหาร", icon: BarChart3 },
+  { href: "/settings", label: "ตั้งค่าระบบ", icon: Settings },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -31,15 +31,15 @@ export function AppShell({ children }: { children: ReactNode }) {
             <ClipboardList size={24} aria-hidden="true" />
           </span>
           <div>
-            <strong>PR-OS</strong>
-            <small>Public Relations Ops</small>
+            <strong>PR-OS นครสวรรค์</strong>
+            <small>ระบบงานประชาสัมพันธ์</small>
           </div>
         </div>
         <div className="sidebar-status">
           <span className="live-dot" />
           <div>
-            <strong>Operational Pilot</strong>
-            <small>Mock data / Phase 0</small>
+            <strong>เทศบาลนครนครสวรรค์</strong>
+            <small>ระบบบริหารงาน ปชส.</small>
           </div>
         </div>
         <nav className="nav-list" aria-label="Main navigation">

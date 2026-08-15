@@ -4,7 +4,7 @@
 
 PR-OS คือระบบบริหารจัดการงานประชาสัมพันธ์ของหน่วยงานเทศบาล มีเป้าหมายให้ฝ่ายประชาสัมพันธ์บันทึกงาน, มอบหมายผู้รับผิดชอบ, แสดงตารางงานบนจอมอนิเตอร์, รับทราบงานผ่านมือถือ, แจ้งเตือน, และสรุปรายงานผู้บริหารได้จากระบบเดียว
 
-สถานะปัจจุบัน: **เชื่อม Supabase จริงแล้ว** (Auth + PostgreSQL + RLS + SECURITY DEFINER functions) ทำงานบนแผนฟรีทั้งหมด — core workflow (auth, event lifecycle, assignment/ack, monitor, reports, settings, notification queue แบบจำลอง) ใช้งานได้จริงแล้ว ดูรายละเอียดล่าสุดที่ `docs/14-implementation-status.md`
+สถานะปัจจุบัน: **เชื่อม Supabase จริงแล้ว** (Auth + PostgreSQL + RLS + SECURITY DEFINER functions) ทำงานบนแผนฟรีทั้งหมด — core workflow ใช้งานได้จริงแล้ว: auth, event lifecycle, assignment/ack, monitor, ไฟล์แนบส่วนตัว (private Storage + signed URL), reports + export Excel/PDF, settings, notification queue (ยังโหมดจำลองจนกว่าจะใส่ credential) ⚠️ ตอนนี้ Supabase project ถูก pause อยู่ ต้อง restore ก่อนใช้งาน และ migration `0009`/`0010` ยังไม่ได้รันบนโปรเจกต์จริง — ดู `STATE.md`, `docs/15-operations-runbook.md`, `docs/14-implementation-status.md`
 
 ## Quick Start For Agents
 
@@ -21,6 +21,8 @@ PR-OS คือระบบบริหารจัดการงานปร�
 9. `docs/07-implementation-plan.md` - roadmap การพัฒนาต่อ
 10. `docs/12-visual-design-direction.md` - visual direction, motion, typography
 
+ถ้าคำขอเกี่ยวกับการรัน migration จริง/credential/deploy ให้อ่าน `docs/15-operations-runbook.md` เพิ่มด้วย  
+ถ้าต้องอธิบายโปรเจกต์ให้คนนอก (ที่ปรึกษา/ผู้ตรวจ) ให้ใช้ `docs/16-external-review-brief.md`  
 ถ้าคำขอเกี่ยวกับ notification ให้อ่าน `docs/09-notification-design.md` เพิ่มด้วย  
 ถ้าคำขอเกี่ยวกับ security/permission ให้อ่าน `docs/08-security-and-permissions.md` เพิ่มด้วย  
 ถ้าคำขอเกี่ยวกับส่งมอบหรือ handoff ให้อ่าน `docs/10-handoff-checklist.md` เพิ่มด้วย
@@ -31,7 +33,7 @@ PR-OS คือระบบบริหารจัดการงานปร�
 - Language: TypeScript
 - UI: React + global CSS in `src/app/globals.css`
 - Icons: `lucide-react`
-- Data source now: mock data in `src/data/mock-data.ts`
+- Data source now: Supabase (queries/mutations under `src/lib/<domain>/`); `src/data/mock-data.ts` survives only as the offline fallback for the retro TV monitor variant
 - Backend target: Supabase Auth, PostgreSQL, Storage, RLS
 - DB draft: `supabase/migrations/0001_initial_schema.sql`
 - Seed draft: `supabase/seed.sql`
@@ -144,17 +146,27 @@ MVP should not include:
 
 ## Current Routes
 
-Prototype routes:
+Application routes:
 
 - `/` - dashboard overview
-- `/monitor` - operational monitor
+- `/login` - username/password sign-in
+- `/monitor` - operational monitor (public, monitor-safe); `?classic=1` = retro TV variant
+- `/monitor/control` - remote control for the retro TV variant
 - `/schedule` - schedule table
 - `/events/new` - new event form
-- `/events/[id]` - event detail (publish/cancel/complete/delete + assignees)
+- `/events/[id]` - event detail (publish/cancel/complete/delete + assignees + private attachments)
 - `/events/[id]/edit` - edit event (significant-change detection resets ack)
 - `/mobile/my-tasks` - assignee mobile view
-- `/reports` - management reports
-- `/settings` - master data/settings prototype
+- `/reports` - management reports + export buttons
+- `/reports/print` - print/PDF layout of the same report
+- `/settings` - admin console (people, accounts, master data, notifications)
+
+Route handlers:
+
+- `GET /api/attachments/[id]` - redirect to a 60-second signed URL for one private attachment
+- `GET /api/reports/export` - .xlsx export honoring the on-screen filters (audit logged)
+- `POST /api/notifications/process` - queue processor for an external cron (shared-secret header)
+- `GET /api/auth/line/start`, `GET /api/auth/line/callback` - LINE Login OAuth for self-linking
 
 Keep route responsibilities aligned with `docs/06-ui-screens.md`.
 
@@ -282,12 +294,24 @@ Useful KPIs:
 - Events by owner department/type
 - Today/week/month summary
 
-Export:
+Export (implemented):
 
-- PDF
-- Excel
+- Excel: `GET /api/reports/export` builds .xlsx with the hand-rolled writer in `src/lib/export/xlsx.ts`. Do NOT add a spreadsheet library — the writer covers text/number cells across sheets and keeps the server bundle small.
+- PDF: `/reports/print` is a print-optimized page; the user saves it as PDF from the browser dialog. Do NOT add a PDF library — Thai fonts need embedding and render poorly.
+- Sheet/section content excludes internal notes and attachments.
 
-Export must respect on-screen filters and should be audit logged.
+Export must respect on-screen filters and is audit logged (`entity_type='report'`, `action='export'`, nil `entity_id`).
+
+## Attachment Rules
+
+Implemented in migration `0010` + `src/lib/attachments/`:
+
+- Files live in the private bucket `event-attachments`; metadata in `public.event_attachments`.
+- Storage path is `'<event_id>/<uuid>.<ext>'` — never build a path from the user-supplied file name.
+- Downloads go through `/api/attachments/[id]`, which signs a URL from the CALLER's session (no service role) with a 60-second TTL. Never render a signed URL into HTML.
+- Backend roles upload/delete; assignees read only their own events' files; monitor and anon see nothing.
+- Upload/delete write audit rows; a failed metadata insert removes the uploaded object.
+- Server Action body limit is raised to 12mb in `next.config.ts` for uploads.
 
 ## UI/UX Direction
 
@@ -399,12 +423,16 @@ src/lib/events/queries.ts
 src/lib/events/mutations.ts
 src/lib/assignments/queries.ts
 src/lib/assignments/mutations.ts
+src/lib/attachments/queries.ts
+src/lib/attachments/mutations.ts
 src/lib/monitor/queries.ts
 src/lib/notifications/queue.ts
 src/lib/notifications/line.ts
 src/lib/notifications/email.ts
 src/lib/reports/queries.ts
+src/lib/reports/export.ts
 src/lib/reports/smart-summary.ts
+src/lib/export/xlsx.ts
 ```
 
 Security rules:

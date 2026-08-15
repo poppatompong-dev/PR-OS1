@@ -37,13 +37,14 @@ export function buildNotificationText(
       };
     case "reminder":
       return {
-        subject: `เตือนงานใกล้ถึง: ${ctx.eventTitle}`,
+        subject: `[เตือนความจำ] งานใกล้ถึง: ${ctx.eventTitle}`,
         body: [
-          "เตือนงานประชาสัมพันธ์ที่ใกล้ถึง",
+          "⏰ เตือนงานประชาสัมพันธ์ที่กำลังจะมาถึง",
           `งาน: ${ctx.eventTitle}`,
           `วันที่: ${eventWhen(ctx)}`,
           `สถานที่: ${ctx.locationName}`,
           `บทบาท: ${ctx.roleName}`,
+          `กรุณาตรวจสอบและรับทราบงาน: ${ctx.ackUrl}`,
         ].join("\n"),
       };
     case "change":

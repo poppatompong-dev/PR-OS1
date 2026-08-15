@@ -248,6 +248,10 @@ export async function publishEvent(formData: FormData) {
     p_event_id: eventId,
     p_type: "assignment",
   });
+  // Enqueue advance (24h) and same-day (1.5h) reminders.
+  await supabase.rpc("enqueue_event_reminders", {
+    p_event_id: eventId,
+  });
   revalidatePath("/schedule");
   revalidatePath(`/events/${eventId}`);
   redirect(`/events/${eventId}`);
@@ -301,6 +305,9 @@ export async function cancelEvent(formData: FormData) {
   await supabase.rpc("enqueue_event_notifications", {
     p_event_id: eventId,
     p_type: "cancellation",
+  });
+  await supabase.rpc("cancel_event_reminders", {
+    p_event_id: eventId,
   });
   revalidatePath("/schedule");
   revalidatePath(`/events/${eventId}`);

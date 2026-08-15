@@ -5,14 +5,19 @@ import { StatusPill } from "@/components/StatusPill";
 import { getEventAuditLog, getEventById, getEventFormData } from "@/lib/events/queries";
 import { cancelEvent, completeEvent, deleteEvent, publishEvent } from "@/lib/events/mutations";
 import { addAssignment, removeAssignment } from "@/lib/assignments/mutations";
+import { checkConflictsForEvent } from "@/lib/assignments/queries";
+import { getEventAttachments } from "@/lib/attachments/queries";
+import { deleteAttachment, uploadAttachment } from "@/lib/attachments/mutations";
 import { createClient } from "@/lib/supabase/server";
 import { can, getSessionUser } from "@/lib/auth/roles";
 import {
   ackStatusLabel,
   eventStatusLabel,
+  formatFileSize,
   formatThaiDate,
   urgencyLabel,
 } from "@/lib/format";
+import { AlertTriangle, Copy, Download, Paperclip } from "lucide-react";
 import type { EventStatus } from "@/types/domain";
 
 export const dynamic = "force-dynamic";
@@ -61,6 +66,12 @@ export default async function EventDetailPage({
     can.manageAssignments(role) && (event.status === "draft" || event.status === "published");
 
   const formData = canManageAssignments ? await getEventFormData() : null;
+  const personIds = event.assignments.map((a) => a.person.id).filter(Boolean);
+  const conflicts = await checkConflictsForEvent(event.id, event.eventDate, personIds);
+  // RLS decides visibility: backend roles see all files, an assignee only sees
+  // files on events assigned to them. Upload/delete stay backend-only.
+  const attachments = await getEventAttachments(id);
+  const canManageAttachments = can.editPublished(role);
 
   return (
     <AppShell>
@@ -94,21 +105,50 @@ export default async function EventDetailPage({
         <h2>ผู้ได้รับมอบหมาย</h2>
         {event.assignments.length > 0 ? (
           <div>
-            {event.assignments.map((assignment) => (
-              <div className="assignment-row" key={assignment.id}>
-                <div className="assignment-main">
-                  <strong>{assignment.role.name}</strong>: {assignment.person.displayName}{" "}
-                  <span className="ack-tag">— {ackStatusLabel(assignment.ackStatus)}</span>
+            {event.assignments.map((assignment) => {
+              const personConflicts = conflicts[assignment.person.id] ?? [];
+              return (
+                <div className="assignment-row" key={assignment.id} style={{ flexDirection: "column", alignItems: "stretch" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%" }}>
+                    <div className="assignment-main">
+                      <strong>{assignment.role.name}</strong>: {assignment.person.displayName}{" "}
+                      <span className="ack-tag">— {ackStatusLabel(assignment.ackStatus)}</span>
+                    </div>
+                    {canManageAssignments ? (
+                      <form action={removeAssignment}>
+                        <input type="hidden" name="eventId" value={event.id} />
+                        <input type="hidden" name="assignmentId" value={assignment.id} />
+                        <button className="button secondary" type="submit">นำออก</button>
+                      </form>
+                    ) : null}
+                  </div>
+                  {personConflicts.length > 0 ? (
+                    <div
+                      style={{
+                        margin: "4px 0 6px 0",
+                        padding: "6px 10px",
+                        borderRadius: "var(--radius)",
+                        background: "rgba(240, 166, 58, 0.12)",
+                        border: "1px solid rgba(240, 166, 58, 0.4)",
+                        color: "var(--amber)",
+                        fontSize: "13px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      <AlertTriangle size={15} aria-hidden="true" />
+                      <span>
+                        <strong>เวลาอาจชนกัน:</strong> มีงานอื่นในวันเดียวกัน —{" "}
+                        {personConflicts
+                          .map((c) => `${c.eventTitle} (${c.startTime}${c.endTime ? `-${c.endTime}` : ""}) ที่ ${c.locationName}`)
+                          .join(", ")}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
-                {canManageAssignments ? (
-                  <form action={removeAssignment}>
-                    <input type="hidden" name="eventId" value={event.id} />
-                    <input type="hidden" name="assignmentId" value={assignment.id} />
-                    <button className="button secondary" type="submit">นำออก</button>
-                  </form>
-                ) : null}
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p>ยังไม่มีผู้รับผิดชอบ</p>
@@ -144,10 +184,64 @@ export default async function EventDetailPage({
         ) : null}
       </section>
 
+      <section className="panel">
+        <h2>
+          <Paperclip size={18} aria-hidden="true" /> ไฟล์แนบ (ส่วนตัว)
+        </h2>
+        <p className="panel-hint">
+          ไฟล์แนบเป็นความลับ เปิดได้เฉพาะผู้มีสิทธิ์ ลิงก์ดาวน์โหลดหมดอายุใน 60 วินาที และไม่แสดงบนจอมอนิเตอร์
+        </p>
+        {attachments.length > 0 ? (
+          <div>
+            {attachments.map((file) => (
+              <div className="assignment-row" key={file.id}>
+                <div className="assignment-main">
+                  <a className="attachment-link" href={`/api/attachments/${file.id}`}>
+                    <Download size={16} aria-hidden="true" />
+                    {file.fileName}
+                  </a>{" "}
+                  <span className="ack-tag">— {formatFileSize(file.sizeBytes)}</span>
+                </div>
+                {canManageAttachments ? (
+                  <form action={deleteAttachment}>
+                    <input type="hidden" name="eventId" value={event.id} />
+                    <input type="hidden" name="attachmentId" value={file.id} />
+                    <button className="button secondary" type="submit">ลบไฟล์</button>
+                  </form>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p>ยังไม่มีไฟล์แนบ</p>
+        )}
+
+        {canManageAttachments ? (
+          <form action={uploadAttachment} className="assignment-add">
+            <input type="hidden" name="eventId" value={event.id} />
+            <label className="form-field">
+              เลือกไฟล์ (PDF/Word/Excel/รูปภาพ ไม่เกิน 10 MB)
+              <input
+                className="input"
+                type="file"
+                name="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
+                required
+              />
+            </label>
+            <button className="button" type="submit">แนบไฟล์</button>
+          </form>
+        ) : null}
+      </section>
+
       {canEdit || canPublish || canComplete || canDelete ? (
         <section className="panel">
           <h2>การดำเนินการ</h2>
-          <div className="form-actions" style={{ justifyContent: "flex-start" }}>
+          <div className="form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+            <Link className="button secondary" href={`/events/new?cloneFrom=${event.id}`}>
+              <Copy size={16} aria-hidden="true" />
+              คัดลอกงาน
+            </Link>
             {canEdit ? (
               <Link className="button secondary" href={`/events/${event.id}/edit`}>แก้ไข</Link>
             ) : null}

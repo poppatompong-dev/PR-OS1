@@ -1,4 +1,5 @@
-// Read-side data access for the assignee mobile page.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Read-side data access for the assignee mobile page and conflict checks.
 
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/roles";
@@ -30,7 +31,6 @@ export type MyAssignments = {
   tasks: MyTask[];
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const one = (v: any) => (Array.isArray(v) ? v[0] : v);
 
 export async function getMyAssignments(): Promise<MyAssignments> {
@@ -69,14 +69,12 @@ export async function getMyAssignments(): Promise<MyAssignments> {
   if (error) throw new Error(`getMyAssignments: ${error.message}`);
 
   const tasks: MyTask[] = (data ?? [])
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((a: any) => ({ a, ev: one(a.event) }))
     // Assignees see published/canceled/completed work, not unpublished drafts.
     .filter(({ ev }) => ev && !ev.deleted_at && ev.status !== "draft")
     .map(({ a, ev }) => {
       const acks = Array.isArray(a.acknowledgements) ? a.acknowledgements : [];
       const acknowledged = acks.some(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (k: any) => k.assignment_version === a.assignment_version,
       );
       return {
@@ -106,3 +104,67 @@ export async function getMyAssignments(): Promise<MyAssignments> {
 
   return { displayName: user.displayName, personLinked: true, lineLinked, tasks };
 }
+
+export type AssignmentConflict = {
+  personId: string;
+  eventId: string;
+  eventTitle: string;
+  startTime: string;
+  endTime?: string;
+  locationName: string;
+  roleName: string;
+};
+
+export async function checkConflictsForEvent(
+  eventId: string,
+  eventDate: string,
+  personIds: string[],
+): Promise<Record<string, AssignmentConflict[]>> {
+  if (!personIds.length || !eventDate) return {};
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("assignments")
+    .select(
+      `
+      id, person_id,
+      role:roles(name),
+      event:events!inner(
+        id, title, event_date, start_time, end_time, status, deleted_at,
+        location:locations(name)
+      )
+    `,
+    )
+    .in("person_id", personIds)
+    .eq("assignment_status", "assigned");
+
+  if (error || !data) return {};
+
+  const result: Record<string, AssignmentConflict[]> = {};
+
+  for (const row of data as any[]) {
+    const ev = one(row.event);
+    if (!ev || ev.deleted_at || ev.id === eventId || ev.event_date !== eventDate) {
+      continue;
+    }
+    if (ev.status !== "published" && ev.status !== "draft") {
+      continue;
+    }
+
+    const pid = row.person_id;
+    if (!result[pid]) result[pid] = [];
+
+    result[pid].push({
+      personId: pid,
+      eventId: ev.id,
+      eventTitle: ev.title,
+      startTime: String(ev.start_time ?? "").slice(0, 5),
+      endTime: ev.end_time ? String(ev.end_time).slice(0, 5) : undefined,
+      locationName: one(ev.location)?.name ?? "—",
+      roleName: one(row.role)?.name ?? "—",
+    });
+  }
+
+  return result;
+}
+

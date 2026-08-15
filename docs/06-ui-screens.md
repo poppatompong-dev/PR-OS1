@@ -101,6 +101,13 @@ Purpose:
 - See assignments and acknowledgement
 - See change history
 - Edit, publish, complete, or cancel based on permission
+- Manage private attachments
+
+Attachment panel (implemented):
+
+- Lists file name + size; download goes through `/api/attachments/[id]` (60-second signed URL)
+- Upload/delete visible only to admin/supervisor/staff
+- Assignees see only the files of events assigned to them; monitor never sees any of it
 
 ## Screen 5: Mobile My Tasks
 
@@ -130,7 +137,23 @@ Purpose:
 - KPI cards
 - workload table
 - smart summary text
-- export PDF/Excel action
+- export PDF/Excel action (implemented)
+
+Export controls:
+
+- "ดาวน์โหลด Excel" → `GET /api/reports/export?from&to` returns `.xlsx` with 4 sheets
+- "พิมพ์ / บันทึกเป็น PDF" → opens `/reports/print?from&to` in a new tab; the user prints or saves as PDF
+- Both carry the on-screen date range and are audit logged
+
+## Screen 6b: Report Print View
+
+Route: `/reports/print`
+
+Purpose:
+
+- Paper/PDF layout of the same report (no app chrome, page-break rules, tabular numbers)
+- Header shows range, print timestamp, and who generated it
+- Footer states that internal notes and attachments are excluded
 
 KPI cards:
 

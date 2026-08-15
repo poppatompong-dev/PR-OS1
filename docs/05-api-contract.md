@@ -179,16 +179,50 @@ Response contains:
 
 ### GET /api/reports/export
 
+Implemented in `src/app/api/reports/export/route.ts` — Excel only.
+
 Query:
 
-- `format`: pdf, xlsx
 - `from`
 - `to`
+- `departmentId` (optional)
 
-Rules:
+Behavior:
 
-- Export must use the same filters shown on screen
-- Export action should be logged
+- Requires a session; `403` unless the role passes `can.viewReports` (admin/supervisor)
+- Returns an `.xlsx` file built by the dependency-free writer in `src/lib/export/xlsx.ts` (sheets: สรุป / รายการงาน / ภาระงานตามบุคคล / ค้างรับทราบ)
+- Uses exactly the filters passed from the report screen
+- Writes an `audit_logs` row (`entity_type = 'report'`, `entity_id` = nil UUID, `action = 'export'`, `new_values.format = 'xlsx'`)
+- Excludes internal notes and attachments so a forwarded file cannot leak them
+
+### GET /reports/print (PDF path)
+
+PDF is produced through the browser print dialog rather than a server-side PDF library — that keeps Thai typography correct and adds nothing to the bundle.
+
+- Print-optimized page at `src/app/reports/print/page.tsx`, same filters (`from`, `to`, `departmentId`)
+- Requires a session + `can.viewReports`
+- Logs the same audit row with `new_values.format = 'pdf'`
+
+## Attachments
+
+### GET /api/attachments/[id]
+
+Implemented in `src/app/api/attachments/[id]/route.ts`.
+
+- Requires a session; `401` when absent
+- Looks the row up through the caller's own session, so RLS decides visibility; missing row and "hidden by RLS" both return `404`
+- On success returns `302` to a Supabase Storage signed URL valid for 60 seconds, with `Cache-Control: no-store`
+- Signed URLs are never rendered into HTML
+
+### Upload / delete
+
+Server actions in `src/lib/attachments/mutations.ts` (`uploadAttachment`, `deleteAttachment`), called from the event detail screen.
+
+- Backend roles only (`can.editPublished`)
+- Client-side limits mirror the bucket: 10 MB, MIME allowlist
+- Failed metadata insert removes the just-uploaded object (no orphans)
+- Delete removes the Storage object and soft-deletes the metadata row
+- Both write `audit_logs` entries (`attachment_upload` / `attachment_delete`)
 
 ## Notifications
 

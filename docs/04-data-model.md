@@ -181,6 +181,28 @@ Operational rule: admins must be able to add staff, edit contact data, deactivat
 - `last_used_at`
 - `expires_at`
 
+### event_attachments
+
+Implemented in `supabase/migrations/0010_event_attachments.sql`. Metadata only — the file bytes live in the private Storage bucket `event-attachments`.
+
+- `id`
+- `event_id`
+- `storage_path`: unique, `'<event_id>/<uuid>.<ext>'` (the first path segment is what Storage RLS checks)
+- `file_name`: original user-supplied name, never used to build the path
+- `mime_type`
+- `size_bytes`
+- `uploaded_by`
+- `created_at`
+- `deleted_at`: soft delete, so an audit entry can still resolve the name after the object is removed
+
+Access:
+
+- admin/supervisor/staff: read, upload, delete
+- assignee: read only, and only for events assigned to them
+- anon/display: no access; the monitor feed never joins this table
+
+Bucket limits: private, 10 MB per file, MIME allowlist (PDF, Word, Excel, JPG/PNG/WebP).
+
 ## Important Relationships
 
 - One event has many assignments

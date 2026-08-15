@@ -1662,6 +1662,144 @@ textarea:focus-visible {
   min-width: 180px;
 }
 
+.export-toolbar {
+  margin-top: -6px;
+}
+
+/* Print-optimized report (/reports/print) — paper first, screen second. */
+.print-report {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 28px 24px 48px;
+  background: #ffffff;
+  color: #16181d;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.print-toolbar {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}
+
+.print-header h1 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 800;
+  margin: 0 0 6px;
+}
+
+.print-header p {
+  margin: 2px 0;
+}
+
+.print-meta {
+  color: #5b6070;
+  font-size: 14px;
+}
+
+.print-report section {
+  margin-top: 26px;
+}
+
+.print-report h2 {
+  font-size: 19px;
+  font-weight: 700;
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #16181d;
+}
+
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.print-table th,
+.print-table td {
+  border: 1px solid #c8ccd6;
+  padding: 7px 9px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.print-table thead th {
+  background: #eef0f5;
+  font-weight: 700;
+}
+
+.print-num {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.print-footer {
+  margin-top: 30px;
+  padding-top: 10px;
+  border-top: 1px solid #c8ccd6;
+  font-size: 13px;
+  color: #5b6070;
+}
+
+@media print {
+  .print-toolbar {
+    display: none;
+  }
+
+  .print-report {
+    max-width: none;
+    padding: 0;
+    font-size: 12pt;
+  }
+
+  .print-break {
+    break-before: page;
+  }
+
+  .print-table {
+    font-size: 10.5pt;
+  }
+
+  .print-table thead {
+    display: table-header-group;
+  }
+
+  .print-table tr {
+    break-inside: avoid;
+  }
+}
+
+/* Private attachments (event detail) */
+.panel-hint {
+  margin: -4px 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.attachment-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--blue);
+  font-weight: 600;
+  text-decoration: none;
+  min-height: 44px;
+}
+
+.attachment-link:hover {
+  text-decoration: underline;
+}
+
+.assignment-add input[type="file"] {
+  padding: 10px;
+  font-size: 15px;
+}
+
 .staff-edit {
   margin-top: 6px;
 }

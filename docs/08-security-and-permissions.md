@@ -75,10 +75,15 @@ Audit logs should not be editable from the UI. If a correction is needed, create
 
 ## Attachment Privacy
 
-- Store files in private Supabase Storage bucket
-- Generate short-lived signed URLs
-- Monitor never receives attachment URLs
-- Export report should include attachment count or filename only unless the user has permission
+Implemented in migration `0010_event_attachments.sql` + `src/lib/attachments/`:
+
+- Files live in the private bucket `event-attachments` (10 MB cap, MIME allowlist)
+- Storage RLS: backend roles read/write; an assignee reads only objects whose first path segment is an event assigned to them; anon has no policy at all
+- Signed URLs are created per request from the caller's own session (`/api/attachments/[id]`), live 60 seconds, and are never embedded in HTML
+- Storage path is `'<event_id>/<uuid>.<ext>'` — the user-supplied file name is stored in metadata only, so a hostile name cannot alter the path
+- Monitor never receives attachment URLs (the monitor RPC does not join the table)
+- Report exports (Excel + print/PDF) exclude attachments and internal notes entirely
+- Upload and delete both write `audit_logs` rows
 
 ## Display Token
 

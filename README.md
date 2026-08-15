@@ -2,9 +2,12 @@
 
 PR-OS เป็นโครงโปรเจกต์สำหรับส่งต่อโปรแกรมเมอร์เพื่อพัฒนาระบบบริหารจัดการงานประชาสัมพันธ์ของหน่วยงานเทศบาล โดยเน้นการบันทึกงาน กำหนดผู้รับผิดชอบ แสดงตารางงานบนจอมอนิเตอร์ รับทราบงาน แจ้งเตือน และรายงานผู้บริหาร
 
-สถานะปัจจุบัน: **Phase 1 MVP กำลังพัฒนา** — เชื่อมต่อ Supabase จริงแล้ว (Auth + PostgreSQL + RLS) พร้อมฟีเจอร์หลักที่ใช้งานได้จริง: เข้าสู่ระบบด้วย username, ตารางงาน, เพิ่ม/แก้ไข/เผยแพร่/ยกเลิกงาน + audit log, มอบหมาย/รับทราบ, จอมอนิเตอร์ (monitor-safe), รายงานผู้บริหาร, คิวแจ้งเตือน และหน้าตั้งค่าผู้ดูแล ดูรายละเอียดความคืบหน้าที่ `docs/14-implementation-status.md`
+สถานะปัจจุบัน: **Phase 1 MVP กำลังพัฒนา** — เชื่อมต่อ Supabase จริงแล้ว (Auth + PostgreSQL + RLS) พร้อมฟีเจอร์หลักที่ใช้งานได้จริง: เข้าสู่ระบบด้วย username, ตารางงาน, เพิ่ม/แก้ไข/เผยแพร่/ยกเลิกงาน + audit log, มอบหมาย/รับทราบ, จอมอนิเตอร์ (monitor-safe), ไฟล์แนบส่วนตัว, รายงานผู้บริหาร + ส่งออก Excel/PDF, คิวแจ้งเตือน และหน้าตั้งค่าผู้ดูแล ดูรายละเอียดความคืบหน้าที่ `docs/14-implementation-status.md`
 
-> หมายเหตุ: การส่งแจ้งเตือนจริงผ่าน LINE/Email ยังเป็น stub (ยังไม่ตั้งค่า provider) และไฟล์แนบยังไม่ทำ — ดูสิ่งที่เหลือใน `docs/14-implementation-status.md`
+> หมายเหตุ:
+> - การส่งแจ้งเตือนจริงผ่าน LINE/Email ยังทำงานโหมดจำลอง เพราะยังไม่ได้ใส่ credential ของ provider
+> - Supabase project ถูก pause (แผนฟรี pause หลังไม่มี activity 7 วัน) ต้อง restore ก่อนรันระบบ — ขั้นตอนอยู่ใน `docs/15-operations-runbook.md`
+> - migration `0009` และ `0010` ยังไม่ได้รันบน Supabase จริง
 
 ## เป้าหมาย
 
@@ -38,13 +41,17 @@ docs/
   10-handoff-checklist.md
   11-recommended-skills.md
   12-visual-design-direction.md
+  13-setup-free-tier.md
+  14-implementation-status.md       สถานะละเอียด: ทำแล้ว/ยังเหลือ
+  15-operations-runbook.md          งานที่เจ้าของโปรเจกต์ต้องทำเอง (restore, migration, credential)
+  16-external-review-brief.md       บริบทสำหรับที่ปรึกษา/ผู้ตรวจจากภายนอก
 src/
-  app/                  Next.js mock screens
-  components/           Reusable UI components for prototype
-  data/mock-data.ts     Thai mock data for prototype and review
-  types/domain.ts       Domain types shared by mock screens
+  app/                  หน้าจอจริง (App Router) + route handlers ใน app/api
+  components/           คอมโพเนนต์ UI ที่ใช้ซ้ำ
+  lib/                  โดเมนโมดูล: events, assignments, attachments, monitor, notifications, reports, export, settings, supabase, auth
+  types/domain.ts       Domain types ที่ใช้ร่วมกัน
 supabase/
-  migrations/0001_initial_schema.sql
+  migrations/0001..0010_*.sql
 ```
 
 ## วิธีเริ่มพัฒนาต่อ
@@ -75,6 +82,13 @@ npm run typecheck
 - สร้างบัญชีใหม่ที่ Supabase → Authentication → Users (ติ๊ก Auto Confirm) จากนั้นไปที่หน้า `/settings` เพื่อกำหนด **ชื่อผู้ใช้ (username)**, บทบาท (role) และผูกกับรายชื่อบุคลากร
 - ผู้ดูแลระบบจัดการบุคลากร บัญชี ข้อมูลหลัก และการแจ้งเตือนได้ที่ `/settings`
 - จอมอนิเตอร์ `/monitor` เป็นหน้าสาธารณะ (ไม่ต้องล็อกอิน) แสดงเฉพาะข้อมูลที่ปลอดภัย — ค่าเริ่มต้นเป็น **ตารางเรียบ อ่านง่าย ตัวใหญ่** (วัน/เวลา/งาน/สถานที่/ผู้รับผิดชอบ/หมายเหตุ); จอทีวีย้อนยุคเดิมเก็บไว้ที่ `/monitor?classic=1`
+
+## ไฟล์แนบและการส่งออกรายงาน
+
+- **ไฟล์แนบ** อยู่ในหน้ารายละเอียดงาน `/events/[id]` เก็บใน private bucket ของ Supabase Storage ดาวน์โหลดผ่านลิงก์เซ็นชื่อที่หมดอายุใน 60 วินาที (`/api/attachments/[id]`) — เจ้าหน้าที่ backend แนบ/ลบได้, ผู้รับมอบหมายเห็นเฉพาะงานของตัวเอง, จอมอนิเตอร์ไม่เห็นเลย
+- **ส่งออก Excel** ที่ `/reports` → ปุ่ม "ดาวน์โหลด Excel" (ไฟล์ `.xlsx` 4 ชีต สร้างเองโดยไม่พึ่ง dependency ภายนอก)
+- **ส่งออก PDF** ใช้หน้า `/reports/print` แล้วสั่งพิมพ์/บันทึกเป็น PDF จากเบราว์เซอร์ (ภาษาไทยไม่เพี้ยน ไม่ต้องฝังฟอนต์ใน PDF library)
+- ทั้งไฟล์แนบและการส่งออกถูกบันทึกลง audit log ทุกครั้ง
 
 หมายเหตุสำหรับ dev server: ถ้ารัน `npm run build` ขณะ `npm run dev` ยังเปิดอยู่ ควร restart dev server ก่อนดูหน้าเว็บอีกครั้ง เพราะโฟลเดอร์ `.next` เป็น generated cache และอาจทำให้ CSS dev asset เช่น `/_next/static/css/app/layout.css` ตอบ 404 จนหน้าเว็บกลายเป็น HTML ดิบได้
 

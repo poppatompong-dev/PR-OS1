@@ -1,5 +1,9 @@
 # Handoff Checklist
 
+> อัปเดต 13 ส.ค. 2569 — เอกสารนี้เป็นเช็กลิสต์ตั้งต้นของโปรเจกต์ (เขียนตอนส่งมอบครั้งแรก)
+> รายการที่ยังค้างจริง ๆ ตอนนี้พร้อมขั้นตอนลงมือทำ อยู่ที่ `docs/15-operations-runbook.md`
+> สถานะโค้ดล่าสุดอยู่ที่ `docs/14-implementation-status.md` · บริบทสำหรับที่ปรึกษาภายนอกอยู่ที่ `docs/16-external-review-brief.md`
+
 ## Before Development Starts
 
 - Confirm project name or keep `PR-OS` as temporary name
@@ -23,6 +27,9 @@
 - `docs/07-implementation-plan.md`
 - `docs/08-security-and-permissions.md`
 - `docs/09-notification-design.md`
+- `docs/14-implementation-status.md`
+- `docs/15-operations-runbook.md`
+- `docs/16-external-review-brief.md`
 
 ## Prototype Review Checklist
 

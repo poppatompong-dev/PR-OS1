@@ -3,7 +3,9 @@ import { MetricCard } from "@/components/MetricCard";
 import { EventTable } from "@/components/EventTable";
 import { getReportData } from "@/lib/reports/queries";
 import { formatThaiDate } from "@/lib/format";
-import { Sparkles } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { can, getSessionUser } from "@/lib/auth/roles";
+import { FileSpreadsheet, Printer, Sparkles } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -34,12 +36,18 @@ export default async function ReportsPage({
 
   const report = await getReportData({ from, to });
 
+  // Export endpoints require can.viewReports; hide the buttons for roles that
+  // would only get a 403 back.
+  const supabase = await createClient();
+  const user = await getSessionUser(supabase);
+  const canExport = can.viewReports(user?.role ?? "assignee");
+
   return (
     <AppShell>
       <header className="page-header">
         <div>
           <h1 className="page-title">รายงานผู้บริหาร</h1>
-          <p className="page-subtitle">Smart Summary จากข้อมูลจริง (กฎคำนวณ ไม่พึ่ง AI ใน MVP)</p>
+          <p className="page-subtitle">สรุปภาพรวมและสถิติงานประชาสัมพันธ์ เทศบาลนครนครสวรรค์</p>
         </div>
       </header>
 
@@ -54,9 +62,28 @@ export default async function ReportsPage({
         </label>
         <button className="button" type="submit">
           <Sparkles size={18} aria-hidden="true" />
-          สร้างรายงาน
+          ประมวลผลรายงาน
         </button>
       </form>
+
+      {/* Exports carry the on-screen range, and each one is audit logged. */}
+      {canExport ? (
+        <div className="toolbar export-toolbar">
+          <a className="button secondary" href={`/api/reports/export?from=${from}&to=${to}`}>
+            <FileSpreadsheet size={18} aria-hidden="true" />
+            ดาวน์โหลด Excel (.xlsx)
+          </a>
+          <a
+            className="button secondary"
+            href={`/reports/print?from=${from}&to=${to}`}
+            target="_blank"
+            rel="noopener"
+          >
+            <Printer size={18} aria-hidden="true" />
+            พิมพ์ / บันทึก PDF
+          </a>
+        </div>
+      ) : null}
 
       <section className="metric-grid">
         <MetricCard label="งานทั้งหมด" value={report.totalEvents} hint="ตามช่วงเวลาที่เลือก" tone="blue" />
@@ -64,11 +91,11 @@ export default async function ReportsPage({
         <MetricCard label="รอรับทราบ" value={report.pendingAcks} hint="ควรติดตามก่อนวันงาน" tone="amber" />
         <MetricCard label="เปลี่ยน/ยกเลิก" value={report.changedOrCanceled} hint="มีผลต่อการแจ้งเตือน" tone="red" />
         <MetricCard label="งานวันนี้" value={report.todayEvents} hint="ตามเวลาประเทศไทย" tone="teal" />
-        <MetricCard label="ภาระงานสูงสุด" value={report.topWorkloadPerson} hint="ตามจำนวน assignment" tone="teal" />
+        <MetricCard label="ภาระงานสูงสุด" value={report.topWorkloadPerson} hint="ตามจำนวนงานที่ได้รับมอบหมาย" tone="teal" />
       </section>
 
       <section className="panel">
-        <h2>สรุปอัจฉริยะ</h2>
+        <h2>สรุปภาพรวมสำหรับผู้บริหาร (Executive Summary)</h2>
         <p>{report.smartSummary}</p>
       </section>
 

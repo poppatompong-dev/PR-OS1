@@ -1,0 +1,32 @@
+name: Supabase Keep-Alive & Ping
+
+on:
+  schedule:
+    # Run every 3 days at 04:00 UTC (11:00 AM Bangkok time)
+    - cron: '0 4 */3 * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API to prevent auto-pause
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Secrets not configured yet. Skipping ping."
+            exit 0
+          fi
+          echo "Pinging Supabase at $SUPABASE_URL/rest/v1/settings..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/settings?select=key&limit=1")
+          echo "Response HTTP Status: $STATUS"
+          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
+            echo "✅ Supabase project is active and healthy!"
+          else
+            echo "⚠️ Warning: Ping received status $STATUS. Project might be paused or restoring."
+          fi

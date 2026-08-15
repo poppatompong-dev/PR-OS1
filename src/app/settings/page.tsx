@@ -13,6 +13,7 @@ import {
 import {
   addMasterItem,
   addPerson,
+  createAccount,
   processNotificationQueue,
   setMasterActive,
   setPersonActive,
@@ -231,28 +232,29 @@ export default async function SettingsPage({
         <div className="panel-heading">
           <div>
             <h2>บัญชีผู้ใช้และบทบาท</h2>
-            <p>กำหนดบทบาทและผูกบัญชีเข้ากับรายชื่อบุคลากร (ผูกแล้วจึงจะเห็นงานในหน้ามือถือ)</p>
+            <p>กำหนดบทบาท, ตั้งรหัสผ่าน และผูกบัญชีเข้ากับรายชื่อบุคลากร (ผูกแล้วจึงจะเห็นงานในหน้ามือถือ)</p>
           </div>
         </div>
-        <p className="page-subtitle">
-          สร้างบัญชีใหม่ได้ที่ Supabase → Authentication → Users (ติ๊ก Auto Confirm) จากนั้นกำหนดบทบาทที่นี่
-        </p>
 
-        <div className="account-list">
-          {accounts.map((account) => (
-            <form action={updateAccount} className="account-row" key={account.id}>
-              <input type="hidden" name="accountId" value={account.id} />
-              <div className="account-email">
-                {account.email}
-                {account.username ? <small> · @{account.username}</small> : null}
-              </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "20px", marginTop: "16px" }}>
+          {/* Create New Account Form */}
+          <form action={createAccount} className="panel" style={{ background: "var(--surface-soft)", border: "1px solid var(--line)" }}>
+            <h3 style={{ marginTop: 0, fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <UserPlus size={18} color="var(--blue)" />
+              สร้างบัญชีผู้ใช้ใหม่
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               <label className="form-field">
-                ชื่อผู้ใช้ (login)
-                <input className="input" name="username" defaultValue={account.username ?? ""} placeholder="เช่น somchai" />
+                ชื่อผู้ใช้ (Username สำหรับล็อกอิน)
+                <input className="input" name="username" placeholder="เช่น thananthon, nat, pracharak" required />
               </label>
               <label className="form-field">
-                บทบาท
-                <select className="select" name="role" defaultValue={account.role}>
+                รหัสผ่านเริ่มต้น (อย่างน้อย 6 ตัวอักษร)
+                <input className="input" type="password" name="password" placeholder="••••••••" required />
+              </label>
+              <label className="form-field">
+                บทบาท (Role)
+                <select className="select" name="role" defaultValue="staff">
                   {ROLES.map((r) => (
                     <option key={r} value={r}>
                       {ROLE_LABELS_TH[r]}
@@ -261,19 +263,73 @@ export default async function SettingsPage({
                 </select>
               </label>
               <label className="form-field">
-                ผูกกับบุคลากร
-                <select className="select" name="personId" defaultValue={account.personId ?? ""}>
+                ผูกกับเจ้าหน้าที่เทศบาล
+                <select className="select" name="personId">
                   <option value="">— ไม่ผูก —</option>
                   {activePeople.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.displayName}
+                      {p.displayName} ({p.position ?? "เจ้าหน้าที่"})
                     </option>
                   ))}
                 </select>
               </label>
-              <button className="button" type="submit">บันทึก</button>
-            </form>
-          ))}
+              <button className="button coral" type="submit" style={{ marginTop: "4px" }}>
+                <UserPlus size={16} />
+                สร้างบัญชีผู้ใช้
+              </button>
+            </div>
+          </form>
+
+          {/* Existing Accounts List */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <h3 style={{ marginTop: 0, fontSize: "16px" }}>บัญชีในระบบ ({accounts.length} บัญชี)</h3>
+            <div className="account-list" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {accounts.map((account) => (
+                <form action={updateAccount} className="account-row panel" style={{ background: "var(--surface)", border: "1px solid var(--line)", padding: "14px" }} key={account.id}>
+                  <input type="hidden" name="accountId" value={account.id} />
+                  <div className="account-email" style={{ marginBottom: "8px", fontWeight: "700", color: "var(--blue)" }}>
+                    {account.username ? `@${account.username}` : account.email}
+                    {account.username && <small style={{ color: "var(--muted)", fontWeight: "normal" }}> ({account.email})</small>}
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}>
+                    <label className="form-field">
+                      ชื่อผู้ใช้ (login)
+                      <input className="input" name="username" defaultValue={account.username ?? ""} placeholder="เช่น somchai" />
+                    </label>
+                    <label className="form-field">
+                      บทบาท
+                      <select className="select" name="role" defaultValue={account.role}>
+                        {ROLES.map((r) => (
+                          <option key={r} value={r}>
+                            {ROLE_LABELS_TH[r]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="form-field">
+                      ผูกกับบุคลากร
+                      <select className="select" name="personId" defaultValue={account.personId ?? ""}>
+                        <option value="">— ไม่ผูก —</option>
+                        {activePeople.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.displayName}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="form-field">
+                      เปลี่ยนรหัสผ่านใหม่
+                      <input className="input" type="password" name="newPassword" placeholder="เว้นว่างถ้าไม่เปลี่ยน" />
+                    </label>
+                  </div>
+                  <div style={{ marginTop: "10px", display: "flex", justifyContent: "flex-end" }}>
+                    <button className="button" type="submit">บันทึกการแก้ไข</button>
+                  </div>
+                </form>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

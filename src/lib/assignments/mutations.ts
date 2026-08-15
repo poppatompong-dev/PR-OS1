@@ -68,6 +68,15 @@ export async function addAssignment(formData: FormData) {
     new_values: { person_id: personId, role_id: roleId },
   });
 
+  // Best-effort notification and reminder enqueue
+  await supabase.rpc("enqueue_event_notifications", {
+    p_event_id: eventId,
+    p_type: "assignment",
+  });
+  await supabase.rpc("enqueue_event_reminders", {
+    p_event_id: eventId,
+  });
+
   revalidatePath(`/events/${eventId}`);
   redirect(`/events/${eventId}`);
 }

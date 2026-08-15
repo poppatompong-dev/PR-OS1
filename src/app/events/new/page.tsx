@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/AppShell";
-import { getEventFormData } from "@/lib/events/queries";
+import { getEventById, getEventFormData } from "@/lib/events/queries";
 import { createEvent } from "@/lib/events/mutations";
 
 export const dynamic = "force-dynamic";
@@ -9,17 +9,27 @@ const INTAKE_CHANNELS = ["หนังสือราชการ", "LINE กล
 export default async function NewEventPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; cloneFrom?: string }>;
 }) {
-  const { error } = await searchParams;
-  const { locations, departments, eventTypes, roles, people } = await getEventFormData();
+  const { error, cloneFrom } = await searchParams;
+  const [{ locations, departments, eventTypes, roles, people }, clone] = await Promise.all([
+    getEventFormData(),
+    cloneFrom ? getEventById(cloneFrom) : Promise.resolve(null),
+  ]);
+
+  const defaultPersonId = clone?.assignments?.[0]?.person?.id ?? "";
+  const defaultRoleId = clone?.assignments?.[0]?.role?.id ?? "";
 
   return (
     <AppShell>
       <header className="page-header">
         <div>
-          <h1 className="page-title">เพิ่มงานประชาสัมพันธ์</h1>
-          <p className="page-subtitle">บันทึกงานใหม่ลงฐานข้อมูลจริง — บันทึกร่างหรือเผยแพร่ได้</p>
+          <h1 className="page-title">{clone ? "คัดลอกและสร้างงานใหม่" : "เพิ่มงานประชาสัมพันธ์"}</h1>
+          <p className="page-subtitle">
+            {clone
+              ? `คัดลอกจาก: ${clone.title} (กรุณาตรวจสอบวันและเวลาก่อนบันทึก)`
+              : "บันทึกงานใหม่ลงฐานข้อมูลจริง — บันทึกร่างหรือเผยแพร่ได้"}
+          </p>
         </div>
       </header>
 
@@ -28,23 +38,46 @@ export default async function NewEventPage({
       <form className="panel form-grid" action={createEvent}>
         <label className="form-field full">
           ชื่องาน *
-          <input className="input" name="title" required placeholder="เช่น พิธีเปิดโครงการ..." />
+          <input
+            className="input"
+            name="title"
+            required
+            defaultValue={clone ? `${clone.title}` : ""}
+            placeholder="เช่น พิธีเปิดโครงการ..."
+          />
         </label>
         <label className="form-field">
           วันที่ *
-          <input className="input" type="date" name="eventDate" required />
+          <input
+            className="input"
+            type="date"
+            name="eventDate"
+            required
+            defaultValue={clone?.eventDate ?? ""}
+          />
         </label>
         <label className="form-field">
           เวลาเริ่ม *
-          <input className="input" type="time" name="startTime" required />
+          <input
+            className="input"
+            type="time"
+            name="startTime"
+            required
+            defaultValue={clone?.startTime ?? ""}
+          />
         </label>
         <label className="form-field">
           เวลาสิ้นสุด
-          <input className="input" type="time" name="endTime" />
+          <input
+            className="input"
+            type="time"
+            name="endTime"
+            defaultValue={clone?.endTime ?? ""}
+          />
         </label>
         <label className="form-field">
           สถานที่
-          <select className="select" name="locationId" defaultValue="">
+          <select className="select" name="locationId" defaultValue={clone?.location?.id ?? ""}>
             <option value="">— ไม่ระบุ —</option>
             {locations.map((location) => (
               <option key={location.id} value={location.id}>
@@ -55,7 +88,11 @@ export default async function NewEventPage({
         </label>
         <label className="form-field">
           หน่วยงานเจ้าของเรื่อง
-          <select className="select" name="ownerDepartmentId" defaultValue="">
+          <select
+            className="select"
+            name="ownerDepartmentId"
+            defaultValue={clone?.ownerDepartment?.id ?? ""}
+          >
             <option value="">— ไม่ระบุ —</option>
             {departments.map((department) => (
               <option key={department.id} value={department.id}>
@@ -66,7 +103,7 @@ export default async function NewEventPage({
         </label>
         <label className="form-field">
           ประเภทงาน
-          <select className="select" name="eventTypeId" defaultValue="">
+          <select className="select" name="eventTypeId" defaultValue={clone?.eventTypeId ?? ""}>
             <option value="">— ไม่ระบุ —</option>
             {eventTypes.map((eventType) => (
               <option key={eventType.id} value={eventType.id}>
@@ -77,7 +114,11 @@ export default async function NewEventPage({
         </label>
         <label className="form-field">
           ช่องทางรับเรื่อง
-          <select className="select" name="intakeChannel" defaultValue={INTAKE_CHANNELS[0]}>
+          <select
+            className="select"
+            name="intakeChannel"
+            defaultValue={clone?.intakeChannel || INTAKE_CHANNELS[0]}
+          >
             {INTAKE_CHANNELS.map((channel) => (
               <option key={channel} value={channel}>
                 {channel}
@@ -87,7 +128,7 @@ export default async function NewEventPage({
         </label>
         <label className="form-field">
           ความสำคัญ
-          <select className="select" name="urgency" defaultValue="normal">
+          <select className="select" name="urgency" defaultValue={clone?.urgency ?? "normal"}>
             <option value="normal">ปกติ</option>
             <option value="important">สำคัญ</option>
             <option value="urgent">ด่วน</option>
@@ -95,7 +136,7 @@ export default async function NewEventPage({
         </label>
         <label className="form-field">
           ผู้ปฏิบัติงาน
-          <select className="select" name="personId" defaultValue="">
+          <select className="select" name="personId" defaultValue={defaultPersonId}>
             <option value="">— ไม่ระบุ —</option>
             {people.map((person) => (
               <option key={person.id} value={person.id}>
@@ -106,7 +147,7 @@ export default async function NewEventPage({
         </label>
         <label className="form-field">
           บทบาท
-          <select className="select" name="roleId" defaultValue="">
+          <select className="select" name="roleId" defaultValue={defaultRoleId}>
             <option value="">— ไม่ระบุ —</option>
             {roles.map((role) => (
               <option key={role.id} value={role.id}>
@@ -117,11 +158,21 @@ export default async function NewEventPage({
         </label>
         <label className="form-field full">
           หมายเหตุบนจอมอนิเตอร์
-          <textarea className="textarea" name="shortNote" placeholder="ข้อความสั้นที่แสดงบนจอมอนิเตอร์" />
+          <textarea
+            className="textarea"
+            name="shortNote"
+            defaultValue={clone?.shortNote ?? ""}
+            placeholder="ข้อความสั้นที่แสดงบนจอมอนิเตอร์"
+          />
         </label>
         <label className="form-field full">
           หมายเหตุภายใน
-          <textarea className="textarea" name="internalNote" placeholder="ข้อมูลส่วนนี้ไม่แสดงบนจอมอนิเตอร์" />
+          <textarea
+            className="textarea"
+            name="internalNote"
+            defaultValue={clone?.internalNote ?? ""}
+            placeholder="ข้อมูลส่วนนี้ไม่แสดงบนจอมอนิเตอร์"
+          />
         </label>
 
         <div className="form-actions full">

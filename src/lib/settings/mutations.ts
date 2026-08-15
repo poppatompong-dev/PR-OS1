@@ -175,12 +175,63 @@ export async function updateNotificationSettings(formData: FormData) {
   done();
 }
 
+export async function createAccount(formData: FormData) {
+  await requireAdmin();
+  const usernameRaw = emptyToNull(formData.get("username"));
+  const password = String(formData.get("password") ?? "").trim();
+  const role = String(formData.get("role") ?? "assignee") as AppRole;
+  const personId = emptyToNull(formData.get("personId"));
+  const valid: AppRole[] = ["admin", "supervisor", "staff", "assignee", "display"];
+
+  if (!usernameRaw) done("กรุณากรอกชื่อผู้ใช้ (Username)");
+  if (!password || password.length < 6) done("รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร");
+  if (!valid.includes(role)) done("บทบาทไม่ถูกต้อง");
+
+  const username = usernameRaw.toLowerCase().replace(/\s+/g, "");
+  const dummyEmail = `${username}@internal.pr-os.local`;
+
+  try {
+    const { createAdminClient } = await import("@/lib/supabase/server");
+    const adminSupabase = createAdminClient();
+
+    const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
+      email: dummyEmail,
+      password,
+      email_confirm: true,
+      user_metadata: { username },
+    });
+
+    if (authError) {
+      done(`สร้างบัญชีไม่สำเร็จ: ${authError.message}`);
+    }
+
+    if (authData?.user?.id) {
+      const { error: profileError } = await adminSupabase
+        .from("profiles")
+        .upsert(
+          { id: authData.user.id, username, role, person_id: personId },
+          { onConflict: "id" },
+        );
+
+      if (profileError) {
+        done(`บันทึกโปรไฟล์ไม่สำเร็จ: ${profileError.message}`);
+      }
+    }
+  } catch (err) {
+    done(err instanceof Error ? err.message : "สร้างบัญชีไม่สำเร็จ");
+  }
+
+  revalidatePath("/settings");
+  done(undefined, `สร้างบัญชี @${username} (${role}) เรียบร้อยแล้ว`);
+}
+
 export async function updateAccount(formData: FormData) {
   const { supabase, user } = await requireAdmin();
   const accountId = String(formData.get("accountId") ?? "");
   const role = String(formData.get("role") ?? "") as AppRole;
   const personId = emptyToNull(formData.get("personId"));
   const usernameRaw = emptyToNull(formData.get("username"));
+  const newPassword = String(formData.get("newPassword") ?? "").trim();
   const username = usernameRaw ? usernameRaw.toLowerCase().replace(/\s+/g, "") : null;
   const valid: AppRole[] = ["admin", "supervisor", "staff", "assignee", "display"];
   if (!accountId || !valid.includes(role)) done("ข้อมูลบทบาทไม่ถูกต้อง");
@@ -188,6 +239,25 @@ export async function updateAccount(formData: FormData) {
   // Safety: don't let an admin lock themselves out by self-demoting.
   if (accountId === user.id && role !== "admin") {
     done("ไม่สามารถถอนสิทธิ์ผู้ดูแลของบัญชีตัวเองได้");
+  }
+
+  // If new password provided, update it in Supabase Auth via Admin Client
+  if (newPassword) {
+    if (newPassword.length < 6) {
+      done("รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร");
+    }
+    try {
+      const { createAdminClient } = await import("@/lib/supabase/server");
+      const adminSupabase = createAdminClient();
+      const { error: pwdError } = await adminSupabase.auth.admin.updateUserById(accountId, {
+        password: newPassword,
+      });
+      if (pwdError) {
+        done(`เปลี่ยนรหัสผ่านไม่สำเร็จ: ${pwdError.message}`);
+      }
+    } catch (err) {
+      done(err instanceof Error ? err.message : "เปลี่ยนรหัสผ่านไม่สำเร็จ");
+    }
   }
 
   const { error } = await supabase
@@ -203,5 +273,5 @@ export async function updateAccount(formData: FormData) {
   }
 
   revalidatePath("/settings");
-  done();
+  done(undefined, `อัปเดตบัญชี ${username ? `@${username}` : ""} เรียบร้อยแล้ว${newPassword ? " (เปลี่ยนรหัสผ่านสำเร็จ)" : ""}`);
 }

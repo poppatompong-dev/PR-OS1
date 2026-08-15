@@ -8,6 +8,20 @@ Build PR-OS from the Phase 0 handoff into a usable MVP with Next.js and Supabase
 
 Use Next.js App Router for UI and server-side operations. Use Supabase for Auth, PostgreSQL, Storage, and RLS. Keep domain logic in small modules so the team can replace Supabase-specific access later if the organization chooses another backend.
 
+## Sprint Status (13 ส.ค. 2569)
+
+| Sprint | สถานะ |
+|---|---|
+| 1 Project foundation | ✅ เสร็จ |
+| 2 Event CRUD | ✅ เสร็จ (รวม significant-change + audit) |
+| 3 Assignment & acknowledgement | ✅ เสร็จ |
+| 4 Monitor | ✅ เสร็จ (ยังไม่ได้ทำ display token gating) |
+| 5 Notifications | 🟡 โค้ดเสร็จ รอ credential + cron + reminder ล่วงหน้า |
+| 6 Reports & export | ✅ เสร็จ |
+| 7 Attachments (เพิ่มภายหลัง) | ✅ โค้ดเสร็จ รอรัน migration `0010` บน Supabase จริง |
+
+รายละเอียดต่อรายการอยู่ที่ `docs/14-implementation-status.md` · งานที่รอเจ้าของโปรเจกต์อยู่ที่ `docs/15-operations-runbook.md`
+
 ## Phase 1 Sprint Plan
 
 ### Sprint 1: Project Foundation
@@ -157,6 +171,31 @@ Testing:
 - Report respects date range filters
 - Export matches on-screen filter
 - Smart summary text matches calculated data
+
+ผลจริง (13 ส.ค. 2569): Excel ใช้ตัวเขียน `.xlsx` ที่เขียนเองใน `src/lib/export/xlsx.ts` (ZIP + deflate ผ่าน `node:zlib`) ไม่เพิ่ม dependency · PDF ใช้หน้าพิมพ์ `/reports/print` แล้วให้เบราว์เซอร์ Save as PDF แทนการฝัง PDF library (ฟอนต์ไทย) · ทั้งคู่ audit logged
+
+### Sprint 7: Attachments
+
+เพิ่มหลังจากแผนเดิม เพราะ MVP ระบุว่าต้องมีไฟล์แนบแบบส่วนตัว
+
+Files:
+
+- `supabase/migrations/0010_event_attachments.sql`
+- `src/lib/attachments/queries.ts`
+- `src/lib/attachments/mutations.ts`
+- `src/app/api/attachments/[id]/route.ts`
+
+Tasks:
+
+- ตาราง metadata + private bucket + RLS ทั้งสองชั้น
+- อัปโหลด/ลบผ่าน server action (backend roles เท่านั้น) + audit
+- ดาวน์โหลดผ่าน signed URL อายุสั้นที่สร้างจาก session ผู้เรียกเอง
+
+Testing:
+
+- assignee เห็นเฉพาะไฟล์ของงานตัวเอง
+- จอมอนิเตอร์ไม่เห็นไฟล์แนบ
+- ลิงก์ดาวน์โหลดหมดอายุตามเวลาที่กำหนด
 
 ## Suggested Commit Sequence
 

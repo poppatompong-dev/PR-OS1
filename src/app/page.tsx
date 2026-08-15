@@ -55,20 +55,20 @@ export default async function HomePage() {
         <div className="stage-content">
           <span className="stage-kicker">
             <RadioTower size={18} aria-hidden="true" />
-            LIVE PUBLIC RELATIONS OPS
+            ศูนย์บริหารงานประชาสัมพันธ์แบบเรียลไทม์
           </span>
           <h2>
-            PR
-            <span>OPERATIONS</span>
+            PR-OS
+            <span>เทศบาลนครนครสวรรค์</span>
           </h2>
-          <p>จอมอนิเตอร์ ตารางงาน การรับทราบ และรายงานผู้บริหาร อยู่ในภาพเดียวที่ทีมอ่านทันที</p>
+          <p>จอมอนิเตอร์ ตารางงาน การรับทราบงาน และรายงานผู้บริหาร รวมศูนย์อยู่ในระบบเดียว</p>
           <div className="stage-actions">
             <Link className="button coral" href="/monitor">
               เปิดจอมอนิเตอร์
               <ArrowRight size={18} aria-hidden="true" />
             </Link>
             <Link className="button glass" href="/schedule">
-              ดูตารางงาน
+              ดูตารางงานและปฏิทิน
             </Link>
           </div>
         </div>
@@ -76,19 +76,19 @@ export default async function HomePage() {
           <div className="preview-number">02</div>
           <div className="preview-screen">
             <span className="loader-ring" />
-            <strong>กำลังติดตาม</strong>
+            <strong>สถานะติดตามงาน</strong>
             <small>{report.pendingAcks} รายการรอรับทราบ</small>
           </div>
           <div className="preview-caption">
-            <strong>Live Assignment Signal</strong>
-            <p>แจ้งเตือนเฉพาะผู้เกี่ยวข้อง พร้อม audit trail</p>
+            <strong>ระบบแจ้งเตือนการมอบหมายงาน</strong>
+            <p>แจ้งเตือนเฉพาะผู้เกี่ยวข้อง พร้อมบันทึกประวัติ</p>
           </div>
         </aside>
       </section>
 
       <section className="command-strip">
         <section className="panel">
-          <h2>Operational Readiness</h2>
+          <h2>ความพร้อมการดำเนินงาน</h2>
           <div className="ops-list">
             <div className="ops-item">
               <CalendarClock size={18} aria-hidden="true" />
@@ -96,24 +96,24 @@ export default async function HomePage() {
             </div>
             <div className="ops-item">
               <BellRing size={18} aria-hidden="true" />
-              แจ้งเตือนเฉพาะผู้ได้รับมอบหมาย
+              ระบบแจ้งเตือนล่วงหน้าเฉพาะผู้รับผิดชอบ
             </div>
           </div>
         </section>
         <section className="panel">
-          <h2>Control Layer</h2>
+          <h2>การควบคุมความปลอดภัย</h2>
           <div className="ops-list">
             <div className="ops-item">
               <Tv size={18} aria-hidden="true" />
-              Monitor-safe view
+              จอมอนิเตอร์ปลอดภัยจากข้อมูลส่วนตัว
             </div>
             <div className="ops-item">
               <ShieldCheck size={18} aria-hidden="true" />
-              Private attachments
+              ไฟล์แนบเอกสารส่วนตัวเฉพาะผู้มีสิทธิ์
             </div>
             <div className="ops-item">
               <FileText size={18} aria-hidden="true" />
-              Audit-ready changes
+              บันทึกประวัติการแก้ไขและส่งออกรายงาน
             </div>
           </div>
         </section>
@@ -127,7 +127,7 @@ export default async function HomePage() {
       </section>
 
       <section className="panel">
-        <h2>Smart Summary</h2>
+        <h2>สรุปภาพรวมสำหรับผู้บริหาร (Smart Summary)</h2>
         <p>{report.smartSummary}</p>
       </section>
 

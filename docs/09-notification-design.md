@@ -1,5 +1,26 @@
 # Notification Design
 
+## สถานะจริงของโค้ด (13 ส.ค. 2569)
+
+ทำแล้ว:
+
+- คิวสร้างอัตโนมัติเมื่อ เผยแพร่ / แก้ไขสำคัญ / ยกเลิก ผ่าน `enqueue_event_notifications()` พร้อมกันซ้ำ
+- ตัวประมวลผลจริง `processDueNotifications()` (`src/lib/notifications/queue.ts`) — ส่ง LINE ผ่าน Messaging API, อีเมลผ่าน Resend, เช็คโควต้ารายเดือน, fallback ตาม settings, อัปเดตสถานะ `sent`/`failed`
+- ผูก LINE เอง: พนักงานกดปุ่มในหน้า `/mobile/my-tasks` แล้วผ่าน LINE Login OAuth (`/api/auth/line/start` → `/callback`) ระบบเขียน `people.line_user_id` ให้
+- endpoint ให้ cron ภายนอกเรียก: `POST /api/notifications/process` ตรวจ header `x-notifications-secret`
+- toggle ในหน้า `/settings`: reminder วันเดียวกัน, fallback อีเมลเมื่อ LINE ล้มเหลว, fallback เมื่อโควต้าเต็ม
+
+ยังไม่ทำ:
+
+- **reminder ล่วงหน้าก่อนวันงานยังไม่ถูก enqueue** — toggle บันทึกค่าได้แต่ยังไม่มีตัวสร้างคิว
+- cron อัตโนมัติ (รอ production URL)
+- ยังไม่มี credential จริงใน `.env.local` จึงยังทำงานโหมดจำลอง (`skipped`)
+
+ข้อจำกัดจากผู้ให้บริการที่ต้องรู้:
+
+- LINE Messaging API **ส่งถึงเฉพาะคนที่เพิ่ม OA เป็นเพื่อนแล้ว** — ถ้ายังไม่แอด จะล้มเหลวแล้วตกไปช่องทางอีเมล
+- Resend ที่ยังไม่ verify โดเมน ส่งได้เฉพาะอีเมลของเจ้าของบัญชี
+
 ## Channel Strategy
 
 Primary channel: LINE Messaging API for assigned people

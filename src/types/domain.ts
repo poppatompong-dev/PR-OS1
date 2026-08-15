@@ -59,6 +59,18 @@ export type PrEvent = {
   updatedAt: string;
 };
 
+// Private attachment metadata. The storage path is deliberately NOT part of
+// this type: it never leaves the server (downloads go through a signed URL
+// created per request in /api/attachments/[id]).
+export type EventAttachment = {
+  id: string;
+  eventId: string;
+  fileName: string;
+  mimeType?: string;
+  sizeBytes?: number;
+  createdAt: string;
+};
+
 export type ReportSummary = {
   totalEvents: number;
   publishedEvents: number;
