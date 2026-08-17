@@ -1,0 +1,1090 @@
+[
+  {
+    "id": "TC001",
+    "title": "Create a new event with staff assignments",
+    "description": "A coordinator can create a new PR event with details and assigned staff so it is ready for operational use.",
+    "category": "Event Creation & Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /events/new"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the event title with a new PR event name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid event date"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid event time"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the location field with a valid venue"
+      },
+      {
+        "type": "action",
+        "description": "Select a department"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the note field with event details"
+      },
+      {
+        "type": "action",
+        "description": "Assign at least one staff member and role"
+      },
+      {
+        "type": "action",
+        "description": "Create the event"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new event detail page is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the created event is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Review assigned tasks and acknowledge one",
+    "description": "This verifies that an assigned staff member can view their mobile task list and acknowledge a task, and the acknowledgment is reflected in the UI.",
+    "category": "Mobile Assignee Tasks",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /mobile/my-tasks"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify assigned tasks are displayed"
+      },
+      {
+        "type": "action",
+        "description": "Click acknowledge for one assigned task"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the task is marked as acknowledged"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Acknowledge mobile task assignments",
+    "description": "An assigned staff member can open the mobile task view and acknowledge their PR task assignments on a phone-sized screen.",
+    "category": "Mobile Task Acknowledgment",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /mobile/my-tasks"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify assigned tasks are displayed"
+      },
+      {
+        "type": "action",
+        "description": "Acknowledge one task assignment"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the task is marked acknowledged"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "View dashboard insights and navigate to operations views",
+    "description": "A user can open the dashboard, review KPI and summary information, and navigate onward to the schedule or reports for operational review.",
+    "category": "Dashboard Overview",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify KPI summary information is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify smart summary information is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to view the schedule"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the schedule is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to view reports"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify management reporting content is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "View dashboard summary and navigate to schedule",
+    "description": "A user can open the dashboard, review the operational summary, and jump to the schedule for day-to-day planning.",
+    "category": "Dashboard Overview",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify KPI summary cards are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify smart summary insights are displayed"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the schedule"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the schedule page is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Browse the schedule and open an event detail",
+    "description": "A user can browse the schedule, use the available views or filters, and open an event detail page from the schedule.",
+    "category": "Schedule",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /schedule"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify scheduled events are displayed"
+      },
+      {
+        "type": "action",
+        "description": "Select a different schedule view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the schedule remains displayed in the selected view"
+      },
+      {
+        "type": "action",
+        "description": "Apply a schedule filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify filtered events are displayed"
+      },
+      {
+        "type": "action",
+        "description": "Open an event from the schedule"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the event detail page is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Publish or complete an event from its detail page",
+    "description": "A user can change an event lifecycle status so the event is marked as published or completed in the detail view.",
+    "category": "Event Creation & Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /schedule"
+      },
+      {
+        "type": "action",
+        "description": "Open an event from the schedule"
+      },
+      {
+        "type": "action",
+        "description": "Publish or complete the event"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the event lifecycle status is updated"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the event detail page still shows the event"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Review mobile tasks and acknowledge an assignment",
+    "description": "An assigned staff member can open the mobile task view, review assigned work, and acknowledge a task on a phone-sized screen.",
+    "category": "Event Creation & Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /mobile/my-tasks"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify assigned tasks are displayed"
+      },
+      {
+        "type": "action",
+        "description": "Acknowledge one task assignment"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the task is marked as acknowledged"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Browse events in table, month, and week views",
+    "description": "A user can switch between schedule views and still see the event list update appropriately for planning.",
+    "category": "Schedule & Calendar View",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /schedule"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the month calendar view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the month calendar view is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Switch to the week calendar view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the week calendar view is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Switch back to the table view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the event table is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "View the office monitor schedule",
+    "description": "This verifies that office staff can open the monitor page and see today’s and upcoming events in the signage layout.",
+    "category": "Public Office Monitor",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /monitor"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify today’s and upcoming events are displayed in a monitor-safe layout"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Create a new event and save it",
+    "description": "A user can create a new PR event with required details and save it as an event record.",
+    "category": "Event Creation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /events/new"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the event title field with a unique event name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the event date field with a valid date"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the event time field with a valid time"
+      },
+      {
+        "type": "action",
+        "description": "Select the event department"
+      },
+      {
+        "type": "action",
+        "description": "Submit the event form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new event is created"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the event detail page is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Open an event from the schedule",
+    "description": "A user can select an event from the schedule and open its detail page for review.",
+    "category": "Schedule & Calendar View",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /schedule"
+      },
+      {
+        "type": "action",
+        "description": "Open an event from the schedule"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the event detail page is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify event information is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Edit an event and save a meaningful change",
+    "description": "A user can open an existing event, make a significant update, and save it so the revised details are visible.",
+    "category": "Event Creation & Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /schedule"
+      },
+      {
+        "type": "action",
+        "description": "Open an event from the schedule"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to edit the event"
+      },
+      {
+        "type": "action",
+        "description": "Change the event note or another editable detail"
+      },
+      {
+        "type": "action",
+        "description": "Save the event changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated event detail page is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the revised event details are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Create a new event and assign staff with roles",
+    "description": "A user can create an event and assign staff members with roles before saving so the event has the expected staffing setup.",
+    "category": "Event Creation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /events/new"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the event title field with a unique staffed event name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the event date field with a valid date"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the event time field with a valid time"
+      },
+      {
+        "type": "action",
+        "description": "Add a staff member to the event"
+      },
+      {
+        "type": "action",
+        "description": "Assign a role to the staff member"
+      },
+      {
+        "type": "action",
+        "description": "Submit the event form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new event is created with staff assignments"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify assigned roles are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Cancel an event with a required reason",
+    "description": "A user can cancel an event only after providing a cancellation reason so the cancellation is recorded correctly.",
+    "category": "Event Creation & Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /schedule"
+      },
+      {
+        "type": "action",
+        "description": "Open an event from the schedule"
+      },
+      {
+        "type": "action",
+        "description": "Choose to cancel the event"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a cancellation reason"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the cancellation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the event is marked as canceled"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cancellation reason is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Create a new event and resolve schedule conflicts before saving",
+    "description": "A user can create an event, review any conflict warning, and still save the event after handling the conflict information shown in the UI.",
+    "category": "Event Creation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /events/new"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the event title field with a unique event name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the event date field with a valid date"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the event time field with a valid time that overlaps an existing schedule item"
+      },
+      {
+        "type": "action",
+        "description": "Submit the event form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a schedule conflict warning is visible"
+      },
+      {
+        "type": "action",
+        "description": "Continue saving the event"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new event is created"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC017",
+    "title": "View dashboard summary and navigate to reports",
+    "description": "A user can open the dashboard, review the operational summary, and jump to reports for management review.",
+    "category": "Dashboard Overview",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify KPI summary cards are displayed"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open reports"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the reports page is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC018",
+    "title": "Open the reports overview and set a date range",
+    "description": "This verifies that management can open the reports page, set a date range, and see report results update for the selected period.",
+    "category": "Management Reports & Export",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /reports"
+      },
+      {
+        "type": "action",
+        "description": "Set a valid start date in the date range filter"
+      },
+      {
+        "type": "action",
+        "description": "Set a valid end date in the date range filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify workload statistics are displayed for the selected date range"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC019",
+    "title": "Filter the schedule to find a specific event",
+    "description": "A user can narrow the schedule with common filters so the relevant event becomes visible quickly.",
+    "category": "Schedule & Calendar View",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /schedule"
+      },
+      {
+        "type": "action",
+        "description": "Apply a status filter"
+      },
+      {
+        "type": "action",
+        "description": "Apply a department filter"
+      },
+      {
+        "type": "action",
+        "description": "Apply a date range filter"
+      },
+      {
+        "type": "action",
+        "description": "Apply a keyword filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify matching events are displayed in the schedule results"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC020",
+    "title": "Duplicate an existing event and save the copy",
+    "description": "A coordinator can start from an existing event, adjust the copied details, and create a duplicated event for reuse.",
+    "category": "Event Creation & Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /events/new"
+      },
+      {
+        "type": "action",
+        "description": "Start from an existing event clone"
+      },
+      {
+        "type": "action",
+        "description": "Adjust the event title"
+      },
+      {
+        "type": "action",
+        "description": "Adjust the event date"
+      },
+      {
+        "type": "action",
+        "description": "Adjust the event time"
+      },
+      {
+        "type": "action",
+        "description": "Create the duplicated event"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the duplicated event detail page is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the duplicated event is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC021",
+    "title": "Download the management report export",
+    "description": "This verifies that management can generate the Excel export from the reports view after selecting a date range.",
+    "category": "Management Reports & Export",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /reports"
+      },
+      {
+        "type": "action",
+        "description": "Set a valid start date in the date range filter"
+      },
+      {
+        "type": "action",
+        "description": "Set a valid end date in the date range filter"
+      },
+      {
+        "type": "action",
+        "description": "Download the report export"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the export action is available after applying the date range"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC022",
+    "title": "Edit an event and detect significant changes before saving",
+    "description": "A user can open an existing event, make a meaningful edit, and see that the system recognizes the change before the update is saved.",
+    "category": "Event Editing",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /schedule"
+      },
+      {
+        "type": "action",
+        "description": "Open an event from the schedule"
+      },
+      {
+        "type": "action",
+        "description": "Click the option to edit the event"
+      },
+      {
+        "type": "action",
+        "description": "Change the event title or time"
+      },
+      {
+        "type": "action",
+        "description": "Save the event changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated event is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the event change is reflected in the event detail page"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC023",
+    "title": "Review reports and open the print-ready view",
+    "description": "A management user can review workload reporting and open the print-optimized report view for executive review.",
+    "category": "Reports",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /reports"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify workload reporting content is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Adjust the report date range"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the report updates to the selected range"
+      },
+      {
+        "type": "action",
+        "description": "Open the print-ready report view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the print-ready report layout is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC024",
+    "title": "Open the print-ready report view",
+    "description": "This verifies that management can open the print-optimized report layout from the reports page after reviewing results.",
+    "category": "Management Reports & Export",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /reports"
+      },
+      {
+        "type": "action",
+        "description": "Set a valid start date in the date range filter"
+      },
+      {
+        "type": "action",
+        "description": "Set a valid end date in the date range filter"
+      },
+      {
+        "type": "action",
+        "description": "Open the print-ready report view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the print-ready report view is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC025",
+    "title": "Export management reports to Excel",
+    "description": "A management user can generate an Excel export from the reports view for offline review.",
+    "category": "Reports",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /reports"
+      },
+      {
+        "type": "action",
+        "description": "Click the export action"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the export action is available"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an export confirmation is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC026",
+    "title": "Review management reports and open the print view",
+    "description": "An executive can review workload reporting and open the print-ready summary for sharing or review.",
+    "category": "Dashboard Overview",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /reports"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify workload reporting is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Open the print-ready report view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the print-ready report view is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC027",
+    "title": "Duplicate an event from its detail page",
+    "description": "A user can duplicate an existing event from the detail page and create a new copy with reused details.",
+    "category": "Event Duplication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /schedule"
+      },
+      {
+        "type": "action",
+        "description": "Open an event from the schedule"
+      },
+      {
+        "type": "action",
+        "description": "Click the option to duplicate the event"
+      },
+      {
+        "type": "action",
+        "description": "Review the copied event details"
+      },
+      {
+        "type": "action",
+        "description": "Submit the duplicated event form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a duplicate event is created"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the duplicated event detail page is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC028",
+    "title": "Use the office monitor in classic display mode",
+    "description": "Office staff can view the public monitor in its retro mode so the signage display remains usable on large screens.",
+    "category": "Dashboard Overview",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /monitor"
+      },
+      {
+        "type": "action",
+        "description": "Enable the classic display mode"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the retro monitor display is shown"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify public event information is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC029",
+    "title": "View the retro monitor mode",
+    "description": "This verifies that office staff can open the retro monitor presentation and still see the event schedule.",
+    "category": "Public Office Monitor",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /monitor?classic=1"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the event schedule is displayed in retro TV mode"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC030",
+    "title": "View the office monitor in standard and retro modes",
+    "description": "Office staff can open the public monitor display and switch to the retro signage mode for alternate presentation.",
+    "category": "Office Monitor",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /monitor"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the monitor display is visible"
+      },
+      {
+        "type": "action",
+        "description": "Enable retro mode"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the retro monitor display is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC031",
+    "title": "See validation when required event details are missing",
+    "description": "A user gets clear validation feedback when trying to create an event without the required information.",
+    "category": "Event Creation & Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /events/new"
+      },
+      {
+        "type": "action",
+        "description": "Create the event without filling required fields"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation errors are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the event is not created"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC032",
+    "title": "Open the monitor control and adjust signage mode",
+    "description": "An operator can use the monitor control page to manage the public monitor presentation.",
+    "category": "Office Monitor",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /monitor/control"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify monitor control options are displayed"
+      },
+      {
+        "type": "action",
+        "description": "Change the monitor presentation mode"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the monitor control reflects the selected mode"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC033",
+    "title": "See an empty mobile task state",
+    "description": "This verifies that the mobile task view shows a clear empty state when there are no assigned tasks.",
+    "category": "Mobile Assignee Tasks",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /mobile/my-tasks"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state message is displayed when no tasks are assigned"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC034",
+    "title": "View an empty state when no tasks are assigned",
+    "description": "A staff member sees a clear empty state in the mobile task view when there are no current assignments.",
+    "category": "Event Creation & Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /mobile/my-tasks"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state message is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no tasks are displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC035",
+    "title": "See a usable monitor state when event data is unavailable",
+    "description": "This verifies that the monitor still presents a safe fallback display when event data cannot be loaded from the app’s mock source.",
+    "category": "Public Office Monitor",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /monitor"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a safe fallback monitor state is displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC036",
+    "title": "See empty states when no items are available",
+    "description": "A user can view the appropriate empty state on schedule, reports, or mobile tasks when there is no content to show.",
+    "category": "Empty States",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /mobile/my-tasks"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state message is visible"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /reports"
+      },
+      {
+        "type": "action",
+        "description": "Adjust the report filters to a range with no results"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty report state is visible"
+      }
+    ],
+    "priority": "Low"
+  }
+]

@@ -7,6 +7,14 @@
 // so `any` is used at the mapping boundary — consistent with the monitor modules.
 
 import { createClient } from "@/lib/supabase/server";
+import {
+  departments as mockDepartments,
+  events as mockEvents,
+  locations as mockLocations,
+  people as mockPeople,
+  roles as mockRoles,
+} from "@/data/mock-data";
+import { isSupabaseConfigured } from "@/lib/env";
 import type { AckStatus, Assignment, Department, PrEvent } from "@/types/domain";
 
 export type ScheduleFilters = {
@@ -35,6 +43,25 @@ const EVENT_SELECT = `
 export async function getScheduleEvents(
   filters: ScheduleFilters = {},
 ): Promise<PrEvent[]> {
+  if (!isSupabaseConfigured()) {
+    const search = filters.search?.trim().toLocaleLowerCase("th-TH");
+
+    return mockEvents.filter((event) => {
+      if (filters.from && event.eventDate < filters.from) return false;
+      if (filters.to && event.eventDate > filters.to) return false;
+      if (filters.status && filters.status !== "all" && event.status !== filters.status) return false;
+      if (
+        filters.departmentId &&
+        filters.departmentId !== "all" &&
+        event.ownerDepartment.id !== filters.departmentId
+      ) {
+        return false;
+      }
+      if (search && !event.title.toLocaleLowerCase("th-TH").includes(search)) return false;
+      return true;
+    });
+  }
+
   const supabase = await createClient();
 
   let query = supabase
@@ -73,6 +100,8 @@ export type AuditEntry = {
 // Audit history for one event. RLS limits reads to admin/supervisor;
 // other roles simply get an empty list.
 export async function getEventAuditLog(eventId: string): Promise<AuditEntry[]> {
+  if (!isSupabaseConfigured()) return [];
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("audit_logs")
@@ -99,6 +128,19 @@ export type EventFormData = {
 };
 
 export async function getEventFormData(): Promise<EventFormData> {
+  if (!isSupabaseConfigured()) {
+    return {
+      locations: mockLocations.map(({ id, name }) => ({ id, name })),
+      departments: mockDepartments.map(({ id, name }) => ({ id, name })),
+      eventTypes: [...new Set(mockEvents.map((event) => event.eventType))].map((name, index) => ({
+        id: `mock_event_type_${index + 1}`,
+        name,
+      })),
+      roles: mockRoles.map(({ id, name }) => ({ id, name })),
+      people: mockPeople.map(({ id, displayName }) => ({ id, display_name: displayName })),
+    };
+  }
+
   const supabase = await createClient();
   const [locations, departments, eventTypes, roles, people] = await Promise.all([
     supabase.from("locations").select("id, name").eq("is_active", true).order("name"),
@@ -122,6 +164,8 @@ export async function getEventFormData(): Promise<EventFormData> {
 }
 
 export async function getDepartments(): Promise<Department[]> {
+  if (!isSupabaseConfigured()) return mockDepartments;
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("departments")
@@ -228,6 +272,19 @@ export type EventDetail = PrEvent & {
 };
 
 export async function getEventById(id: string): Promise<EventDetail | null> {
+  if (!isSupabaseConfigured()) {
+    const event = mockEvents.find((candidate) => candidate.id === id);
+    if (!event) return null;
+
+    const eventTypeIndex = [...new Set(mockEvents.map((candidate) => candidate.eventType))].indexOf(
+      event.eventType,
+    );
+    return {
+      ...event,
+      eventTypeId: eventTypeIndex >= 0 ? `mock_event_type_${eventTypeIndex + 1}` : undefined,
+    };
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("events")

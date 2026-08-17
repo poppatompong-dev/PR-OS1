@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#1e1b4b" />
+      <stop offset="100%" stop-color="#0b101b" />
+    </linearGradient>
+    <linearGradient id="accentGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f97316" />
+      <stop offset="50%" stop-color="#ec4899" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad512)" />
+  <rect x="4" y="4" width="504" height="504" rx="108" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="4" />
+  
+  <!-- Clipboard Emblem -->
+  <g transform="translate(128, 112)" fill="none" stroke="url(#accentGrad512)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M128 16h-24a20 20 0 0 0-20 20v12h88v-12a20 20 0 0 0-20-20z" fill="url(#accentGrad512)" opacity="0.3" />
+    <path d="M128 16h-24a20 20 0 0 0-20 20v12h88v-12a20 20 0 0 0-20-20z" />
+    <rect x="20" y="44" width="216" height="256" rx="32" />
+    <line x1="72" y1="120" x2="184" y2="120" />
+    <line x1="72" y1="176" x2="184" y2="176" />
+    <line x1="72" y1="232" x2="140" y2="232" />
+  </g>
+</svg>

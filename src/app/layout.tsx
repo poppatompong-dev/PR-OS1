@@ -1,46 +1,35 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans_Thai, Noto_Sans_Thai, Space_Grotesk, JetBrains_Mono } from "next/font/google";
+import "@fontsource/ibm-plex-sans-thai/300.css";
+import "@fontsource/ibm-plex-sans-thai/400.css";
+import "@fontsource/ibm-plex-sans-thai/500.css";
+import "@fontsource/ibm-plex-sans-thai/600.css";
+import "@fontsource/ibm-plex-sans-thai/700.css";
+import "@fontsource-variable/space-grotesk/wght.css";
+import "@fontsource-variable/jetbrains-mono/wght.css";
 import "./globals.css";
 
-const plexThai = IBM_Plex_Sans_Thai({
-  subsets: ["thai", "latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-plex-thai",
-  display: "swap",
-});
-
-const notoThai = Noto_Sans_Thai({
-  subsets: ["thai", "latin"],
-  weight: ["400", "500", "700", "800", "900"],
-  variable: "--font-noto-thai",
-  display: "swap",
-});
-
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-display-en",
-  display: "swap",
-});
-
-const jetbrains = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  variable: "--font-mono",
-  display: "swap",
-});
-
 export const metadata: Metadata = {
-  title: "PR-OS",
-  description: "ระบบบริหารจัดการงานประชาสัมพันธ์",
+  title: "PR-OS นครสวรรค์",
+  description: "ระบบบริหารจัดการงานประชาสัมพันธ์ เทศบาลนครนครสวรรค์",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "PR-OS",
+  },
+  icons: {
+    icon: "/icons/icon-192.svg",
+    apple: "/icons/icon-192.svg",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="th"
-      className={`${plexThai.variable} ${notoThai.variable} ${spaceGrotesk.variable} ${jetbrains.variable}`}
-    >
+    <html lang="th">
+      <head>
+        <meta name="theme-color" content="#0b101b" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+      </head>
       <body>{children}</body>
     </html>
   );

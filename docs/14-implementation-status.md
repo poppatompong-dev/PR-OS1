@@ -2,9 +2,11 @@
 
 สถานะการพัฒนา PR-OS (อัปเดตต่อเนื่องตามงานจริง) — ล่าสุด 15 สิงหาคม 2569
 
-ระบบเชื่อมต่อ **Supabase จริง** (Auth + PostgreSQL + RLS + SECURITY DEFINER functions) แล้ว และทำงานบนแผนฟรีทั้งหมด (ดู `docs/13-setup-free-tier.md`)
+- **Production URL:** [https://pr-os1.vercel.app](https://pr-os1.vercel.app/) (Vercel Next.js 15.5.23)
+- **โหมดปัจจุบัน:** Mock Fallback (อ่านตัวอย่าง ปลอดภัย หน้าไม่ล่ม 500)
+- ระบบเชื่อมต่อโค้ด **Supabase จริง** (Auth + PostgreSQL + RLS + SECURITY DEFINER functions) รองรับแผนฟรีทั้งหมด (ดู `docs/13-setup-free-tier.md`)
 
-> ⚠️ **Supabase project ถูก pause อยู่** (ตรวจพบ 13 ส.ค. 2569: DNS ของ project host เป็น NXDOMAIN — แผนฟรี pause หลังไม่มี activity 7 วัน) ทุกหน้าที่อ่านข้อมูลจะพังจนกว่าจะกด Restore — ขั้นตอนอยู่ใน `docs/15-operations-runbook.md`
+> ⚠️ **Supabase project ถูก pause อยู่** (แผนฟรี pause หลังไม่มี activity 7 วัน) จึงทำงานในโหมด Mock Fallback จนกว่าจะกด Restore และรัน migration `0009`–`0012` — ขั้นตอนอยู่ใน `docs/15-operations-runbook.md`
 
 ## ✅ ทำเสร็จแล้ว (ใช้งานได้จริง)
 

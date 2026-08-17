@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser, ROLE_LABELS_TH, type AppRole } from "@/lib/auth/roles";
-import { isEmailConfigured, isLineMessagingConfigured } from "@/lib/env";
+import { isEmailConfigured, isLineMessagingConfigured, isSupabaseConfigured } from "@/lib/env";
 import {
   getAccounts,
   getAllPeople,
@@ -91,6 +91,23 @@ export default async function SettingsPage({
   searchParams: Promise<{ error?: string; notice?: string }>;
 }) {
   const { error, notice } = await searchParams;
+
+  if (!isSupabaseConfigured()) {
+    return (
+      <AppShell>
+        <header className="page-header">
+          <div>
+            <h1 className="page-title">ตั้งค่าระบบ</h1>
+            <p className="page-subtitle">จัดการบุคลากร บัญชีผู้ใช้ และข้อมูลหลัก</p>
+          </div>
+        </header>
+        <div className="panel">
+          <p>โหมดทดลองเป็นแบบอ่านอย่างเดียว กรุณาเชื่อม Supabase ก่อนจัดการการตั้งค่าจริง</p>
+        </div>
+      </AppShell>
+    );
+  }
+
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
 

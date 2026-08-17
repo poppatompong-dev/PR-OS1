@@ -3,6 +3,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/roles";
+import { isSupabaseConfigured } from "@/lib/env";
 import type { EventStatus } from "@/types/domain";
 
 export type MyTask = {
@@ -34,6 +35,10 @@ export type MyAssignments = {
 const one = (v: any) => (Array.isArray(v) ? v[0] : v);
 
 export async function getMyAssignments(): Promise<MyAssignments> {
+  if (!isSupabaseConfigured()) {
+    return { displayName: "ผู้ใช้งานโหมดทดลอง", personLinked: false, lineLinked: false, tasks: [] };
+  }
+
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
 
@@ -121,6 +126,7 @@ export async function checkConflictsForEvent(
   personIds: string[],
 ): Promise<Record<string, AssignmentConflict[]>> {
   if (!personIds.length || !eventDate) return {};
+  if (!isSupabaseConfigured()) return {};
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -167,4 +173,3 @@ export async function checkConflictsForEvent(
 
   return result;
 }
-

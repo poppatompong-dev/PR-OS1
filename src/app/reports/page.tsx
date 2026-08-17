@@ -5,6 +5,7 @@ import { getReportData } from "@/lib/reports/queries";
 import { formatThaiDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { can, getSessionUser } from "@/lib/auth/roles";
+import { isSupabaseConfigured } from "@/lib/env";
 import { FileSpreadsheet, Printer, Sparkles } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -38,9 +39,12 @@ export default async function ReportsPage({
 
   // Export endpoints require can.viewReports; hide the buttons for roles that
   // would only get a 403 back.
-  const supabase = await createClient();
-  const user = await getSessionUser(supabase);
-  const canExport = can.viewReports(user?.role ?? "assignee");
+  let canExport = false;
+  if (isSupabaseConfigured()) {
+    const supabase = await createClient();
+    const user = await getSessionUser(supabase);
+    canExport = can.viewReports(user?.role ?? "assignee");
+  }
 
   return (
     <AppShell>

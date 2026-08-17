@@ -24,3 +24,7 @@ models/
 transcripts/*
 !transcripts/
 !transcripts/interview_summary.md
+.vercel
+.env*
+testsprite_tests/tmp/
+testsprite_tests/tmp/config.json

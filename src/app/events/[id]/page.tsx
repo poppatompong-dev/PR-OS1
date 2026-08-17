@@ -9,7 +9,8 @@ import { checkConflictsForEvent } from "@/lib/assignments/queries";
 import { getEventAttachments } from "@/lib/attachments/queries";
 import { deleteAttachment, uploadAttachment } from "@/lib/attachments/mutations";
 import { createClient } from "@/lib/supabase/server";
-import { can, getSessionUser } from "@/lib/auth/roles";
+import { can, getSessionUser, type AppRole } from "@/lib/auth/roles";
+import { isSupabaseConfigured } from "@/lib/env";
 import {
   ackStatusLabel,
   eventStatusLabel,
@@ -52,9 +53,12 @@ export default async function EventDetailPage({
   const event = await getEventById(id);
   if (!event) notFound();
 
-  const supabase = await createClient();
-  const user = await getSessionUser(supabase);
-  const role = user?.role ?? "assignee";
+  let role: AppRole = "assignee";
+  if (isSupabaseConfigured()) {
+    const supabase = await createClient();
+    const user = await getSessionUser(supabase);
+    role = user?.role ?? "assignee";
+  }
   const audit = await getEventAuditLog(id);
 
   const canEdit = can.editPublished(role) && (event.status === "draft" || event.status === "published");

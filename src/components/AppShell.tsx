@@ -10,6 +10,7 @@ import {
   Settings,
   Smartphone,
 } from "lucide-react";
+import { isSupabaseConfigured } from "@/lib/env";
 import { UserMenu } from "@/components/UserMenu";
 
 const navItems = [
@@ -23,6 +24,8 @@ const navItems = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const isLive = isSupabaseConfigured();
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -36,10 +39,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <div className="sidebar-status">
-          <span className="live-dot" />
+          <span className={isLive ? "live-dot" : "live-dot amber"} />
           <div>
             <strong>เทศบาลนครนครสวรรค์</strong>
-            <small>ระบบบริหารงาน ปชส.</small>
+            <small>{isLive ? "เชื่อมต่อฐานข้อมูลจริง" : "โหมดตัวอย่าง (Mock Data)"}</small>
           </div>
         </div>
         <nav className="nav-list" aria-label="Main navigation">

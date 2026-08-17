@@ -4,6 +4,7 @@
 // nothing. Callers therefore never need their own permission check to LIST.
 
 import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/env";
 import type { EventAttachment } from "@/types/domain";
 
 export const ATTACHMENT_BUCKET = "event-attachments";
@@ -14,6 +15,8 @@ export const SIGNED_URL_TTL_SECONDS = 60;
 export async function getEventAttachments(
   eventId: string,
 ): Promise<EventAttachment[]> {
+  if (!isSupabaseConfigured()) return [];
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("event_attachments")
@@ -42,6 +45,8 @@ export type SignedAttachment = { url: string; fileName: string };
 export async function getAttachmentSignedUrl(
   attachmentId: string,
 ): Promise<SignedAttachment | null> {
+  if (!isSupabaseConfigured()) return null;
+
   const supabase = await createClient();
   const { data: row } = await supabase
     .from("event_attachments")

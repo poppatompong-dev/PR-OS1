@@ -152,6 +152,12 @@ textarea:focus-visible {
   background: #48d597;
   box-shadow: 0 0 0 6px rgba(72, 213, 151, 0.12);
   animation: livePulse 1.8s var(--ease-out) infinite;
+  flex-shrink: 0;
+}
+
+.live-dot.amber {
+  background: #f59e0b;
+  box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.18);
 }
 
 .nav-list {
