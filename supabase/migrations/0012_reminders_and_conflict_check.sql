@@ -129,7 +129,6 @@ begin
 end;
 $$;
 
--- 3. Check Staff Conflicts RPC
 create or replace function public.check_staff_conflict(
   p_person_id uuid,
   p_event_date date,
@@ -145,11 +144,18 @@ returns table (
   conflicting_location_name text,
   conflicting_role_name text
 )
-language sql
+language plpgsql
 stable
 security definer
 set search_path = public
 as $$
+begin
+  if public.current_app_role() not in ('admin', 'supervisor', 'staff')
+     and public.current_person_id() is distinct from p_person_id then
+    raise exception 'insufficient role to check staff conflict';
+  end if;
+
+  return query
   select
     e.id as conflicting_event_id,
     e.title as conflicting_event_title,
@@ -174,6 +180,7 @@ as $$
       overlaps
       (e.start_time, coalesce(e.end_time, e.start_time + interval '2 hours'))
     );
+end;
 $$;
 
 revoke all on function public.enqueue_event_reminders(uuid) from public;

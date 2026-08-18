@@ -319,11 +319,18 @@ returns table (
   conflicting_location_name text,
   conflicting_role_name text
 )
-language sql
+language plpgsql
 stable
 security definer
 set search_path = public
 as $$
+begin
+  if public.current_app_role() not in ('admin', 'supervisor', 'staff')
+     and public.current_person_id() is distinct from p_person_id then
+    raise exception 'insufficient role to check staff conflict';
+  end if;
+
+  return query
   select
     e.id as conflicting_event_id,
     e.title as conflicting_event_title,
@@ -341,11 +348,14 @@ as $$
     and e.deleted_at is null
     and e.event_date = p_event_date
     and (p_exclude_event_id is null or e.id <> p_exclude_event_id)
+    -- Time overlap check:
+    -- If end_time is null, assume 2-hour duration for comparison
     and (
       (p_start_time, coalesce(p_end_time, p_start_time + interval '2 hours'))
       overlaps
       (e.start_time, coalesce(e.end_time, e.start_time + interval '2 hours'))
     );
+end;
 $$;
 
 revoke all on function public.enqueue_event_reminders(uuid) from public;
