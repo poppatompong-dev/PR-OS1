@@ -1,30 +1,146 @@
 :root {
-  --bg: #edf2f7;
-  --bg-2: #f8fafb;
+  /* ---- neutrals: pulled slightly toward the municipal purple ---- */
+  --bg: #f5f3f7;
+  --bg-2: #faf9fb;
   --surface: #ffffff;
-  --surface-soft: #f6f9fb;
-  --line: #d8e2e8;
-  --line-strong: #b9c8d3;
-  --text: #122033;
-  --muted: #627083;
-  --blue: #1d5aa6;
-  --blue-dark: #123c70;
-  --teal: #138b8b;
-  --green: #18784a;
-  --amber: #a45f08;
-  --red: #ba3737;
-  --violet: #5d5aa8;
-  --coral: #ff6670;
-  --peach: #ff986e;
-  --ink: #12151d;
-  --shadow-sm: 0 1px 2px rgba(18, 32, 51, 0.06);
-  --shadow-md: 0 14px 34px rgba(18, 32, 51, 0.10);
+  --surface-soft: #f3f0f6;
+  --line: #e2dde8;
+  --line-strong: #cdc4d6;
+  --text: #1b1522;
+  --muted: #635a70;
+  --ink: #140f1a;
+
+  /* ---- brand: municipal purple (nsm.go.th) ----
+     token names kept from the old blue system so existing rules keep working */
+  --blue: #5e2f73;
+  --blue-dark: #45215a;
+  --violet: #8a56a3;
+  --coral: #8a56a3;
+  --peach: #b885cf;
+  --brand-soft: #f0e9f4;
+
+  /* ---- status: pushed away from purple so buttons never read as warnings ---- */
+  --teal: #0f6f72;
+  --teal-soft: #dff1f1;
+  --green: #1a7a4a;
+  --green-soft: #e0f2e8;
+  --amber: #9a6208;
+  --amber-soft: #fbf0dc;
+  --red: #b3401c;
+  --red-soft: #fce7df;
+
+  /* ---- page glow ---- */
+  --bg-glow-1: rgba(138, 86, 163, 0.16);
+  --bg-glow-2: rgba(94, 47, 115, 0.09);
+
+  /* ---- soft-card (neumorphic) surfaces: always paired with a border,
+     so the card stays visible in sunlight where the shadow washes out ---- */
+  --nm-light: #ffffff;
+  --nm-dark: #d9d2e0;
+  --shadow-nm: 5px 5px 11px var(--nm-dark), -5px -5px 11px var(--nm-light);
+  --shadow-nm-sm: 3px 3px 7px var(--nm-dark), -3px -3px 7px var(--nm-light);
+  --shadow-nm-in: inset 3px 3px 7px var(--nm-dark), inset -3px -3px 7px var(--nm-light);
+
+  --shadow-sm: 0 1px 2px rgba(27, 21, 34, 0.06);
+  --shadow-md: 0 14px 34px rgba(27, 21, 34, 0.10);
   --radius: 8px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-spring: cubic-bezier(0.18, 0.89, 0.32, 1.18);
-  --font-ui: var(--font-plex-thai), "IBM Plex Sans Thai", "Noto Sans Thai", "Segoe UI", system-ui, sans-serif;
-  --font-display: var(--font-display-en), var(--font-noto-thai), "Noto Sans Thai", "Segoe UI", system-ui, sans-serif;
-  --font-data: var(--font-mono), "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+
+  /* ---- type: one Thai family for headings and body (Space Grotesk removed —
+     it has no Thai glyphs, so Thai headings silently fell back) ---- */
+  --font-ui: "IBM Plex Sans Thai", "Noto Sans Thai", "Leelawadee UI", "Segoe UI", system-ui, sans-serif;
+  --font-display: "IBM Plex Sans Thai", "Noto Sans Thai", "Leelawadee UI", "Segoe UI", system-ui, sans-serif;
+  --font-data: "JetBrains Mono Variable", "JetBrains Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+
+  /* ---- mobile chrome ---- */
+  --bottom-nav-h: 60px;
+
+  color-scheme: light;
+}
+
+/* ===== dark mode (ทาง ก): base is a purple-tinted grey, not black,
+   so the soft-card shadows still have room to work on both sides ===== */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1e1a24;
+    --bg-2: #241f2b;
+    --surface: #1e1a24;
+    --surface-soft: #241f2b;
+    --line: #2f2838;
+    --line-strong: #3f364c;
+    --text: #ece6f2;
+    --muted: #a79cb8;
+    --ink: #f3eff7;
+
+    --blue: #c79ddb;
+    --blue-dark: #a97ec4;
+    --violet: #b885cf;
+    --coral: #a97ec4;
+    --peach: #c79ddb;
+    --brand-soft: #2a2034;
+
+    --teal: #5fc5c8;
+    --teal-soft: #0f2e2f;
+    --green: #5bcb90;
+    --green-soft: #13301f;
+    --amber: #e5b45c;
+    --amber-soft: #33260f;
+    --red: #f0906a;
+    --red-soft: #36201a;
+
+    --bg-glow-1: rgba(167, 126, 196, 0.10);
+    --bg-glow-2: rgba(94, 47, 115, 0.18);
+
+    --nm-light: #262130;
+    --nm-dark: #16131b;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 14px 34px rgba(0, 0, 0, 0.45);
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #1e1a24;
+  --bg-2: #241f2b;
+  --surface: #1e1a24;
+  --surface-soft: #241f2b;
+  --line: #2f2838;
+  --line-strong: #3f364c;
+  --text: #ece6f2;
+  --muted: #a79cb8;
+  --ink: #f3eff7;
+
+  --blue: #c79ddb;
+  --blue-dark: #a97ec4;
+  --violet: #b885cf;
+  --coral: #a97ec4;
+  --peach: #c79ddb;
+  --brand-soft: #2a2034;
+
+  --teal: #5fc5c8;
+  --teal-soft: #0f2e2f;
+  --green: #5bcb90;
+  --green-soft: #13301f;
+  --amber: #e5b45c;
+  --amber-soft: #33260f;
+  --red: #f0906a;
+  --red-soft: #36201a;
+
+  --bg-glow-1: rgba(167, 126, 196, 0.10);
+  --bg-glow-2: rgba(94, 47, 115, 0.18);
+
+  --nm-light: #262130;
+  --nm-dark: #16131b;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 14px 34px rgba(0, 0, 0, 0.45);
+
+  color-scheme: dark;
 }
 
 * {
@@ -38,10 +154,10 @@ html {
 body {
   margin: 0;
   background:
-    radial-gradient(circle at 78% 2%, rgba(255, 102, 112, 0.22), transparent 310px),
-    radial-gradient(circle at 12% 18%, rgba(29, 90, 166, 0.18), transparent 340px),
-    repeating-linear-gradient(90deg, rgba(18, 32, 51, 0.025) 0 1px, transparent 1px 48px),
+    radial-gradient(circle at 82% -4%, var(--bg-glow-1), transparent 320px),
+    radial-gradient(circle at 8% 12%, var(--bg-glow-2), transparent 360px),
     var(--bg);
+  background-attachment: fixed;
   color: var(--text);
   font-family: var(--font-ui);
   font-size: 16px;

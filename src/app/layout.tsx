@@ -4,7 +4,6 @@ import "@fontsource/ibm-plex-sans-thai/400.css";
 import "@fontsource/ibm-plex-sans-thai/500.css";
 import "@fontsource/ibm-plex-sans-thai/600.css";
 import "@fontsource/ibm-plex-sans-thai/700.css";
-import "@fontsource-variable/space-grotesk/wght.css";
 import "@fontsource-variable/jetbrains-mono/wght.css";
 import "./globals.css";
 
@@ -27,7 +26,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="th">
       <head>
-        <meta name="theme-color" content="#0b101b" />
+        <meta name="theme-color" content="#f5f3f7" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#1e1a24" media="(prefers-color-scheme: dark)" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
       <body>{children}</body>
