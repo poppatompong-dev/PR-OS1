@@ -2409,8 +2409,16 @@ textarea:focus-visible {
   white-space: nowrap;
 }
 
+/* four nowrap buttons do not fit a 360px phone in one row; two by two
+   costs one extra row and keeps every label readable */
 @media (max-width: 420px) {
+  .view-switch {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .view-switch .button {
+    width: 100%;
     padding: 6px 6px;
     font-size: 13px;
     gap: 5px;
@@ -2430,7 +2438,15 @@ textarea:focus-visible {
 @media (max-width: 1023px) {
   .schedule-controls {
     display: grid;
+    /* minmax(0,1fr), not auto: a grid item's min-width defaults to its
+       min-content width, so the filter bar inside would push the page wider
+       than a 360px phone rather than shrinking */
+    grid-template-columns: minmax(0, 1fr);
     gap: 10px;
+  }
+
+  .toolbar > * {
+    min-width: 0;
   }
 }
 
