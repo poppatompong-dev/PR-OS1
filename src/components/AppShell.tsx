@@ -1,27 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import {
-  BarChart3,
-  CalendarDays,
-  ClipboardList,
-  LayoutDashboard,
-  Monitor,
-  PlusCircle,
-  Settings,
-  Smartphone,
-} from "lucide-react";
+import { ClipboardList, Settings } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/env";
 import { UserMenu } from "@/components/UserMenu";
-
-const navItems = [
-  { href: "/", label: "ภาพรวมระบบ", icon: LayoutDashboard },
-  { href: "/monitor", label: "จอมอนิเตอร์", icon: Monitor },
-  { href: "/schedule", label: "ตารางงาน / ปฏิทิน", icon: CalendarDays },
-  { href: "/events/new", label: "เพิ่มงานใหม่", icon: PlusCircle },
-  { href: "/mobile/my-tasks", label: "งานของฉัน (มือถือ)", icon: Smartphone },
-  { href: "/reports", label: "รายงานผู้บริหาร", icon: BarChart3 },
-  { href: "/settings", label: "ตั้งค่าระบบ", icon: Settings },
-];
+import { NavLinks } from "@/components/NavLinks";
+import { OfflineBanner } from "@/components/OfflineBanner";
+import { ServiceWorker } from "@/components/ServiceWorker";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const isLive = isSupabaseConfigured();
@@ -45,17 +29,38 @@ export function AppShell({ children }: { children: ReactNode }) {
             <small>{isLive ? "เชื่อมต่อฐานข้อมูลจริง" : "โหมดตัวอย่าง (Mock Data)"}</small>
           </div>
         </div>
-        <nav className="nav-list" aria-label="Main navigation">
-          {navItems.map((item) => (
-            <Link key={item.href} href={item.href}>
-              <item.icon size={18} aria-hidden="true" />
-              {item.label}
-            </Link>
-          ))}
+        <nav className="nav-list" aria-label="เมนูหลัก">
+          <NavLinks variant="rail" />
         </nav>
         <UserMenu />
       </aside>
-      <main className="main-content">{children}</main>
+
+      {/* compact header, narrow screens only */}
+      <header className="top-bar">
+        <Link href="/" className="top-brand">
+          <span className="brand-mark">
+            <ClipboardList size={18} aria-hidden="true" />
+          </span>
+          <span>
+            <strong>PR-OS นครสวรรค์</strong>
+            <small>{isLive ? "เชื่อมต่อฐานข้อมูลจริง" : "โหมดตัวอย่าง"}</small>
+          </span>
+        </Link>
+        <Link href="/settings" className="top-action" aria-label="ตั้งค่าระบบ">
+          <Settings size={20} aria-hidden="true" />
+        </Link>
+      </header>
+
+      <main className="main-content">
+        <OfflineBanner />
+        {children}
+      </main>
+
+      <ServiceWorker />
+
+      <nav className="bottom-nav" aria-label="เมนูหลัก (มือถือ)">
+        <NavLinks variant="bar" />
+      </nav>
     </div>
   );
 }

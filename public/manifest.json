@@ -2,12 +2,11 @@
   "name": "PR-OS เทศบาลนครนครสวรรค์",
   "short_name": "PR-OS",
   "description": "ระบบบริหารจัดการงานประชาสัมพันธ์ เทศบาลนครนครสวรรค์",
-  "start_url": "/mobile/my-tasks",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0b101b",
-  "theme_color": "#0b101b",
-  "orientation": "portrait-primary",
+  "background_color": "#f5f3f7",
+  "theme_color": "#3a1c49",
   "icons": [
     {
       "src": "/icons/icon-192.svg",

@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { EventTable } from "@/components/EventTable";
+import { EventCardList } from "@/components/EventCardList";
+import { StatusBoard } from "@/components/StatusBoard";
 import { CalendarMonthView } from "@/components/CalendarMonthView";
 import { CalendarWeekView } from "@/components/CalendarWeekView";
 import { getDepartments, getScheduleEvents } from "@/lib/events/queries";
-import { Calendar as CalendarIcon, CalendarDays, CalendarX2, Filter, PlusCircle, Search, Table as TableIcon } from "lucide-react";
+import { todayInBangkok } from "@/lib/date";
+import { Calendar as CalendarIcon, CalendarDays, CalendarX2, Columns3, Filter, PlusCircle, Search, Table as TableIcon } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -23,11 +26,12 @@ export default async function SchedulePage({
     status?: string;
     departmentId?: string;
     search?: string;
-    view?: "table" | "month" | "week";
+    view?: "table" | "month" | "week" | "board";
   }>;
 }) {
   const sp = await searchParams;
   const view = sp.view ?? "table";
+  const today = todayInBangkok();
   const filters = {
     status: sp.status ?? "all",
     departmentId: sp.departmentId ?? "all",
@@ -64,16 +68,7 @@ export default async function SchedulePage({
       </header>
 
       {/* Toolbar & View Switcher */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "12px",
-          marginBottom: "18px",
-        }}
-      >
+      <div className="schedule-controls">
         <form className="toolbar" method="get" aria-label="Schedule filters" style={{ marginBottom: 0 }}>
           <input type="hidden" name="view" value={view} />
           <div className="search-box">
@@ -100,18 +95,17 @@ export default async function SchedulePage({
               </option>
             ))}
           </select>
-          <button className="button" type="submit">
+          <button className="button secondary" type="submit">
             <Filter size={18} aria-hidden="true" />
             กรอง
           </button>
         </form>
 
         {/* View Switcher Buttons */}
-        <div style={{ display: "flex", background: "var(--surface-soft)", padding: "4px", borderRadius: "var(--radius)", border: "1px solid var(--line)", gap: "4px" }}>
+        <div className="view-switch" role="group" aria-label="รูปแบบการแสดงตารางงาน">
           <Link
             href={makeViewUrl("table")}
             className={`button ${view === "table" ? "coral" : "secondary"}`}
-            style={{ minHeight: "36px", padding: "6px 12px", fontSize: "14px" }}
           >
             <TableIcon size={16} aria-hidden="true" />
             ตาราง
@@ -119,7 +113,6 @@ export default async function SchedulePage({
           <Link
             href={makeViewUrl("month")}
             className={`button ${view === "month" ? "coral" : "secondary"}`}
-            style={{ minHeight: "36px", padding: "6px 12px", fontSize: "14px" }}
           >
             <CalendarIcon size={16} aria-hidden="true" />
             รายเดือน
@@ -127,21 +120,43 @@ export default async function SchedulePage({
           <Link
             href={makeViewUrl("week")}
             className={`button ${view === "week" ? "coral" : "secondary"}`}
-            style={{ minHeight: "36px", padding: "6px 12px", fontSize: "14px" }}
           >
             <CalendarDays size={16} aria-hidden="true" />
             รายสัปดาห์
+          </Link>
+          <Link
+            href={makeViewUrl("board")}
+            className={`button ${view === "board" ? "coral" : "secondary"}`}
+          >
+            <Columns3 size={16} aria-hidden="true" />
+            บอร์ดสถานะ
           </Link>
         </div>
       </div>
 
       {events.length > 0 ? (
-        view === "month" ? (
+        view === "board" ? (
+          <StatusBoard events={events} today={today} />
+        ) : view === "month" ? (
           <CalendarMonthView events={events} />
         ) : view === "week" ? (
           <CalendarWeekView events={events} />
         ) : (
-          <EventTable events={events} />
+          <>
+            {/* The table needs ~980px to stay readable; phones and iPad
+                portrait get the same rows as day-grouped cards instead. */}
+            <div className="only-wide">
+              <EventTable events={events} />
+            </div>
+            <div className="only-narrow">
+              <EventCardList
+                events={events}
+                groupByDate
+                today={today}
+                emptyText="ไม่พบงานตามเงื่อนไข"
+              />
+            </div>
+          </>
         )
       ) : (
         <div className="panel empty-state">

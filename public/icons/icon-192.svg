@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a" />
-      <stop offset="50%" stop-color="#1e1b4b" />
-      <stop offset="100%" stop-color="#0b101b" />
+      <stop offset="0%" stop-color="#5e2f73" />
+      <stop offset="50%" stop-color="#45215a" />
+      <stop offset="100%" stop-color="#2b1437" />
     </linearGradient>
     <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f97316" />
-      <stop offset="50%" stop-color="#ec4899" />
-      <stop offset="100%" stop-color="#8b5cf6" />
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="50%" stop-color="#f3ecf7" />
+      <stop offset="100%" stop-color="#e4d3ee" />
     </linearGradient>
   </defs>
   <rect width="192" height="192" rx="42" fill="url(#bgGrad)" />

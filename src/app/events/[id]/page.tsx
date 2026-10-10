@@ -20,6 +20,7 @@ import {
 } from "@/lib/format";
 import { AlertTriangle, Copy, Download, Paperclip } from "lucide-react";
 import type { EventStatus } from "@/types/domain";
+import { AttachmentUpload } from "@/components/AttachmentUpload";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ function statusTone(status: EventStatus) {
 
 function formatThaiDateTime(value: string) {
   return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -53,7 +55,11 @@ export default async function EventDetailPage({
   const event = await getEventById(id);
   if (!event) notFound();
 
-  let role: AppRole = "assignee";
+  // Demo mode has no session to read a role from. Fall back to "staff" there
+  // rather than "assignee", so the screen being demonstrated is the one the
+  // office actually works in; with Supabase connected the real role decides,
+  // and RLS still has the final say on every write.
+  let role: AppRole = isSupabaseConfigured() ? "assignee" : "staff";
   if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const user = await getSessionUser(supabase);
@@ -221,20 +227,7 @@ export default async function EventDetailPage({
         )}
 
         {canManageAttachments ? (
-          <form action={uploadAttachment} className="assignment-add">
-            <input type="hidden" name="eventId" value={event.id} />
-            <label className="form-field">
-              เลือกไฟล์ (PDF/Word/Excel/รูปภาพ ไม่เกิน 10 MB)
-              <input
-                className="input"
-                type="file"
-                name="file"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
-                required
-              />
-            </label>
-            <button className="button" type="submit">แนบไฟล์</button>
-          </form>
+          <AttachmentUpload eventId={event.id} action={uploadAttachment} />
         ) : null}
       </section>
 

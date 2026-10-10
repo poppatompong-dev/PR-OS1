@@ -4,18 +4,30 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { can, getSessionUser } from "@/lib/auth/roles";
+import { isSupabaseConfigured } from "@/lib/env";
 
-export async function acknowledgeAssignment(formData: FormData) {
-  const assignmentId = String(formData.get("assignmentId") ?? "");
-  const version = Number(formData.get("assignmentVersion") ?? "0");
+type AckResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * The write itself, with no navigation in it. Both entry points below share
+ * it: the form posts and redirects, the offline queue replays and reads the
+ * result without moving the page the user is looking at.
+ */
+async function recordAcknowledgement(
+  assignmentId: string,
+  version: number,
+): Promise<AckResult> {
+  if (!isSupabaseConfigured()) {
+    // Demo mode. Say so rather than bouncing the demo to a login screen,
+    // and do not pretend a row was written.
+    return { ok: false, error: "โหมดตัวอย่าง: ยังไม่ได้เชื่อมฐานข้อมูล จึงยังบันทึกการรับทราบไม่ได้" };
+  }
 
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
-  if (!user) redirect("/login");
+  if (!user) return { ok: false, error: "unauthenticated" };
   if (!user.personId) {
-    redirect(
-      `/mobile/my-tasks?error=${encodeURIComponent("บัญชีนี้ยังไม่ได้ผูกกับรายชื่อบุคลากร")}`,
-    );
+    return { ok: false, error: "บัญชีนี้ยังไม่ได้ผูกกับรายชื่อบุคลากร" };
   }
 
   const { error } = await supabase.from("acknowledgements").insert({
@@ -25,13 +37,38 @@ export async function acknowledgeAssignment(formData: FormData) {
     acknowledgement_channel: "mobile_web",
   });
 
-  // 23505 = unique violation: already acknowledged this version. Treat as success.
+  // 23505 = unique violation: already acknowledged this version. Treat as
+  // success — a queued acknowledgement replayed twice must not become an error.
   if (error && error.code !== "23505") {
-    redirect(`/mobile/my-tasks?error=${encodeURIComponent(error.message)}`);
+    return { ok: false, error: error.message };
   }
 
   revalidatePath("/mobile/my-tasks");
+  return { ok: true };
+}
+
+export async function acknowledgeAssignment(formData: FormData) {
+  const assignmentId = String(formData.get("assignmentId") ?? "");
+  const version = Number(formData.get("assignmentVersion") ?? "0");
+
+  const result = await recordAcknowledgement(assignmentId, version);
+  if (!result.ok) {
+    if (result.error === "unauthenticated") redirect("/login");
+    redirect(`/mobile/my-tasks?error=${encodeURIComponent(result.error)}`);
+  }
+
   redirect("/mobile/my-tasks");
+}
+
+/**
+ * Same write, no redirect. Used when the offline queue drains: the user may
+ * be anywhere in the app by then, and sending them to /mobile/my-tasks
+ * because the signal came back would be its own kind of failure.
+ */
+export async function acknowledgeAssignmentQuietly(formData: FormData): Promise<AckResult> {
+  const assignmentId = String(formData.get("assignmentId") ?? "");
+  const version = Number(formData.get("assignmentVersion") ?? "0");
+  return recordAcknowledgement(assignmentId, version);
 }
 
 export async function addAssignment(formData: FormData) {

@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { can, getSessionUser } from "@/lib/auth/roles";
 import { getReportData } from "@/lib/reports/queries";
 import { buildReportXlsx, reportFileName } from "@/lib/reports/export";
+import { todayInBangkok } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
 
@@ -18,15 +19,6 @@ const NIL_UUID = "00000000-0000-0000-0000-000000000000";
 
 const XLSX_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-
-function todayInBangkok(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Bangkok",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
 
 export async function GET(request: Request) {
   const supabase = await createClient();

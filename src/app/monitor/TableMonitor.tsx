@@ -7,6 +7,7 @@ import "./monitor-table.css";
 
 function formatThaiDateShort(iso: string): string {
   return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -46,6 +47,7 @@ export function TableMonitor() {
       );
       setToday(
         new Intl.DateTimeFormat("th-TH", {
+          timeZone: "Asia/Bangkok",
           weekday: "long",
           day: "numeric",
           month: "long",

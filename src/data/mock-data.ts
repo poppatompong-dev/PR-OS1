@@ -1,5 +1,44 @@
 import type { Department, Location, Person, PrEvent, ReportSummary, Role } from "@/types/domain";
 
+/**
+ * The sample events below were written with 15 Aug 2026 as "today", so left as
+ * literal dates they fall further into the past every day and the mock app
+ * shows an empty schedule. Keep the literals readable as a relative calendar
+ * and slide the whole set so the anchor day is always today — the demo then
+ * always has work on it, whenever it is opened.
+ */
+const MOCK_ANCHOR_DATE = "2026-08-15";
+
+function bangkokToday(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function isoToUtcMs(iso: string): number {
+  const [y, m, d] = iso.split("-").map(Number);
+  return Date.UTC(y, m - 1, d);
+}
+
+const MOCK_DAY_SHIFT = Math.round(
+  (isoToUtcMs(bangkokToday()) - isoToUtcMs(MOCK_ANCHOR_DATE)) / 86_400_000,
+);
+
+function shiftDate(iso: string, days: number): string {
+  const d = new Date(isoToUtcMs(iso));
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Slides a plain date or an ISO timestamp by the anchor offset. */
+function shiftStamp(value: string, days: number): string {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(value)) return value;
+  return shiftDate(value.slice(0, 10), days) + value.slice(10);
+}
+
 export const people: Person[] = [
   {
     id: "per_001",
@@ -73,7 +112,7 @@ export const roles: Role[] = [
   { id: "role_driver", code: "driver", name: "ยานพาหนะ/พลขับ", color: "gray" },
 ];
 
-export const events: PrEvent[] = [
+const baseEvents: PrEvent[] = [
   {
     id: "evt_001",
     title: "พิธีทำบุญตักบาตรและถวายพระพรชัยมงคล วันแม่แห่งชาติ 12 สิงหาคม 2569",
@@ -541,6 +580,12 @@ export const events: PrEvent[] = [
     ],
   },
 ];
+
+export const events: PrEvent[] = baseEvents.map((event) => ({
+  ...event,
+  eventDate: shiftDate(event.eventDate, MOCK_DAY_SHIFT),
+  updatedAt: shiftStamp(event.updatedAt, MOCK_DAY_SHIFT),
+}));
 
 export const initialSummary: ReportSummary = {
   totalEvents: 13,

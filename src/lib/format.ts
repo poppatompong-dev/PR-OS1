@@ -1,7 +1,14 @@
 import type { AckStatus, EventStatus, Urgency } from "@/types/domain";
 
+/**
+ * Every formatter here pins timeZone to Asia/Bangkok on purpose. Without it
+ * Intl falls back to the *runtime's* zone, which is UTC on Vercel — and
+ * midnight Bangkok is 17:00 the previous day in UTC, so every date in the
+ * app rendered one day early in production.
+ */
 export function formatThaiDate(isoDate: string) {
   return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
     weekday: "short",
     day: "numeric",
     month: "short",

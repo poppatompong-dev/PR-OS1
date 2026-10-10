@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ออฟไลน์ — PR-OS นครสวรรค์</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: #f5f3f7;
+        color: #1b1522;
+        font-family: "IBM Plex Sans Thai", "Noto Sans Thai", "Leelawadee UI", "Segoe UI", system-ui, sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        body { background: #1e1a24; color: #ece6f2; }
+        .card { background: #241f2b; border-color: #2f2838; }
+      }
+      .card {
+        max-width: 420px;
+        text-align: center;
+        padding: 28px 24px;
+        border: 1px solid #e2dde8;
+        border-radius: 14px;
+        background: #ffffff;
+      }
+      h1 { margin: 0 0 10px; font-size: 22px; }
+      p { margin: 0 0 18px; line-height: 1.6; opacity: 0.8; }
+      button {
+        min-height: 44px;
+        padding: 11px 18px;
+        border: 0;
+        border-radius: 8px;
+        background: #5e2f73;
+        color: #fff;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>ยังไม่มีสัญญาณ</h1>
+      <p>
+        หน้านี้ยังไม่เคยเปิดบนเครื่องนี้ จึงยังไม่มีสำเนาไว้อ่านแบบออฟไลน์
+        <br />
+        หน้าที่เคยเปิดแล้วยังเปิดดูได้ตามปกติ และการกดรับทราบจะถูกส่งให้อัตโนมัติเมื่อกลับมาออนไลน์
+      </p>
+      <button type="button" onclick="location.reload()">ลองอีกครั้ง</button>
+    </div>
+  </body>
+</html>
