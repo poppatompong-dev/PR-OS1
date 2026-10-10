@@ -1,7 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { StatusPill } from "@/components/StatusPill";
 import { getMyAssignments } from "@/lib/assignments/queries";
-import { acknowledgeAssignment } from "@/lib/assignments/mutations";
+import { acknowledgeAssignment, acknowledgeAssignmentQuietly } from "@/lib/assignments/mutations";
+import { AckButton } from "@/components/AckButton";
 import { eventStatusLabel, formatThaiDate } from "@/lib/format";
 import { isLineLoginConfigured } from "@/lib/env";
 import { CheckCircle2, Clock3, MapPin, MessageCircle } from "lucide-react";
@@ -86,14 +87,13 @@ export default async function MyTasksPage({
                 <CheckCircle2 size={18} aria-hidden="true" /> รับทราบแล้ว
               </p>
             ) : (
-              <form action={acknowledgeAssignment}>
-                <input type="hidden" name="assignmentId" value={task.assignmentId} />
-                <input type="hidden" name="assignmentVersion" value={task.assignmentVersion} />
-                <button className="button success" type="submit">
-                  <CheckCircle2 size={18} aria-hidden="true" />
-                  รับทราบ
-                </button>
-              </form>
+              <AckButton
+                assignmentId={task.assignmentId}
+                assignmentVersion={task.assignmentVersion}
+                eventTitle={task.event.title}
+                action={acknowledgeAssignment}
+                flushAction={acknowledgeAssignmentQuietly}
+              />
             )}
           </article>
         ))

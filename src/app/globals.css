@@ -3175,3 +3175,34 @@ textarea:focus-visible {
     background: var(--violet);
   }
 }
+
+/* ---- offline state ---- */
+.offline-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--amber);
+  border-radius: var(--radius);
+  background: var(--amber-soft);
+  color: var(--amber);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.offline-banner strong {
+  margin-left: auto;
+  font-family: var(--font-data);
+}
+
+.ack-queued {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+  color: var(--amber);
+  font-weight: 600;
+  font-size: 13.5px;
+}

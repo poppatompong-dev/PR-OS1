@@ -42,7 +42,21 @@ const one = (v: any) => (Array.isArray(v) ? v[0] : v);
  * shown and tested without a database behind it.
  */
 function mockAssignments(): MyAssignments {
-  const me = mockPeople[0];
+  // Whoever has the most unacknowledged work: an assignee page where every
+  // job is already acknowledged has no "รับทราบ" button on it, which is the
+  // one thing this screen exists to do.
+  const pendingPerPerson = new Map<string, number>();
+  for (const event of mockEvents) {
+    for (const assignment of event.assignments) {
+      if (assignment.ackStatus !== "pending") continue;
+      pendingPerPerson.set(
+        assignment.person.id,
+        (pendingPerPerson.get(assignment.person.id) ?? 0) + 1,
+      );
+    }
+  }
+  const busiestId = [...pendingPerPerson.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const me = mockPeople.find((person) => person.id === busiestId) ?? mockPeople[0];
 
   const tasks: MyTask[] = mockEvents
     .filter((event) => event.status !== "draft")

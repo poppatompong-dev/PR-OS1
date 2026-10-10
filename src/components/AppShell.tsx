@@ -4,6 +4,8 @@ import { ClipboardList, Settings } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/env";
 import { UserMenu } from "@/components/UserMenu";
 import { NavLinks } from "@/components/NavLinks";
+import { OfflineBanner } from "@/components/OfflineBanner";
+import { ServiceWorker } from "@/components/ServiceWorker";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const isLive = isSupabaseConfigured();
@@ -49,7 +51,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
       </header>
 
-      <main className="main-content">{children}</main>
+      <main className="main-content">
+        <OfflineBanner />
+        {children}
+      </main>
+
+      <ServiceWorker />
 
       <nav className="bottom-nav" aria-label="เมนูหลัก (มือถือ)">
         <NavLinks variant="bar" />
