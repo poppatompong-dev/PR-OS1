@@ -26,7 +26,9 @@ export default async function ReportsPage({
 
   // Export endpoints require can.viewReports; hide the buttons for roles that
   // would only get a 403 back.
-  let canExport = false;
+  // Demo mode: show the export buttons so they can be demonstrated. With
+  // Supabase connected the real role decides, and the endpoint checks again.
+  let canExport = !isSupabaseConfigured();
   if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const user = await getSessionUser(supabase);

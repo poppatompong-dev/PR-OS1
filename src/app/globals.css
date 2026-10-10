@@ -2597,3 +2597,155 @@ textarea:focus-visible {
     width: auto;
   }
 }
+
+/* ---- attaching a file: camera first on a phone ---- */
+.attach-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.attach-form {
+  margin: 0;
+}
+
+/* the real input has to stay in the layout and keep its size for the tap to
+   reach it on iOS, so it is laid over the label rather than display:none */
+.attach-camera,
+.attach-pick {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.attach-camera input[type="file"],
+.attach-pick input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 0;
+}
+
+.attach-note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+@media (max-width: 599px) {
+  .attach-form {
+    flex: 1 1 140px;
+  }
+
+  .attach-camera,
+  .attach-pick {
+    width: 100%;
+  }
+}
+
+/* =====================================================================
+   Status board: the same work seen by where it is in the workflow.
+   Columns on a wide screen; on a phone they stack, because a horizontally
+   scrolling board on a 390px screen hides three of its four columns.
+   ===================================================================== */
+.board {
+  display: grid;
+  gap: 14px;
+}
+
+@media (min-width: 900px) {
+  .board {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+.board-col {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
+}
+
+.board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.board-head h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.board-count {
+  font-family: var(--font-data);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.board-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.board-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.board-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-nm-sm);
+}
+
+.board-card a {
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  color: inherit;
+  text-decoration: none;
+  min-height: 44px;
+}
+
+.board-card strong {
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.board-when {
+  font-size: 12.5px;
+  color: var(--blue);
+  font-weight: 600;
+}
+
+.board-where {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.board-card .tag {
+  justify-self: start;
+  margin-top: 2px;
+}
+
+.board-card:hover {
+  border-color: var(--blue);
+  box-shadow: var(--shadow-nm);
+}

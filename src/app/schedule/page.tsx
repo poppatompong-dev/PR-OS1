@@ -2,11 +2,12 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { EventTable } from "@/components/EventTable";
 import { EventCardList } from "@/components/EventCardList";
+import { StatusBoard } from "@/components/StatusBoard";
 import { CalendarMonthView } from "@/components/CalendarMonthView";
 import { CalendarWeekView } from "@/components/CalendarWeekView";
 import { getDepartments, getScheduleEvents } from "@/lib/events/queries";
 import { todayInBangkok } from "@/lib/date";
-import { Calendar as CalendarIcon, CalendarDays, CalendarX2, Filter, PlusCircle, Search, Table as TableIcon } from "lucide-react";
+import { Calendar as CalendarIcon, CalendarDays, CalendarX2, Columns3, Filter, PlusCircle, Search, Table as TableIcon } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export default async function SchedulePage({
     status?: string;
     departmentId?: string;
     search?: string;
-    view?: "table" | "month" | "week";
+    view?: "table" | "month" | "week" | "board";
   }>;
 }) {
   const sp = await searchParams;
@@ -123,11 +124,20 @@ export default async function SchedulePage({
             <CalendarDays size={16} aria-hidden="true" />
             รายสัปดาห์
           </Link>
+          <Link
+            href={makeViewUrl("board")}
+            className={`button ${view === "board" ? "coral" : "secondary"}`}
+          >
+            <Columns3 size={16} aria-hidden="true" />
+            บอร์ดสถานะ
+          </Link>
         </div>
       </div>
 
       {events.length > 0 ? (
-        view === "month" ? (
+        view === "board" ? (
+          <StatusBoard events={events} today={today} />
+        ) : view === "month" ? (
           <CalendarMonthView events={events} />
         ) : view === "week" ? (
           <CalendarWeekView events={events} />
