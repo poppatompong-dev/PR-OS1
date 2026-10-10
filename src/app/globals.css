@@ -2299,12 +2299,17 @@ textarea:focus-visible {
    and a stack of cards and lets the viewport pick — CSS only, so it is
    correct at any width with no JS and no layout flash.
    ===================================================================== */
-.only-wide { display: none; }
-.only-narrow { display: block; }
+/* These only ever hide, never restore a display value. That way the element
+   keeps whatever its own component class sets when it is visible (.stat-cards
+   is a grid, .event-cards a flex column) and there is nothing to restore it
+   to and get wrong. The doubled class is there to out-specify those component
+   classes, which are declared further down the file. */
+@media (max-width: 1023px) {
+  .only-wide.only-wide { display: none; }
+}
 
 @media (min-width: 1024px) {
-  .only-wide { display: block; }
-  .only-narrow { display: none; }
+  .only-narrow.only-narrow { display: none; }
 }
 
 /* ---- cards grouped by day (schedule) ---- */
@@ -2748,4 +2753,193 @@ textarea:focus-visible {
 .board-card:hover {
   border-color: var(--blue);
   box-shadow: var(--shadow-nm);
+}
+
+/* =====================================================================
+   Report chrome: range chips, report tabs, and the stat cards that stand
+   in for a wide table on a phone.
+   ===================================================================== */
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.chip:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.chip.is-on {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: var(--on-brand);
+}
+
+.tab-row {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 18px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  scrollbar-width: none;
+}
+
+.tab-row::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab.is-on {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+}
+
+.report-note {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.report-table .num {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.report-table th {
+  text-transform: none;
+}
+
+/* ---- a wide table, read as cards on a phone ---- */
+.stat-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.stat-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-nm-sm);
+  padding: 14px 16px;
+}
+
+.stat-card h3 {
+  margin: 0 0 4px;
+  font-size: 15.5px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.stat-lead {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.stat-lead strong {
+  font-family: var(--font-data);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--blue);
+  margin-right: 4px;
+}
+
+.stat-pairs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 14px;
+  margin: 0;
+}
+
+.stat-pairs > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px dotted var(--line);
+  padding-bottom: 3px;
+}
+
+.stat-pairs dt {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.stat-pairs dd {
+  margin: 0;
+  font-family: var(--font-data);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.stat-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+}
+
+/* ---- share-of-total bar ---- */
+.bar-cell {
+  width: 130px;
+  min-width: 130px;
+  vertical-align: middle;
+}
+
+.bar-track {
+  display: block;
+  background: var(--surface-soft);
+  border-radius: var(--radius-pill);
+  height: 8px;
+  margin: 0 0 10px;
+  overflow: hidden;
+}
+
+.bar {
+  display: block;
+  height: 8px;
+  min-width: 3px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--violet), var(--blue));
+}
+
+.bar-cell .bar-track {
+  margin: 0;
 }
