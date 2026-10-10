@@ -3,16 +3,41 @@
 Loop state ของ PR-OS — ไฟล์นี้สั้นและอัปเดตบ่อย ใช้ดูว่า "ตอนนี้อยู่ตรงไหน" ก่อนเริ่มงานทุกครั้ง
 รายละเอียดเชิงลึกของสิ่งที่ทำเสร็จแล้วทั้งหมดอยู่ที่ `docs/14-implementation-status.md` — ไฟล์นี้ไม่ซ้ำเนื้อหานั้น
 
-อัปเดตล่าสุด: 2026-08-18 (Security Hardened & Ready for Live DB Execution)
+อัปเดตล่าสุด: 2026-10-10 (UI Redesign ครบ 4 เฟส — รอเชื่อม Supabase จริง)
 
 ## Production สถานะปัจจุบัน
 
 - **URL:** [https://pr-os1.vercel.app](https://pr-os1.vercel.app/)
 - **สถานะ:** READY (Vercel Next.js 15.5.23)
 - **โหมดการทำงาน:** Mock Demo Fallback (เปิดอ่านตัวอย่าง ปลอดภัย หน้าไม่ล่ม 500)
-- **Font:** Self-hosted (IBM Plex Sans Thai, Space Grotesk, JetBrains Mono)
+- **Font:** Self-hosted — IBM Plex Sans Thai (หัวเรื่องและเนื้อความ) + JetBrains Mono (ตัวเลข)
+  (ถอด Space Grotesk ออกแล้ว: ไม่มีสระ/วรรณยุกต์ไทย หัวเรื่องไทยจึงตกไปใช้ฟอนต์ระบบอยู่ดี)
+- **สี:** ม่วงเทศบาลนครนครสวรรค์ `#5e2f73` + Dark mode ฐานม่วงเทา `#1e1a24`
+- **อุปกรณ์หลัก:** มือถือ + iPad แนวตั้ง (bottom nav) / เดสก์ท็อปใช้ side rail / จอมอนิเตอร์ไม่แตะ
 - **Quality Gates:** `typecheck` ✓ | `build` ✓ | `smoke test (8/8 in mock mode)` ✓
 - **DB Security:** `check_staff_conflict()` ใน `0012` และ `combined_0009_to_0012.sql` ได้รับการเสริม Authorization Check (PL/pgSQL) เรียบร้อย
+
+## UI Redesign (2026-10-10) — เสร็จครบ 4 เฟส
+
+ข้อตกลงก่อนลงมือ: ไม่โละระบบเดิม แก้เฉพาะ UI ไม่แตะ schema / RLS / business logic
+
+| เฟส | สิ่งที่ทำ |
+| --- | --- |
+| (1) UI | ทุกหน้ารายการใช้งานบนมือถือได้ (ตาราง 6 คอลัมน์ -> การ์ดจัดกลุ่มตามวัน), แถบล่าง 5 ปุ่ม, ฟอร์มเพิ่มงานแบ่ง 4 ขั้นตอน, แนบไฟล์เปิดกล้องได้ทันที |
+| (2) หน้าใหม่ | "วันนี้" (แทนหน้า landing เดิม), "งานของฉัน" เข้า AppShell ใช้ได้ทุกอุปกรณ์, "บอร์ดสถานะ" |
+| (3) รายงาน | รายเดือน/ไตรมาส/ปี, รายบุคคล (ใช้ประเมินผลงาน), รายกิจกรรม — นับจากข้อมูลเดิม ไม่เพิ่มตาราง |
+| (4) ออฟไลน์ | อ่านหน้าที่เคยเปิดได้, กดรับทราบตอนไม่มีสัญญาณแล้วส่งอัตโนมัติเมื่อกลับมาออนไลน์ |
+
+บั๊กที่เจอระหว่างทางและแก้แล้ว (ไม่ใช่เรื่อง UI แต่สำคัญกว่า):
+
+- **วันที่เพี้ยนไป 1 วันบน production** — `Intl.DateTimeFormat` ไม่ได้ระบุ `timeZone` จึงใช้โซนของเครื่อง
+  ซึ่งบน Vercel คือ UTC และเที่ยงคืนกรุงเทพ = 17:00 ของเมื่อวานตาม UTC ตอนนี้ตรึงเป็น `Asia/Bangkok` ทุกจุดแล้ว
+- **ตัวแปรฟอนต์ใน CSS ไม่เคยถูกประกาศ** (`--font-plex-thai` ฯลฯ) ทำให้ `font-family` ทั้งบรรทัดเป็นโมฆะ
+  ระบบจึงแสดงด้วยฟอนต์ default ของเบราว์เซอร์มาตลอด ทั้งที่โหลด IBM Plex ไป 5 น้ำหนัก
+- **`prefers-reduced-motion` ล้างแต่ duration ไม่ล้าง delay** ทั้งที่ animation ใช้ `fill-mode: both`
+  คนที่ตั้งค่าลดการเคลื่อนไหวจึงเห็นเนื้อหาบางส่วนค้างที่สถานะเริ่มต้น คือมองไม่เห็น
+
+ทดสอบแล้ว: 16 หน้า x ความกว้าง 360/390/820/1024/1440 x light+dark — ไม่มีหน้าไหนล้นจอหรือ error
 
 ## เริ่มตรงนี้ครั้งหน้า
 
@@ -39,5 +64,9 @@ Loop state ของ PR-OS — ไฟล์นี้สั้นและอั�
 - 2026-08-17 — เพิ่ม PWA Manifest & Icons สำหรับติดตั้งบนมือถือ, เพิ่ม Status Badge บอกสถานะ Mock Mode ใน Sidebar, ตรวจสอบ build/typecheck/smoke test ผ่านทั้งหมด และ Commit & Push เข้าสู่ `origin/main`
 - 2026-08-17 — เพิ่ม GitHub Actions CI Workflow (`.github/workflows/ci.yml`) และไฟล์รวม Migration `supabase/migrations/combined_0009_to_0012.sql` สำหรับรันใน Supabase SQL Editor ในคลิกเดียว
 - 2026-08-18 — ตรวจสอบและ Hardening `check_staff_conflict()` ป้องกัน unauthorized query ข้ามบุคคล, แก้ไข SOP เป็นลำดับที่ถูกต้องและรัดกุมตามหลัก Least Privilege
+- 2026-10-10 — UI Redesign ครบ 4 เฟส บน branch `redesign/ui-phase-1` แล้ว merge เข้า `main`:
+  ม่วงเทศบาล + dark mode, การ์ดแทนตารางบนมือถือ, บอร์ดสถานะ, ฟอร์ม 4 ขั้นตอน, แนบรูปจากกล้อง,
+  รายงาน 3 แบบ, PWA + ออฟไลน์ (service worker + คิวรับทราบใน IndexedDB)
+  พร้อมแก้บั๊ก timezone, ตัวแปรฟอนต์ที่ไม่มีอยู่จริง และ reduced-motion
 
 
