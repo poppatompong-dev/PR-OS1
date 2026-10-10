@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { EventTable } from "@/components/EventTable";
-import { MetricCard } from "@/components/MetricCard";
+import { EventCardList } from "@/components/EventCardList";
 import { getReportData } from "@/lib/reports/queries";
-import { ArrowRight, BellRing, CalendarClock, FileText, PlusCircle, RadioTower, ShieldCheck, Tv } from "lucide-react";
+import { formatThaiDate } from "@/lib/format";
+import { ArrowRight, PlusCircle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -26,12 +26,16 @@ export default async function HomePage() {
   const today = todayInBangkok();
   const report = await getReportData({ from: today, to: addDays(today, 30) });
 
+  const weekEnd = addDays(today, 7);
+  const todays = report.events.filter((e) => e.eventDate === today);
+  const nextSeven = report.events.filter((e) => e.eventDate > today && e.eventDate <= weekEnd);
+
   return (
     <AppShell>
       <header className="page-header">
         <div>
-          <h1 className="page-title">ภาพรวมระบบ PR-OS</h1>
-          <p className="page-subtitle">สรุปงานและสถานะการรับทราบจากข้อมูลจริง (วันนี้ถึง 30 วันข้างหน้า)</p>
+          <h1 className="page-title">วันนี้</h1>
+          <p className="page-subtitle">{formatThaiDate(today)}</p>
         </div>
         <Link className="button" href="/events/new">
           <PlusCircle size={18} aria-hidden="true" />
@@ -39,100 +43,73 @@ export default async function HomePage() {
         </Link>
       </header>
 
-      <section className="visual-stage" aria-label="PR-OS command center">
-        <div className="stage-rail" aria-hidden="true">
-          <span>วันนี้</span>
-          <i />
-          <span>มอบหมาย</span>
-          <i />
-          <span>รับทราบ</span>
-          <i />
-          <span>รายงาน</span>
+      {/* The one question this page answers: what is on today, and who has not
+          acknowledged yet. The number that needs action is the largest thing
+          on the screen and sits top-left. */}
+      <section className="today-lead" aria-label="สถานะที่ต้องลงมือ">
+        <article className={`lead-stat${report.pendingAcks > 0 ? " lead-stat-alert" : ""}`}>
+          <span className="lead-value">{report.pendingAcks}</span>
+          <span className="lead-label">ยังไม่รับทราบ</span>
+          <span className="lead-hint">ต้องตามก่อนถึงวันงาน</span>
+        </article>
+        <div className="lead-side">
+          <article className="side-stat">
+            <span className="side-value">{todays.length}</span>
+            <span className="side-label">งานวันนี้</span>
+          </article>
+          <article className="side-stat">
+            <span className="side-value">{nextSeven.length}</span>
+            <span className="side-label">7 วันข้างหน้า</span>
+          </article>
+          <article className="side-stat">
+            <span className="side-value">{report.changedOrCanceled}</span>
+            <span className="side-label">เปลี่ยน / ยกเลิก</span>
+          </article>
         </div>
-        <div className="stage-dots" aria-hidden="true" />
-        <div className="fluid-blob blob-one" aria-hidden="true" />
-        <div className="fluid-blob blob-two" aria-hidden="true" />
-        <div className="stage-content">
-          <span className="stage-kicker">
-            <RadioTower size={18} aria-hidden="true" />
-            ศูนย์บริหารงานประชาสัมพันธ์แบบเรียลไทม์
-          </span>
-          <h2>
-            PR-OS
-            <span>เทศบาลนครนครสวรรค์</span>
-          </h2>
-          <p>จอมอนิเตอร์ ตารางงาน การรับทราบงาน และรายงานผู้บริหาร รวมศูนย์อยู่ในระบบเดียว</p>
-          <div className="stage-actions">
-            <Link className="button coral" href="/monitor">
-              เปิดจอมอนิเตอร์
-              <ArrowRight size={18} aria-hidden="true" />
-            </Link>
-            <Link className="button glass" href="/schedule">
-              ดูตารางงานและปฏิทิน
-            </Link>
-          </div>
-        </div>
-        <aside className="stage-preview" aria-label="Operational status preview">
-          <div className="preview-number">02</div>
-          <div className="preview-screen">
-            <span className="loader-ring" />
-            <strong>สถานะติดตามงาน</strong>
-            <small>{report.pendingAcks} รายการรอรับทราบ</small>
-          </div>
-          <div className="preview-caption">
-            <strong>ระบบแจ้งเตือนการมอบหมายงาน</strong>
-            <p>แจ้งเตือนเฉพาะผู้เกี่ยวข้อง พร้อมบันทึกประวัติ</p>
-          </div>
-        </aside>
-      </section>
-
-      <section className="command-strip">
-        <section className="panel">
-          <h2>ความพร้อมการดำเนินงาน</h2>
-          <div className="ops-list">
-            <div className="ops-item">
-              <CalendarClock size={18} aria-hidden="true" />
-              งานวันนี้พร้อมตรวจสอบและขึ้นจอมอนิเตอร์
-            </div>
-            <div className="ops-item">
-              <BellRing size={18} aria-hidden="true" />
-              ระบบแจ้งเตือนล่วงหน้าเฉพาะผู้รับผิดชอบ
-            </div>
-          </div>
-        </section>
-        <section className="panel">
-          <h2>การควบคุมความปลอดภัย</h2>
-          <div className="ops-list">
-            <div className="ops-item">
-              <Tv size={18} aria-hidden="true" />
-              จอมอนิเตอร์ปลอดภัยจากข้อมูลส่วนตัว
-            </div>
-            <div className="ops-item">
-              <ShieldCheck size={18} aria-hidden="true" />
-              ไฟล์แนบเอกสารส่วนตัวเฉพาะผู้มีสิทธิ์
-            </div>
-            <div className="ops-item">
-              <FileText size={18} aria-hidden="true" />
-              บันทึกประวัติการแก้ไขและส่งออกรายงาน
-            </div>
-          </div>
-        </section>
-      </section>
-
-      <section className="metric-grid" aria-label="KPI overview">
-        <MetricCard label="งานทั้งหมด" value={report.totalEvents} hint="วันนี้ถึง 30 วันข้างหน้า" tone="blue" />
-        <MetricCard label="เผยแพร่แล้ว" value={report.publishedEvents} hint="พร้อมขึ้นจอมอนิเตอร์" tone="green" />
-        <MetricCard label="รอรับทราบ" value={report.pendingAcks} hint="ต้องติดตามก่อนถึงวันงาน" tone="amber" />
-        <MetricCard label="เปลี่ยน/ยกเลิก" value={report.changedOrCanceled} hint="ต้องตรวจสอบการแจ้งเตือน" tone="red" />
       </section>
 
       <section className="panel">
-        <h2>สรุปภาพรวมสำหรับผู้บริหาร (Smart Summary)</h2>
-        <p>{report.smartSummary}</p>
+        <div className="panel-head">
+          <h2>งานวันนี้</h2>
+          <Link className="link-more" href="/schedule">
+            ดูตารางทั้งหมด
+            <ArrowRight size={15} aria-hidden="true" />
+          </Link>
+        </div>
+        <EventCardList events={todays} emptyText="วันนี้ไม่มีงานประชาสัมพันธ์" />
       </section>
 
-      <section className="panel" style={{ padding: 0, overflow: "hidden" }}>
-        <EventTable events={report.events.slice(0, 8)} />
+      {report.unacked.length > 0 ? (
+        <section className="panel">
+          <div className="panel-head">
+            <h2>รอการรับทราบ</h2>
+            <span className="panel-count">{report.unacked.length} รายการ</span>
+          </div>
+          <ul className="unack-list">
+            {report.unacked.slice(0, 8).map((row, i) => (
+              <li key={`${row.eventTitle}-${row.personName}-${i}`}>
+                <span className="unack-person">{row.personName}</span>
+                <span className="unack-event">{row.eventTitle}</span>
+                <span className="unack-meta">
+                  {row.roleName} · {formatThaiDate(row.eventDate)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section className="panel">
+        <div className="panel-head">
+          <h2>7 วันข้างหน้า</h2>
+          <span className="panel-count">{nextSeven.length} รายการ</span>
+        </div>
+        <EventCardList events={nextSeven.slice(0, 6)} emptyText="ไม่มีงานในเจ็ดวันข้างหน้า" />
+      </section>
+
+      <section className="panel panel-quiet">
+        <h2>สรุปสำหรับผู้บริหาร</h2>
+        <p>{report.smartSummary}</p>
       </section>
     </AppShell>
   );
