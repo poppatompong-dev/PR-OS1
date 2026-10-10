@@ -26,8 +26,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="th">
       <head>
-        <meta name="theme-color" content="#f5f3f7" media="(prefers-color-scheme: light)" />
-        <meta name="theme-color" content="#1e1a24" media="(prefers-color-scheme: dark)" />
+        <meta name="theme-color" content="#3a1c49" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#201829" media="(prefers-color-scheme: dark)" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
       <body>{children}</body>

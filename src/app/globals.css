@@ -185,6 +185,19 @@
 
 html {
   min-width: 320px;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Touch-first app: kill the 300ms double-tap delay and make the tap flash
+   deliberate rather than the browser's default blue box. */
+a,
+button,
+[role="button"],
+summary,
+label {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(94, 47, 115, 0.12);
 }
 
 body {
@@ -2233,4 +2246,22 @@ textarea:focus-visible {
   .bottom-nav {
     display: none;
   }
+}
+
+
+/* ---- current page ---- */
+.nav-list a.is-current {
+  background: var(--rail-active);
+  border-color: var(--rail-line);
+  font-weight: 600;
+}
+
+.bottom-nav a.is-current {
+  color: var(--rail-text);
+  font-weight: 600;
+  box-shadow: inset 0 2px 0 var(--peach);
+}
+
+.bottom-nav a.is-current svg {
+  color: var(--peach);
 }
