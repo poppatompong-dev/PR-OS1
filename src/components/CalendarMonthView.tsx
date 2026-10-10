@@ -110,28 +110,16 @@ export function CalendarMonthView({
   const goToday = () => setCurrentDate(new Date());
 
   return (
-    <div className="calendar-wrap panel" style={{ padding: "16px" }}>
-      {/* Calendar Header Navigation */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "16px",
-          flexWrap: "wrap",
-          gap: "12px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <h2 style={{ margin: 0, fontSize: "22px", fontFamily: "var(--font-display)" }}>
+    <div className="calendar-wrap panel">
+      <div className="cal-head">
+        <div className="cal-title">
+          <h2>
             {monthName} {thaiYear}
           </h2>
-          <span style={{ fontSize: "14px", color: "var(--muted)" }}>
-            ({events.length} งานในตาราง)
-          </span>
+          <span>({events.length} งานในตาราง)</span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div className="cal-nav">
           <button className="button secondary" onClick={goToday} type="button">
             วันนี้
           </button>
@@ -156,40 +144,15 @@ export function CalendarMonthView({
         </div>
       </div>
 
-      {/* Weekday Header */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-          gap: "6px",
-          textAlign: "center",
-          fontWeight: "800",
-          fontSize: "14px",
-          color: "var(--muted)",
-          marginBottom: "6px",
-        }}
-      >
+      <div className="cal-weekdays">
         {WEEKDAYS.map((w, idx) => (
-          <div
-            key={w}
-            style={{
-              padding: "8px 0",
-              color: idx === 0 ? "var(--red)" : idx === 6 ? "var(--violet)" : "inherit",
-            }}
-          >
+          <div key={w} className="cal-weekday" data-dow={idx}>
             {w}
           </div>
         ))}
       </div>
 
-      {/* Days Grid */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-          gap: "6px",
-        }}
-      >
+      <div className="cal-grid">
         {allCalendarDays.map((day) => {
           const dayEvents = eventsByDate.get(day.iso) ?? [];
           const isToday = day.iso === todayIso;
@@ -197,121 +160,43 @@ export function CalendarMonthView({
           return (
             <div
               key={day.iso}
-              style={{
-                minHeight: "115px",
-                padding: "8px",
-                borderRadius: "var(--radius)",
-                background: day.isCurrentMonth
-                  ? isToday
-                    ? "rgba(29, 90, 166, 0.08)"
-                    : "var(--surface)"
-                  : "var(--surface-soft)",
-                border: isToday
-                  ? "2px solid var(--blue)"
-                  : "1px solid var(--line)",
-                opacity: day.isCurrentMonth ? 1 : 0.45,
-                display: "flex",
-                flexDirection: "column",
-                gap: "4px",
-                transition: "background-color 0.15s ease",
-              }}
+              className={`cal-day${day.isCurrentMonth ? "" : " is-other"}${isToday ? " is-today" : ""}`}
             >
-              {/* Day Number Header */}
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <span
-                  style={{
-                    fontWeight: isToday ? "900" : "700",
-                    fontSize: "14px",
-                    width: "24px",
-                    height: "24px",
-                    display: "grid",
-                    placeItems: "center",
-                    borderRadius: "50%",
-                    background: isToday ? "var(--blue)" : "transparent",
-                    color: isToday ? "#fff" : "inherit",
-                  }}
-                >
-                  {day.dayNumber}
-                </span>
-
+              <div className="cal-dayhead">
+                <span className="cal-daynum">{day.dayNumber}</span>
                 <Link
+                  className="cal-add"
                   href={`/events/new?eventDate=${day.iso}`}
-                  style={{
-                    color: "var(--muted)",
-                    padding: "2px",
-                    borderRadius: "4px",
-                    display: "grid",
-                    placeItems: "center",
-                  }}
                   title={`เพิ่มงานวันที่ ${day.iso}`}
+                  aria-label={`เพิ่มงานวันที่ ${day.iso}`}
                 >
                   <Plus size={14} />
                 </Link>
+                {/* On a phone the cell is too small for titles, so the work
+                    shows as a count instead; the pills below are hidden there. */}
+                {dayEvents.length > 0 ? (
+                  <span className="cal-count" aria-hidden="true">
+                    {dayEvents.length}
+                  </span>
+                ) : null}
               </div>
 
-              {/* Day Events Pills */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "3px", flex: 1 }}>
-                {dayEvents.slice(0, 3).map((ev) => {
-                  const toneColor =
-                    ev.urgency === "urgent"
-                      ? "var(--red)"
-                      : ev.urgency === "important"
-                        ? "var(--amber)"
-                        : "var(--blue)";
-
-                  return (
-                    <Link
-                      key={ev.id}
-                      href={`/events/${ev.id}`}
-                      style={{
-                        padding: "3px 6px",
-                        borderRadius: "4px",
-                        fontSize: "12px",
-                        background:
-                          ev.status === "published"
-                            ? "rgba(24, 120, 74, 0.12)"
-                            : ev.status === "canceled"
-                              ? "rgba(186, 55, 55, 0.12)"
-                              : "rgba(98, 112, 131, 0.12)",
-                        borderLeft: `3px solid ${toneColor}`,
-                        color: "var(--text)",
-                        textDecoration: "none",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                      }}
-                      title={`${ev.startTime} ${ev.title} (${ev.location.name})`}
-                    >
-                      <span style={{ fontSize: "10px", color: "var(--muted)", flexShrink: 0 }}>
-                        {ev.startTime}
-                      </span>
-                      <strong style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {ev.title}
-                      </strong>
-                    </Link>
-                  );
-                })}
+              <div className="cal-events">
+                {dayEvents.slice(0, 3).map((ev) => (
+                  <Link
+                    key={ev.id}
+                    className={`cal-pill cal-${ev.status}`}
+                    data-urgency={ev.urgency}
+                    href={`/events/${ev.id}`}
+                    title={`${ev.startTime} ${ev.title} (${ev.location.name})`}
+                  >
+                    <span className="cal-pill-time">{ev.startTime}</span>
+                    <strong>{ev.title}</strong>
+                  </Link>
+                ))}
 
                 {dayEvents.length > 3 && (
-                  <span
-                    style={{
-                      fontSize: "11px",
-                      color: "var(--muted)",
-                      fontWeight: "700",
-                      paddingLeft: "4px",
-                    }}
-                  >
-                    +{dayEvents.length - 3} งานเพิ่มเติม
-                  </span>
+                  <span className="cal-more">+{dayEvents.length - 3} งานเพิ่มเติม</span>
                 )}
               </div>
             </div>

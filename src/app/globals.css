@@ -390,7 +390,7 @@ textarea:focus-visible {
   line-height: 1.15;
   color: var(--text);
   font-family: var(--font-display);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .page-subtitle {
@@ -449,6 +449,16 @@ textarea:focus-visible {
   min-height: 44px;
   color: var(--text);
   box-shadow: var(--shadow-sm);
+  /* a form control will not shrink below its intrinsic width on its own —
+     a date input's is around 540px in Chrome, which is wider than a phone */
+  max-width: 100%;
+  min-width: 0;
+}
+
+.form-field .input,
+.form-field .select,
+.form-field .textarea {
+  width: 100%;
 }
 
 .input:hover,
@@ -513,7 +523,7 @@ textarea:focus-visible {
   margin-top: 0;
   color: var(--text);
   font-family: var(--font-display);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .panel-heading {
@@ -543,7 +553,7 @@ textarea:focus-visible {
   padding: 8px 11px;
   background: var(--rail-bg);
   color: var(--rail-text);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .staff-manager {
@@ -587,7 +597,7 @@ textarea:focus-visible {
   border-radius: var(--radius);
   background: linear-gradient(135deg, var(--coral), var(--blue));
   color: var(--on-brand);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .staff-row.is-inactive .staff-avatar {
@@ -746,7 +756,7 @@ textarea:focus-visible {
 
 .metric-value {
   font-size: clamp(28px, 3vw, 38px);
-  font-weight: 800;
+  font-weight: 700;
   margin: 8px 0;
   color: var(--text);
   font-family: var(--font-data);
@@ -782,7 +792,7 @@ textarea:focus-visible {
   color: var(--text);
   font-size: 13px;
   font-family: var(--font-display);
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0;
   z-index: 1;
@@ -826,7 +836,7 @@ textarea:focus-visible {
 }
 
 .table-title {
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text);
   margin-bottom: 6px;
 }
@@ -844,7 +854,7 @@ textarea:focus-visible {
   border-radius: 999px;
   padding: 5px 10px;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -1423,7 +1433,7 @@ textarea:focus-visible {
 .login-card h1 {
   font-family: var(--font-display);
   font-size: 30px;
-  font-weight: 800;
+  font-weight: 700;
   margin: 0;
 }
 
@@ -2335,7 +2345,7 @@ textarea:focus-visible {
   padding: 8px 2px;
   background: linear-gradient(var(--bg) 70%, transparent);
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text);
 }
 
@@ -2379,18 +2389,10 @@ textarea:focus-visible {
   .toolbar .button {
     grid-column: 1 / -1;
   }
-
-  /* the three view buttons: equal thirds, no wrap onto two rows */
-  .view-switch {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .view-switch .button {
-    width: 100%;
-  }
 }
 
+/* a shrink-to-fit row, not a fixed column count: the four buttons still
+   read on a 390px phone, and a 2x2 grid would cost a whole extra row */
 .view-switch {
   display: flex;
   gap: 4px;
@@ -2942,4 +2944,234 @@ textarea:focus-visible {
 
 .bar-cell .bar-track {
   margin: 0;
+}
+
+/* =====================================================================
+   Month calendar. On a phone each cell is about 48px wide, which cannot
+   hold an event title — so below 600px the cells shrink and the work
+   shows as a count and coloured dots. The card list is the real mobile
+   view of the schedule; this one just has to stay readable.
+   ===================================================================== */
+.calendar-wrap {
+  padding: 16px;
+}
+
+.cal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cal-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cal-title h2 {
+  margin: 0;
+  font-size: 22px;
+  font-family: var(--font-display);
+}
+
+.cal-title span {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cal-weekdays,
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.cal-weekdays {
+  text-align: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.cal-weekday {
+  padding: 8px 0;
+}
+
+.cal-weekday[data-dow="0"] { color: var(--red); }
+.cal-weekday[data-dow="6"] { color: var(--violet); }
+
+.cal-day {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 115px;
+  padding: 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  transition: background-color 0.15s var(--ease-out);
+}
+
+.cal-day.is-other {
+  background: var(--surface-soft);
+  opacity: 0.45;
+}
+
+.cal-day.is-today {
+  border: 2px solid var(--blue);
+  background: var(--brand-soft);
+}
+
+.cal-dayhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+}
+
+.cal-daynum {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.cal-day.is-today .cal-daynum {
+  background: var(--blue);
+  color: var(--on-brand);
+}
+
+.cal-add {
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border-radius: 4px;
+  color: var(--muted);
+}
+
+.cal-add:hover {
+  color: var(--blue);
+}
+
+/* the count is for narrow screens only, where the pills are hidden */
+.cal-count {
+  display: none;
+}
+
+.cal-events {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.cal-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text);
+  text-decoration: none;
+  overflow: hidden;
+  white-space: nowrap;
+  border-left: 3px solid var(--blue);
+  background: var(--surface-soft);
+}
+
+.cal-pill[data-urgency="urgent"] { border-left-color: var(--red); }
+.cal-pill[data-urgency="important"] { border-left-color: var(--amber); }
+
+.cal-published { background: var(--green-soft); }
+.cal-canceled { background: var(--red-soft); }
+
+.cal-pill-time {
+  font-size: 10px;
+  color: var(--muted);
+  flex-shrink: 0;
+  font-family: var(--font-data);
+}
+
+.cal-pill strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+
+.cal-more {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 700;
+  padding-left: 4px;
+}
+
+@media (max-width: 599px) {
+  .calendar-wrap {
+    padding: 12px 10px;
+  }
+
+  .cal-weekdays,
+  .cal-grid {
+    gap: 3px;
+  }
+
+  .cal-weekdays {
+    font-size: 12px;
+  }
+
+  .cal-day {
+    min-height: 56px;
+    padding: 4px 3px;
+    gap: 2px;
+  }
+
+  .cal-dayhead {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .cal-daynum {
+    width: 22px;
+    height: 22px;
+    font-size: 13px;
+  }
+
+  .cal-add,
+  .cal-pill,
+  .cal-more {
+    display: none;
+  }
+
+  .cal-count {
+    display: grid;
+    place-items: center;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: var(--radius-pill);
+    background: var(--blue);
+    color: var(--on-brand);
+    font-family: var(--font-data);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .cal-day.is-today .cal-count {
+    background: var(--violet);
+  }
 }
