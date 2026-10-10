@@ -32,6 +32,7 @@ function statusTone(status: EventStatus) {
 
 function formatThaiDateTime(value: string) {
   return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
     day: "numeric",
     month: "short",
     year: "numeric",

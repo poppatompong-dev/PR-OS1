@@ -1,3 +1,4 @@
+import { AppShell } from "@/components/AppShell";
 import { StatusPill } from "@/components/StatusPill";
 import { getMyAssignments } from "@/lib/assignments/queries";
 import { acknowledgeAssignment } from "@/lib/assignments/mutations";
@@ -16,7 +17,7 @@ export default async function MyTasksPage({
   const { displayName, personLinked, lineLinked, tasks } = await getMyAssignments();
 
   return (
-    <main className="mobile-shell">
+    <AppShell>
       <header className="page-header">
         <div>
           <h1 className="page-title">งานของฉัน</h1>
@@ -35,7 +36,7 @@ export default async function MyTasksPage({
       ) : null}
 
       {personLinked && !lineLinked && isLineLoginConfigured() ? (
-        <div className="mobile-card">
+        <div className="task-card">
           <h2>รับแจ้งเตือนงานทาง LINE</h2>
           <p>เชื่อมต่อบัญชี LINE ของคุณเพื่อรับแจ้งเตือนงานที่ได้รับมอบหมายโดยตรง</p>
           <a className="button coral" href="/api/auth/line/start">
@@ -46,7 +47,7 @@ export default async function MyTasksPage({
       ) : null}
 
       {!personLinked ? (
-        <div className="mobile-card">
+        <div className="task-card">
           <h2>ยังไม่ได้ผูกบัญชีกับรายชื่อบุคลากร</h2>
           <p>
             บัญชีนี้ยังไม่ถูกผูกกับรายชื่อเจ้าหน้าที่ จึงยังไม่เห็นงานที่ได้รับมอบหมาย
@@ -54,14 +55,14 @@ export default async function MyTasksPage({
           </p>
         </div>
       ) : tasks.length === 0 ? (
-        <div className="mobile-card">
+        <div className="task-card">
           <h2>ยังไม่มีงานที่ได้รับมอบหมาย</h2>
           <p>เมื่อมีงานมอบหมายให้คุณ งานจะแสดงที่นี่</p>
         </div>
       ) : (
         tasks.map((task) => (
-          <article className="mobile-card" key={task.assignmentId}>
-            <div className="toolbar">
+          <article className="task-card" key={task.assignmentId}>
+            <div className="task-tags">
               <StatusPill label={task.roleName} tone="teal" />
               {task.event.hasChanges ? <StatusPill label="เปลี่ยนแปลง" tone="amber" /> : null}
               {task.event.status !== "published" ? (
@@ -97,6 +98,6 @@ export default async function MyTasksPage({
           </article>
         ))
       )}
-    </main>
+    </AppShell>
   );
 }

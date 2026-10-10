@@ -28,3 +28,6 @@ transcripts/*
 .env*
 testsprite_tests/tmp/
 testsprite_tests/tmp/config.json
+
+# local build shipping tarball (not part of the project)
+.ship/

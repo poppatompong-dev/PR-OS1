@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/roles";
 import { isSupabaseConfigured } from "@/lib/env";
 import type { EventStatus } from "@/types/domain";
+import { events as mockEvents, people as mockPeople } from "@/data/mock-data";
 
 export type MyTask = {
   assignmentId: string;
@@ -34,9 +35,51 @@ export type MyAssignments = {
 
 const one = (v: any) => (Array.isArray(v) ? v[0] : v);
 
+/**
+ * Demo mode has no signed-in person, so "งานของฉัน" would otherwise be an
+ * empty page — which is the one page the assignees are meant to live in.
+ * Stand in for the first person in the sample data so the screen can be
+ * shown and tested without a database behind it.
+ */
+function mockAssignments(): MyAssignments {
+  const me = mockPeople[0];
+
+  const tasks: MyTask[] = mockEvents
+    .filter((event) => event.status !== "draft")
+    .flatMap((event) =>
+      event.assignments
+        .filter((assignment) => assignment.person.id === me.id)
+        .map((assignment) => ({
+          assignmentId: assignment.id,
+          assignmentVersion: 1,
+          roleName: assignment.role.name,
+          acknowledged: assignment.ackStatus === "acknowledged",
+          event: {
+            id: event.id,
+            title: event.title,
+            eventDate: event.eventDate,
+            startTime: event.startTime,
+            endTime: event.endTime,
+            locationName: event.location.name,
+            departmentName: event.ownerDepartment.name,
+            shortNote: event.shortNote,
+            status: event.status,
+            hasChanges: event.hasChanges,
+          },
+        })),
+    )
+    .sort((x, y) =>
+      `${x.event.eventDate}${x.event.startTime}`.localeCompare(
+        `${y.event.eventDate}${y.event.startTime}`,
+      ),
+    );
+
+  return { displayName: `${me.displayName} (โหมดตัวอย่าง)`, personLinked: true, lineLinked: false, tasks };
+}
+
 export async function getMyAssignments(): Promise<MyAssignments> {
   if (!isSupabaseConfigured()) {
-    return { displayName: "ผู้ใช้งานโหมดทดลอง", personLinked: false, lineLinked: false, tasks: [] };
+    return mockAssignments();
   }
 
   const supabase = await createClient();

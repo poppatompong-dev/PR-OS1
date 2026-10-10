@@ -4,23 +4,9 @@ import { EventCardList } from "@/components/EventCardList";
 import { getReportData } from "@/lib/reports/queries";
 import { formatThaiDate } from "@/lib/format";
 import { ArrowRight, PlusCircle } from "lucide-react";
+import { addDays, todayInBangkok } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
-
-function todayInBangkok(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Bangkok",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
-
-function addDays(iso: string, days: number): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 
 export default async function HomePage() {
   const today = todayInBangkok();

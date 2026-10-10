@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import { MetricCard } from "@/components/MetricCard";
+import { EventCardList } from "@/components/EventCardList";
 import { EventTable } from "@/components/EventTable";
 import { getReportData } from "@/lib/reports/queries";
 import { formatThaiDate } from "@/lib/format";
@@ -7,23 +8,9 @@ import { createClient } from "@/lib/supabase/server";
 import { can, getSessionUser } from "@/lib/auth/roles";
 import { isSupabaseConfigured } from "@/lib/env";
 import { FileSpreadsheet, Printer, Sparkles } from "lucide-react";
+import { addDays, todayInBangkok } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
-
-function todayInBangkok(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Bangkok",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
-
-function addDays(iso: string, days: number): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 
 export default async function ReportsPage({
   searchParams,
@@ -139,8 +126,21 @@ export default async function ReportsPage({
         </div>
       </section>
 
-      <section className="panel" style={{ padding: 0, overflow: "hidden" }}>
+      <section className="panel only-wide" style={{ padding: 0, overflow: "hidden" }}>
         <EventTable events={report.events} />
+      </section>
+
+      <section className="only-narrow">
+        <div className="panel-head">
+          <h2>งานในช่วงที่เลือก</h2>
+          <span className="panel-count">{report.events.length}</span>
+        </div>
+        <EventCardList
+          events={report.events}
+          groupByDate
+          today={today}
+          emptyText="ไม่มีงานในช่วงเวลานี้"
+        />
       </section>
     </AppShell>
   );

@@ -125,7 +125,7 @@ export function ChannelNews() {
 /* ---------- หน้า 5: อากาศ + ปฏิทิน ---------- */
 export function ChannelWeather() {
   const today = new Date();
-  const thDate = new Intl.DateTimeFormat("th-TH", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(today);
+  const thDate = new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(today);
   return (
     <div className="ch ch-center">
       <div className="ch-hero weather">

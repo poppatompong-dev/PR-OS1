@@ -4,6 +4,7 @@
 import { getScheduleEvents } from "@/lib/events/queries";
 import { buildSmartSummary } from "@/lib/reports/smart-summary";
 import type { PrEvent } from "@/types/domain";
+import { todayInBangkok } from "@/lib/date";
 
 export type WorkloadRow = { personName: string; count: number };
 export type UnackedRow = {
@@ -29,15 +30,6 @@ export type ReportData = {
   smartSummary: string;
   events: PrEvent[];
 };
-
-function todayInBangkok(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Bangkok",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
 
 export async function getReportData(filters: {
   from: string;
