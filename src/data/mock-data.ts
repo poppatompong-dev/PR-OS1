@@ -286,7 +286,7 @@ const baseEvents: PrEvent[] = [
     status: "published",
     urgency: "normal",
     shortNote: "เก็บภาพมุมสูงและภาพจิตอาสาทำความสะอาดริมเขื่อน",
-    hasChanges: false,
+    hasChanges: true,
     updatedAt: "2026-08-15T11:00:00+07:00",
     assignments: [
       {
@@ -558,7 +558,7 @@ const baseEvents: PrEvent[] = [
     id: "evt_013",
     title: "การตรวจเยี่ยมศูนย์บริการสาธารณสุขสะพานดำ (ยกเลิกเนื่องจากติดภารกิจด่วน)",
     description: "ตรวจเยี่ยมการให้บริการและติดตามผลการดำเนินงานศูนย์สาธารณสุขชุมชน",
-    eventDate: "2026-08-13",
+    eventDate: "2026-08-15",
     startTime: "14:00",
     endTime: "16:00",
     location: locations[5],

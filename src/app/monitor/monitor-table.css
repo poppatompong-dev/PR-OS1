@@ -1,189 +1,410 @@
-/* Clean, large, high-contrast table monitor (dark theme).
-   Designed to be read from a distance — no decorative motion. */
+/* =====================================================================
+   จอทีวีในห้องฝ่ายประชาสัมพันธ์ — "แบบ 1 · รายการเต็ม"
 
-.mt-stage {
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at 82% -5%, rgba(29, 90, 166, 0.22), transparent 420px),
-    #0a1120;
-  color: #eaf2fb;
-  padding: 30px 38px;
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-  font-family: var(--font-ui);
+   เลือกแบบนี้เพราะงานหลักของจอคือ "อ่านจากท้ายห้องได้" ไม่ใช่ "ใส่งานได้มาก"
+   จึงยอมเห็นงานน้อยลง แลกกับตัวหนังสือที่ใหญ่ที่สุดในสี่แบบที่ออกให้เลือก
+   และชื่อผู้ปฏิบัติงานครบทุกคนพร้อมบทบาท
+
+   สามกฎที่อธิบายเกือบทุกบรรทัดในไฟล์นี้
+   1. ทุกพิกเซลต้องเป็นเนื้อหา — ดีไซน์เดิมเสียพื้นที่ไปกับกรอบทีวีเกินครึ่งจอ
+      ตัวหนังสือจึงเหลือขนาดจริงแค่ครึ่งเดียว หัวหน้าเลยบอกว่า "ดูยากอ่านยาก"
+   2. ขนาดทุกอย่างผูกกับ --u ไม่ใช่ px — จอ 1366x768 ที่ห้องประชุมมักมี
+      จะได้เลย์เอาต์เดียวกันแบบย่อสัดส่วน ไม่ใช่เลย์เอาต์ที่พังคนละแบบ
+   3. พื้นมืด คอนทราสต์สูง — จอนี้เปิดทั้งวันในห้องที่มีหน้าต่าง
+      พื้นขาวจะสะท้อนแสงจนอ่านไม่ออกตอนบ่าย
+   ===================================================================== */
+
+.tv {
+  /* หนึ่งหน่วยออกแบบ = 1px บนจอ 1920x1080 เป๊ะ ๆ
+     ใช้ min() เพื่อให้หน้าต่างที่ไม่ใช่ 16:9 (เช่นเปิดดูบนโน้ตบุ๊ก)
+     ย่อตามด้านที่คับกว่า แทนที่จะล้นลงไปใต้ขอบจอ */
+  --u: min(calc(100vw / 1920), calc(100vh / 1080));
+
+  --tv-bg: #120e18;
+  --tv-panel: #1d1726;
+  --tv-panel-2: #241d2f;
+  --tv-line: #352b43;
+  --tv-text: #f8f5fb;
+  --tv-dim: #ab9dbb;
+  --tv-accent: #c79ddb;
+  --tv-accent-2: #8a56a3;
+  --tv-warn: #e5b45c;
+  --tv-danger: #f07a5a;
+
+  --tv-ui: "IBM Plex Sans Thai", "Noto Sans Thai", "Leelawadee UI", "Segoe UI", system-ui, sans-serif;
+  --tv-mono: "JetBrains Mono Variable", "JetBrains Mono", Consolas, ui-monospace, monospace;
+
+  color-scheme: dark;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--tv-bg);
+  color: var(--tv-text);
+  font-family: var(--tv-ui);
+
+  display: grid;
+  gap: calc(16 * var(--u));
+  padding: calc(26 * var(--u)) calc(34 * var(--u)) calc(18 * var(--u));
+  /* หัวจอ / แถบประกาศ / งานวันนี้ / วันข้างหน้า / ท้ายจอ
+     งานวันนี้กินที่เหลือทั้งหมด — minmax(0,1fr) ไม่ใช่ 1fr เพราะ
+     1fr มีขนาดต่ำสุดเป็น min-content ซึ่งจะดันแถวอื่นตกขอบจอ */
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  /* minmax(0,1fr) ไม่ใช่ปล่อยให้เป็น auto: คอลัมน์ auto มีขนาดสูงสุดเป็น
+     max-content แถบประกาศใช้ white-space:nowrap ความยาวเต็มของข้อความ
+     จึงดันคอลัมน์กว้างกว่าจอ แล้วนาฬิกากับการ์ดวันสุดท้ายหลุดออกนอกขอบ */
+  grid-template-columns: minmax(0, 1fr);
+  align-content: stretch;
 }
 
-.mt-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 24px;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.12);
-  padding-bottom: 18px;
-}
-
-.mt-title {
+/* ---- หัวจอ ---------------------------------------------------------- */
+.tv-head {
   display: flex;
   align-items: center;
-  gap: 16px;
+  justify-content: space-between;
+  gap: calc(28 * var(--u));
 }
 
-.mt-title h1 {
-  font-family: var(--font-display);
-  font-size: clamp(30px, 3.3vw, 54px);
-  font-weight: 800;
-  margin: 0;
-  line-height: 1.08;
+.tv-head-l {
+  display: flex;
+  align-items: center;
+  gap: calc(18 * var(--u));
+  min-width: 0;
 }
 
-.mt-title p {
-  margin: 4px 0 0;
-  color: #9fb3c8;
-  font-size: clamp(15px, 1.4vw, 22px);
-}
-
-.mt-dot {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #46d38a;
-  box-shadow: 0 0 0 6px rgba(70, 211, 138, 0.15);
-  animation: mtPulse 2.4s ease-in-out infinite;
-  flex-shrink: 0;
-}
-
-.mt-clockwrap {
-  text-align: right;
-  white-space: nowrap;
-}
-
-.mt-clock {
-  font-family: var(--font-data);
-  font-variant-numeric: tabular-nums;
-  font-size: clamp(36px, 4.2vw, 66px);
-  font-weight: 800;
-  color: #8ee8df;
-  line-height: 1;
-  text-shadow: 0 0 18px rgba(142, 232, 223, 0.28);
-}
-
-.mt-date {
-  color: #cfe0f0;
-  font-size: clamp(15px, 1.5vw, 24px);
-  margin-top: 6px;
-}
-
-.mt-refresh {
-  color: #7f93a8;
-  font-size: clamp(12px, 1vw, 16px);
-  margin-top: 3px;
-}
-
-.mt-tablewrap {
-  flex: 1;
-  overflow: auto;
-}
-
-.mt-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: clamp(19px, 2vw, 32px);
-}
-
-.mt-table thead th {
-  position: sticky;
-  top: 0;
-  background: #12203a;
-  color: #a8cbf0;
-  text-align: left;
-  font-weight: 700;
-  font-size: clamp(15px, 1.5vw, 23px);
-  padding: 16px 18px;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.16);
-  letter-spacing: 0.3px;
-}
-
-.mt-table tbody td {
-  padding: 18px 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  vertical-align: top;
-  line-height: 1.35;
-}
-
-.mt-table tbody tr:nth-child(even) {
-  background: rgba(255, 255, 255, 0.025);
-}
-
-.mt-table tbody tr.mt-newday td {
-  border-top: 2px solid rgba(142, 232, 223, 0.38);
-}
-
-/* Column widths + emphasis */
-.c-date { width: 9%; }
-.c-time { width: 12%; }
-.c-title { width: 29%; }
-.c-loc { width: 16%; }
-.c-people { width: 20%; }
-.c-note { width: 14%; }
-
-.c-date,
-.c-time {
-  font-family: var(--font-data);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  color: #8ee8df;
-  font-weight: 700;
-}
-
-.c-title {
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.c-loc { color: #e2ecf6; }
-.c-people { color: #cfe0f0; }
-.c-note { color: #9fb3c8; }
-
-.mt-chg {
-  display: inline-block;
-  margin-left: 12px;
-  padding: 3px 12px;
-  border-radius: 999px;
-  background: rgba(255, 154, 92, 0.18);
-  color: #ffb27a;
-  font-size: 0.58em;
-  font-weight: 700;
-  vertical-align: middle;
-  white-space: nowrap;
-}
-
-.mt-empty {
-  flex: 1;
+/* ตราเทศบาลเป็นไฟล์จริง ไม่แก้สี ไม่วาดใหม่ — วางบนแผ่นขาวมนแทน
+   เพราะตราต้นฉบับเป็นพื้นขาวตัวอักษรเข้ม ถ้าคีย์พื้นขาวออกแล้ววางบนพื้นมืด
+   ตัวอักษรจะจมหายไปเกือบหมด */
+.tv-seal {
+  width: calc(88 * var(--u));
+  height: calc(88 * var(--u));
+  flex: none;
+  border-radius: calc(16 * var(--u));
+  background: #fff;
   display: grid;
   place-items: center;
-  font-size: clamp(24px, 2.6vw, 42px);
-  color: #7f93a8;
+  padding: calc(5 * var(--u));
+  box-shadow: 0 calc(2 * var(--u)) calc(10 * var(--u)) rgba(0, 0, 0, 0.45);
 }
 
-.mt-foot {
-  color: #6f8298;
-  font-size: clamp(12px, 1.1vw, 17px);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding-top: 14px;
+.tv-seal img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
-@keyframes mtPulse {
-  0%, 100% { box-shadow: 0 0 0 6px rgba(70, 211, 138, 0.15); }
-  50% { box-shadow: 0 0 0 11px rgba(70, 211, 138, 0.02); }
+.tv-head h1 {
+  margin: 0;
+  font-size: calc(38 * var(--u));
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .mt-dot { animation: none; }
+.tv-head-sub {
+  margin: calc(4 * var(--u)) 0 0;
+  font-size: calc(19 * var(--u));
+  color: var(--tv-dim);
 }
 
-@media (max-width: 720px) {
-  .mt-head { flex-direction: column; }
-  .mt-clockwrap { text-align: left; }
-  .mt-table { font-size: 16px; }
+.tv-head-r {
+  text-align: right;
+  flex: none;
+}
+
+.tv-clock {
+  font-family: var(--tv-mono);
+  font-size: calc(58 * var(--u));
+  font-weight: 700;
+  line-height: 1;
+  color: var(--tv-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.tv-date {
+  margin-top: calc(6 * var(--u));
+  font-size: calc(20 * var(--u));
+  color: var(--tv-dim);
+}
+
+/* ---- แถบประกาศ: ยกเลิก / เปลี่ยนแปลง -------------------------------- */
+.tv-alerts {
+  display: flex;
+  gap: calc(12 * var(--u));
+}
+
+.tv-alert {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: calc(14 * var(--u));
+  min-width: 0;
+  padding: calc(11 * var(--u)) calc(18 * var(--u));
+  border-radius: calc(12 * var(--u));
+  border: calc(1 * var(--u)) solid;
+  background: var(--tv-panel);
+}
+
+.tv-alert-cancel {
+  border-color: var(--tv-danger);
+  background: linear-gradient(90deg, rgba(240, 122, 90, 0.16), var(--tv-panel) 65%);
+}
+
+.tv-alert-change {
+  border-color: var(--tv-warn);
+  background: linear-gradient(90deg, rgba(229, 180, 92, 0.14), var(--tv-panel) 65%);
+}
+
+.tv-alert-tag {
+  flex: none;
+  font-size: calc(16 * var(--u));
+  font-weight: 700;
+  padding: calc(4 * var(--u)) calc(13 * var(--u));
+  border-radius: 999px;
+  border: calc(1 * var(--u)) solid currentColor;
+}
+
+.tv-alert-cancel .tv-alert-tag { color: var(--tv-danger); }
+.tv-alert-change .tv-alert-tag { color: var(--tv-warn); }
+
+.tv-alert-when {
+  flex: none;
+  font-family: var(--tv-mono);
+  font-size: calc(17 * var(--u));
+  color: var(--tv-dim);
+}
+
+.tv-alert-txt {
+  min-width: 0;
+  font-size: calc(19 * var(--u));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tv-alert-txt b { font-weight: 600; }
+.tv-alert-why { color: var(--tv-dim); }
+
+/* ---- หัวข้อส่วน ----------------------------------------------------- */
+.tv-sec {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(16 * var(--u));
+  margin-bottom: calc(10 * var(--u));
+}
+
+.tv-sec h2 {
+  margin: 0;
+  font-size: calc(23 * var(--u));
+  font-weight: 700;
+  color: var(--tv-accent);
+  letter-spacing: 0.02em;
+}
+
+.tv-sec span {
+  font-size: calc(18 * var(--u));
+  color: var(--tv-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- งานวันนี้ ------------------------------------------------------ */
+.tv-today {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* position:relative เพราะโค้ดวัดว่าแถวไหน "พอดีจอ" ด้วย offsetTop
+   ซึ่งอ้างกับ offsetParent — ถ้าไม่ตั้ง จะไปอ้างกับ element อื่นแล้วนับผิด */
+.tv-rows {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: calc(12 * var(--u));
+  align-content: start;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.tv-row {
+  display: grid;
+  grid-template-columns: calc(168 * var(--u)) minmax(0, 1fr);
+  gap: calc(26 * var(--u));
+  align-items: start;
+  padding: calc(16 * var(--u)) calc(22 * var(--u));
+  border-radius: calc(14 * var(--u));
+  background: var(--tv-panel);
+  border-left: calc(9 * var(--u)) solid var(--tv-accent-2);
+}
+
+/* งานถัดไปที่กำลังจะถึง — คนเดินผ่านจอต้องเห็นอันนี้ก่อนอันอื่น */
+.tv-row.is-next {
+  border-left-color: var(--tv-accent);
+  background: linear-gradient(90deg, rgba(199, 157, 219, 0.15), var(--tv-panel) 55%);
+}
+
+/* งานที่ผ่านไปแล้วยังอยู่บนจอ แต่จางลง ไม่หายไป
+   (ตัดออกเลยจะทำให้คนที่เพิ่งเข้าห้องไม่รู้ว่าเช้านี้มีงานอะไรไปแล้ว) */
+.tv-row.is-past { opacity: 0.42; }
+
+.tv-time strong {
+  display: block;
+  font-family: var(--tv-mono);
+  font-size: calc(40 * var(--u));
+  font-weight: 700;
+  color: var(--tv-accent);
+  line-height: 1;
+}
+
+.tv-time span {
+  font-family: var(--tv-mono);
+  font-size: calc(17 * var(--u));
+  color: var(--tv-dim);
+}
+
+.tv-title {
+  margin: 0;
+  font-size: calc(29 * var(--u));
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.tv-place {
+  margin: calc(5 * var(--u)) 0 0;
+  font-size: calc(19 * var(--u));
+  color: var(--tv-dim);
+}
+
+.tv-people {
+  margin: calc(8 * var(--u)) 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(7 * var(--u)) calc(14 * var(--u));
+  align-items: center;
+}
+
+.tv-person {
+  font-style: normal;
+  font-size: calc(18 * var(--u));
+}
+
+.tv-person b { font-weight: 600; }
+
+.tv-person small {
+  color: var(--tv-dim);
+  font-size: calc(16 * var(--u));
+}
+
+/* ยังไม่รับทราบ — ไม่สื่อด้วยสีอย่างเดียว มีคำกำกับและเครื่องหมายเสมอ
+   เพราะจอนี้มีคนตาบอดสีดูด้วย และจอทีวีราคาถูกเพี้ยนสีได้มาก */
+.tv-ack {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(6 * var(--u));
+  flex: none;
+  font-size: calc(15 * var(--u));
+  font-weight: 600;
+  padding: calc(3 * var(--u)) calc(11 * var(--u));
+  border-radius: 999px;
+  border: calc(1 * var(--u)) solid var(--tv-warn);
+  color: var(--tv-warn);
+  background: rgba(229, 180, 92, 0.12);
+}
+
+.tv-ack::before {
+  content: "!";
+  font-family: var(--tv-mono);
+  font-weight: 700;
+}
+
+.tv-empty {
+  font-size: calc(24 * var(--u));
+  color: var(--tv-dim);
+  padding: calc(18 * var(--u)) calc(4 * var(--u));
+}
+
+/* ---- วันข้างหน้า ---------------------------------------------------- */
+.tv-week {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: calc(11 * var(--u));
+}
+
+.tv-day {
+  background: var(--tv-panel-2);
+  border: calc(1 * var(--u)) solid var(--tv-line);
+  border-radius: calc(11 * var(--u));
+  padding: calc(10 * var(--u)) calc(12 * var(--u));
+  min-width: 0;
+}
+
+.tv-day b {
+  font-family: var(--tv-mono);
+  font-size: calc(22 * var(--u));
+}
+
+.tv-dow {
+  font-size: calc(15 * var(--u));
+  color: var(--tv-dim);
+}
+
+.tv-count {
+  float: right;
+  font-family: var(--tv-mono);
+  font-size: calc(15 * var(--u));
+  font-weight: 700;
+  color: var(--tv-accent);
+  border: calc(1 * var(--u)) solid var(--tv-accent-2);
+  border-radius: 999px;
+  padding: 0 calc(8 * var(--u));
+}
+
+.tv-day ul {
+  list-style: none;
+  margin: calc(7 * var(--u)) 0 0;
+  padding: 0;
+  display: grid;
+  gap: calc(4 * var(--u));
+}
+
+.tv-day li {
+  font-size: calc(15 * var(--u));
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tv-day li i {
+  font-style: normal;
+  font-family: var(--tv-mono);
+  color: var(--tv-accent);
+  font-weight: 700;
+}
+
+.tv-day-none {
+  font-size: calc(15 * var(--u));
+  color: var(--tv-dim);
+  font-style: italic;
+  margin-top: calc(7 * var(--u));
+}
+
+/* ---- ท้ายจอ --------------------------------------------------------- */
+.tv-foot {
+  font-size: calc(15 * var(--u));
+  color: var(--tv-dim);
+  opacity: 0.7;
+  text-align: center;
+}
+
+/* แถวที่เลยขอบพื้นที่ "งานวันนี้" — ยังอยู่ใน DOM เพื่อให้การวัดนิ่ง
+   (ถ้าถอดออกเลย ความสูงจะเปลี่ยนทุกครั้งที่วัด แล้ววัดไม่ลงตัว)
+   จำนวนที่ไม่ได้แสดงไปขึ้นที่หัวข้อส่วนแทน */
+.tv-row.is-clipped { visibility: hidden; }
+
+.tv-day-more {
+  color: var(--tv-dim);
+  font-style: italic;
 }
