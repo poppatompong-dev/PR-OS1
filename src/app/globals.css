@@ -1655,6 +1655,16 @@ textarea:focus-visible {
   font-weight: 700;
 }
 
+/* The printable report is laid out for A4. Opened on a phone it is a
+   preview, not a page to read — let the table scroll inside itself instead
+   of dragging the whole page sideways. Print output is untouched. */
+@media screen and (max-width: 640px) {
+  .print-table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
 .print-num {
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums;
@@ -1744,11 +1754,16 @@ textarea:focus-visible {
   margin-top: 12px;
 }
 
+/* Each account card stacks vertically — name, the four fields (which lay
+   themselves out in their own grid), then the save button. This used to be a
+   five-column row from an earlier layout; with today's three children it
+   squeezed the fields into one column and pushed the save button 49px off
+   the right edge of an iPad held upright, the department's main device. */
 .account-row {
   display: grid;
-  grid-template-columns: minmax(160px, 1.3fr) 1fr 1fr 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
-  align-items: end;
+  align-items: stretch;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);

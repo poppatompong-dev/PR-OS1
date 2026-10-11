@@ -1,5 +1,7 @@
 "use server";
 
+import { blockWritesInDemoMode } from "@/lib/demo-guard";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -28,6 +30,7 @@ function done(error?: string, notice?: string): never {
 }
 
 export async function addPerson(formData: FormData) {
+  await blockWritesInDemoMode();
   const { supabase } = await requireAdmin();
   const displayName = String(formData.get("displayName") ?? "").trim();
   const position = emptyToNull(formData.get("position"));
@@ -44,6 +47,7 @@ export async function addPerson(formData: FormData) {
 }
 
 export async function updatePerson(formData: FormData) {
+  await blockWritesInDemoMode();
   const { supabase } = await requireAdmin();
   const personId = String(formData.get("personId") ?? "");
   const displayName = String(formData.get("displayName") ?? "").trim();
@@ -64,6 +68,7 @@ export async function updatePerson(formData: FormData) {
 }
 
 export async function setPersonActive(formData: FormData) {
+  await blockWritesInDemoMode();
   const { supabase } = await requireAdmin();
   const personId = String(formData.get("personId") ?? "");
   const active = String(formData.get("active") ?? "") === "true";
@@ -83,6 +88,7 @@ const MASTER_TABLES = ["departments", "locations", "event_types", "roles"] as co
 type MasterTable = (typeof MASTER_TABLES)[number];
 
 export async function addMasterItem(formData: FormData) {
+  await blockWritesInDemoMode();
   const { supabase } = await requireAdmin();
   const table = String(formData.get("table") ?? "") as MasterTable;
   if (!MASTER_TABLES.includes(table)) done("ตารางไม่ถูกต้อง");
@@ -107,6 +113,7 @@ export async function addMasterItem(formData: FormData) {
 }
 
 export async function setMasterActive(formData: FormData) {
+  await blockWritesInDemoMode();
   const { supabase } = await requireAdmin();
   const table = String(formData.get("table") ?? "") as MasterTable;
   if (!MASTER_TABLES.includes(table)) done("ตารางไม่ถูกต้อง");
@@ -122,6 +129,7 @@ export async function setMasterActive(formData: FormData) {
 }
 
 export async function processNotificationQueue() {
+  await blockWritesInDemoMode();
   await requireAdmin();
   // Note: don't call done()/redirect() inside this try block — Next.js
   // implements redirect() by throwing, and a catch here would swallow it.
@@ -138,6 +146,7 @@ export async function processNotificationQueue() {
 }
 
 export async function updateNotificationSettings(formData: FormData) {
+  await blockWritesInDemoMode();
   const { supabase, user } = await requireAdmin();
   const rows = [
     { key: "line_enabled", value: formData.get("lineEnabled") === "on", updated_by: user.id },
@@ -176,6 +185,7 @@ export async function updateNotificationSettings(formData: FormData) {
 }
 
 export async function createAccount(formData: FormData) {
+  await blockWritesInDemoMode();
   await requireAdmin();
   const usernameRaw = emptyToNull(formData.get("username"));
   const password = String(formData.get("password") ?? "").trim();
@@ -226,6 +236,7 @@ export async function createAccount(formData: FormData) {
 }
 
 export async function updateAccount(formData: FormData) {
+  await blockWritesInDemoMode();
   const { supabase, user } = await requireAdmin();
   const accountId = String(formData.get("accountId") ?? "");
   const role = String(formData.get("role") ?? "") as AppRole;

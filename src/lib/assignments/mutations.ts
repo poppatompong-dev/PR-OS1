@@ -1,5 +1,7 @@
 "use server";
 
+import { blockWritesInDemoMode } from "@/lib/demo-guard";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -72,6 +74,7 @@ export async function acknowledgeAssignmentQuietly(formData: FormData): Promise<
 }
 
 export async function addAssignment(formData: FormData) {
+  await blockWritesInDemoMode();
   const eventId = String(formData.get("eventId") ?? "");
   const personId = String(formData.get("personId") ?? "");
   const roleId = String(formData.get("roleId") ?? "");
@@ -119,6 +122,7 @@ export async function addAssignment(formData: FormData) {
 }
 
 export async function removeAssignment(formData: FormData) {
+  await blockWritesInDemoMode();
   const eventId = String(formData.get("eventId") ?? "");
   const assignmentId = String(formData.get("assignmentId") ?? "");
 

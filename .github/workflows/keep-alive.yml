@@ -1,32 +1,39 @@
 name: Supabase Keep-Alive & Ping
 
+# Free-tier Supabase projects are paused after a week with no activity. This
+# job calls the live app's health check once a day; the check reads from the
+# database, which counts as activity.
+#
+# It goes through the deployed app rather than straight to Supabase, so it
+# needs no secrets in GitHub at all. The previous version read two repository
+# secrets that were never set, printed "Skipping ping", and reported success
+# nineteen runs in a row while the project went to sleep.
+#
+# It now fails loudly — a red X, and GitHub's failure email — whenever the
+# database was not actually reached, instead of passing with a warning.
+
 on:
   schedule:
-    # Run every 3 days at 04:00 UTC (11:00 AM Bangkok time)
-    - cron: '0 4 */3 * *'
-  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+    # Daily at 03:17 UTC (10:17 Bangkok)
+    - cron: '17 3 * * *'
+  workflow_dispatch:
 
 jobs:
-  ping-supabase:
+  ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase REST API to prevent auto-pause
+      - name: Call the app health check
         env:
-          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          APP_URL: https://pr-os1.vercel.app
         run: |
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-            echo "Secrets not configured yet. Skipping ping."
-            exit 0
-          fi
-          echo "Pinging Supabase at $SUPABASE_URL/rest/v1/settings..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "apikey: $SUPABASE_ANON_KEY" \
-            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            "$SUPABASE_URL/rest/v1/settings?select=key&limit=1")
-          echo "Response HTTP Status: $STATUS"
-          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
-            echo "✅ Supabase project is active and healthy!"
+          body=$(curl -sS --max-time 30 --retry 3 --retry-delay 10 "$APP_URL/api/health" || true)
+          echo "Response: $body"
+          if echo "$body" | grep -q '"database":"connected"'; then
+            echo "Database reached - the project stays awake."
+          elif echo "$body" | grep -q '"mode":"mock"'; then
+            echo "::error::The app is running in demo mode, so this ping never touched the database. Check the Supabase variables in Vercel."
+            exit 1
           else
-            echo "⚠️ Warning: Ping received status $STATUS. Project might be paused or restoring."
+            echo "::error::The health check did not reach the database. Supabase may be paused - restore it from the dashboard."
+            exit 1
           fi

@@ -1,5 +1,7 @@
 "use server";
 
+import { blockWritesInDemoMode } from "@/lib/demo-guard";
+
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -32,6 +34,7 @@ function formatMb(bytes: number): string {
 }
 
 export async function uploadAttachment(formData: FormData) {
+  await blockWritesInDemoMode();
   const eventId = String(formData.get("eventId") ?? "");
   const file = formData.get("file");
 
@@ -100,6 +103,7 @@ export async function uploadAttachment(formData: FormData) {
 }
 
 export async function deleteAttachment(formData: FormData) {
+  await blockWritesInDemoMode();
   const eventId = String(formData.get("eventId") ?? "");
   const attachmentId = String(formData.get("attachmentId") ?? "");
 

@@ -78,3 +78,30 @@ export function fiscalYearLabel(today = todayInBangkok()): string {
   const endYear = m >= 10 ? y + 1 : y;
   return `ปีงบประมาณ ${endYear + 543}`;
 }
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** True only for a real calendar date written YYYY-MM-DD. "2026-02-30" and
+ *  anything that merely looks date-shaped are rejected, because they reach
+ *  Intl and Postgres from a hand-edited or stale URL and crash the page. */
+export function isIsoDate(value: unknown): value is string {
+  if (typeof value !== "string" || !ISO_DATE.test(value)) return false;
+  const [y, m, d] = value.split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
+}
+
+/** A report range that is always safe to query and to print: bad input falls
+ *  back, and a range entered backwards is turned the right way round rather
+ *  than silently returning nothing. */
+export function safeRange(
+  from: unknown,
+  to: unknown,
+  fallbackFrom: string,
+  fallbackTo: string,
+): { from: string; to: string } {
+  let f = isIsoDate(from) ? from : fallbackFrom;
+  let t = isIsoDate(to) ? to : fallbackTo;
+  if (f > t) [f, t] = [t, f];
+  return { from: f, to: t };
+}

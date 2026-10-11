@@ -9,6 +9,7 @@ import { can, getSessionUser } from "@/lib/auth/roles";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getReportData } from "@/lib/reports/queries";
 import { eventStatusLabel, formatThaiDate } from "@/lib/format";
+import { isIsoDate, safeRange } from "@/lib/date";
 import { PrintButton } from "./PrintButton";
 
 export const dynamic = "force-dynamic";
@@ -53,8 +54,8 @@ export default async function ReportPrintPage({
     }
   }
 
-  const from = sp.from || todayInBangkok();
-  const to = sp.to || from;
+  const today = todayInBangkok();
+  const { from, to } = safeRange(sp.from, sp.to, today, isIsoDate(sp.from) ? sp.from : today);
   const report = await getReportData({ from, to, departmentId: sp.departmentId });
 
   // Same audit trail as the Excel export (docs/08: exports are logged).

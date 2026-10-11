@@ -1,5 +1,7 @@
 "use server";
 
+import { blockWritesInDemoMode } from "@/lib/demo-guard";
+
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -15,6 +17,7 @@ function fail(message: string): never {
 }
 
 export async function createEvent(formData: FormData) {
+  await blockWritesInDemoMode();
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
   if (!user) redirect("/login");
@@ -128,6 +131,7 @@ async function writeAudit(
 const hhmm = (v: string | null | undefined) => (v ? String(v).slice(0, 5) : null);
 
 export async function editEvent(formData: FormData) {
+  await blockWritesInDemoMode();
   const eventId = String(formData.get("eventId") ?? "");
   const editPath = `/events/${eventId}/edit`;
   const { supabase, user } = await loadActor();
@@ -230,6 +234,7 @@ export async function editEvent(formData: FormData) {
 }
 
 export async function publishEvent(formData: FormData) {
+  await blockWritesInDemoMode();
   const eventId = String(formData.get("eventId") ?? "");
   const { supabase, user } = await loadActor();
   if (!can.publishEvent(user.role)) {
@@ -258,6 +263,7 @@ export async function publishEvent(formData: FormData) {
 }
 
 export async function completeEvent(formData: FormData) {
+  await blockWritesInDemoMode();
   const eventId = String(formData.get("eventId") ?? "");
   const { supabase, user } = await loadActor();
   if (!can.publishEvent(user.role)) {
@@ -277,6 +283,7 @@ export async function completeEvent(formData: FormData) {
 }
 
 export async function cancelEvent(formData: FormData) {
+  await blockWritesInDemoMode();
   const eventId = String(formData.get("eventId") ?? "");
   const reason = String(formData.get("reason") ?? "").trim();
   const { supabase, user } = await loadActor();
@@ -315,6 +322,7 @@ export async function cancelEvent(formData: FormData) {
 }
 
 export async function deleteEvent(formData: FormData) {
+  await blockWritesInDemoMode();
   const eventId = String(formData.get("eventId") ?? "");
   const { supabase, user } = await loadActor();
   // Soft delete is a supervisor/admin action.

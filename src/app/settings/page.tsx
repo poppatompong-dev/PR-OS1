@@ -74,8 +74,8 @@ function MasterListPanel({
       </div>
       <form action={addMasterItem} className="master-add">
         <input type="hidden" name="table" value={table} />
-        <input className="input" name="name" placeholder="ชื่อ" required />
-        <input className="input" name="extra" placeholder={extraLabel} />
+        <input className="input" name="name" aria-label="ชื่อ" placeholder="ชื่อ" required />
+        <input className="input" name="extra" aria-label={extraLabel} placeholder={extraLabel} />
         <button className="button secondary" type="submit">
           <Plus size={16} aria-hidden="true" />
           เพิ่ม
@@ -193,9 +193,9 @@ export default async function SettingsPage({
                     <summary>แก้ไขข้อมูล</summary>
                     <form action={updatePerson} className="staff-form">
                       <input type="hidden" name="personId" value={person.id} />
-                      <input className="input" name="displayName" defaultValue={person.displayName} placeholder="ชื่อ-สกุล" />
-                      <input className="input" name="position" defaultValue={person.position} placeholder="ตำแหน่ง" />
-                      <input className="input" name="email" type="email" defaultValue={person.email ?? ""} placeholder="อีเมล" />
+                      <input className="input" name="displayName" aria-label="ชื่อ-สกุล" defaultValue={person.displayName} placeholder="ชื่อ-สกุล" />
+                      <input className="input" name="position" aria-label="ตำแหน่ง" defaultValue={person.position} placeholder="ตำแหน่ง" />
+                      <input className="input" name="email" type="email" aria-label="อีเมล" defaultValue={person.email ?? ""} placeholder="อีเมล" />
                       <button className="button secondary" type="submit">บันทึก</button>
                     </form>
                   </details>

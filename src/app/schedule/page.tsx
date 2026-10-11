@@ -76,18 +76,19 @@ export default async function SchedulePage({
             <input
               className="input"
               name="search"
+              aria-label="ค้นหาชื่องาน"
               placeholder="ค้นหาชื่องาน"
               defaultValue={filters.search}
             />
           </div>
-          <select className="select" name="status" defaultValue={filters.status}>
+          <select className="select" name="status" aria-label="สถานะงาน" defaultValue={filters.status}>
             {STATUS_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
           </select>
-          <select className="select" name="departmentId" defaultValue={filters.departmentId}>
+          <select className="select" name="departmentId" aria-label="หน่วยงาน" defaultValue={filters.departmentId}>
             <option value="all">ทุกหน่วยงาน</option>
             {departments.map((department) => (
               <option key={department.id} value={department.id}>

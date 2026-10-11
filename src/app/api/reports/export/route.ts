@@ -9,7 +9,8 @@ import { createClient } from "@/lib/supabase/server";
 import { can, getSessionUser } from "@/lib/auth/roles";
 import { getReportData } from "@/lib/reports/queries";
 import { buildReportXlsx, reportFileName } from "@/lib/reports/export";
-import { todayInBangkok } from "@/lib/date";
+import { isIsoDate, safeRange, todayInBangkok } from "@/lib/date";
+import { isSupabaseConfigured } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,12 @@ const XLSX_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 export async function GET(request: Request) {
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json(
+      { error: "โหมดตัวอย่าง: ยังไม่ได้เชื่อมฐานข้อมูล จึงยังส่งออก Excel ไม่ได้" },
+      { status: 503 },
+    );
+  }
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
   if (!user) {
@@ -31,8 +38,9 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
-  const from = url.searchParams.get("from") || todayInBangkok();
-  const to = url.searchParams.get("to") || from;
+  const today = todayInBangkok();
+  const rawFrom = url.searchParams.get("from");
+  const { from, to } = safeRange(rawFrom, url.searchParams.get("to"), today, isIsoDate(rawFrom) ? rawFrom : today);
   const departmentId = url.searchParams.get("departmentId") || undefined;
 
   const report = await getReportData({ from, to, departmentId });

@@ -20,6 +20,7 @@ import {
   addDays,
   fiscalYearLabel,
   resolveRange,
+  safeRange,
   todayInBangkok,
 } from "@/lib/date";
 
@@ -43,8 +44,12 @@ export default async function ReportsPage({
   // when someone switches tabs: the link carries the preset, not a snapshot.
   const preset = (sp.preset ?? "") as RangePreset | "";
   const presetRange = preset ? resolveRange(preset, today) : null;
-  const from = presetRange?.from ?? sp.from ?? today;
-  const to = presetRange?.to ?? sp.to ?? addDays(today, 30);
+  const { from, to } = safeRange(
+    presetRange?.from ?? sp.from,
+    presetRange?.to ?? sp.to,
+    today,
+    addDays(today, 30),
+  );
 
   const tab =
     sp.tab === "person" || sp.tab === "activity" || sp.tab === "period"

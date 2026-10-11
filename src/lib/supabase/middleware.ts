@@ -9,7 +9,17 @@ import { env } from "@/lib/env";
 // /monitor uses a display token, not a user account (see docs/08).
 // /api/notifications/process is called by an external cron (no session
 // cookie at all); it protects itself with a shared secret header instead.
-const PUBLIC_PREFIXES = ["/login", "/monitor", "/api/monitor", "/api/notifications/process"];
+// /api/health is what the keep-alive job and any uptime monitor call. It
+// returns only up/down and a row count, and it must reach the database
+// without a login or it cannot do its one job: keep the free-tier project
+// from being paused for inactivity.
+const PUBLIC_PREFIXES = [
+  "/login",
+  "/monitor",
+  "/api/monitor",
+  "/api/notifications/process",
+  "/api/health",
+];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PREFIXES.some(
