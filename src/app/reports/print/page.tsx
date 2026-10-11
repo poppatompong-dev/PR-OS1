@@ -6,6 +6,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { can, getSessionUser } from "@/lib/auth/roles";
+import { isSupabaseConfigured } from "@/lib/env";
 import { getReportData } from "@/lib/reports/queries";
 import { eventStatusLabel, formatThaiDate } from "@/lib/format";
 import { PrintButton } from "./PrintButton";
@@ -37,11 +38,19 @@ export default async function ReportPrintPage({
   searchParams: Promise<{ from?: string; to?: string; departmentId?: string }>;
 }) {
   const sp = await searchParams;
-  const supabase = await createClient();
-  const user = await getSessionUser(supabase);
-  if (!user) redirect("/login");
-  if (!can.viewReports(user.role)) {
-    redirect("/?error=" + encodeURIComponent("บัญชีของคุณไม่มีสิทธิ์ดูรายงาน"));
+  const live = isSupabaseConfigured();
+
+  // Demo mode has no session to check a role against, and this page is
+  // read-only. Render it rather than bouncing to a login screen that demo
+  // mode does not have either — otherwise the printable report, which is
+  // the thing an executive actually receives, cannot be shown at all.
+  const supabase = live ? await createClient() : null;
+  const user = supabase ? await getSessionUser(supabase) : null;
+  if (live) {
+    if (!user) redirect("/login");
+    if (!can.viewReports(user.role)) {
+      redirect("/?error=" + encodeURIComponent("บัญชีของคุณไม่มีสิทธิ์ดูรายงาน"));
+    }
   }
 
   const from = sp.from || todayInBangkok();
@@ -49,20 +58,23 @@ export default async function ReportPrintPage({
   const report = await getReportData({ from, to, departmentId: sp.departmentId });
 
   // Same audit trail as the Excel export (docs/08: exports are logged).
-  await supabase.from("audit_logs").insert({
-    entity_type: "report",
-    entity_id: NIL_UUID,
-    action: "export",
-    changed_by: user.id,
-    summary: `เปิดรายงานสำหรับพิมพ์/PDF ช่วง ${from} ถึง ${to} (${report.totalEvents} งาน)`,
-    new_values: {
-      format: "pdf",
-      from,
-      to,
-      department_id: sp.departmentId ?? null,
-      total_events: report.totalEvents,
-    },
-  });
+  // Only when there is a real database and a real user to attribute it to.
+  if (supabase && user) {
+    await supabase.from("audit_logs").insert({
+      entity_type: "report",
+      entity_id: NIL_UUID,
+      action: "export",
+      changed_by: user.id,
+      summary: `เปิดรายงานสำหรับพิมพ์/PDF ช่วง ${from} ถึง ${to} (${report.totalEvents} งาน)`,
+      new_values: {
+        format: "pdf",
+        from,
+        to,
+        department_id: sp.departmentId ?? null,
+        total_events: report.totalEvents,
+      },
+    });
+  }
 
   const kpis: { label: string; value: string | number }[] = [
     { label: "งานทั้งหมด", value: report.totalEvents },
@@ -88,7 +100,7 @@ export default async function ReportPrintPage({
           ช่วงวันที่ {formatThaiDate(from)} ถึง {formatThaiDate(to)}
         </p>
         <p className="print-meta">
-          พิมพ์เมื่อ {nowInBangkok()} · ผู้ออกรายงาน: {user.displayName ?? user.email ?? "—"}
+          พิมพ์เมื่อ {nowInBangkok()} · ผู้ออกรายงาน: {user?.displayName ?? user?.email ?? "โหมดตัวอย่าง"}
         </p>
       </header>
 

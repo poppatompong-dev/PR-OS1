@@ -32,6 +32,22 @@ const CHANNELS: ChDef[] = [
   { id: "team", name: "ทีมงาน", dwell: 10000 },
 ];
 
+/**
+ * The wall clock, in Bangkok time rather than the display's own.
+ * A TV stick or kiosk PC with its timezone left on the factory default is
+ * common, and a clock on the office wall that is hours out is worse than no
+ * clock at all.
+ */
+function bangkokClock(): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date());
+}
+
 export function ClassicMonitor() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [clock, setClock] = useState("--:--:--");
@@ -150,7 +166,7 @@ export function ClassicMonitor() {
   useEffect(() => {
     const id = setInterval(() => {
       const d = new Date();
-      setClock(`${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`);
+      setClock(bangkokClock());
       setRefreshIn((n) => (n <= 1 ? 60 : n - 1));
       const sec = d.getSeconds();
       const count = eventsRef.current.length;

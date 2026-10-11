@@ -14,6 +14,22 @@ function formatThaiDateShort(iso: string): string {
   }).format(new Date(`${iso}T00:00:00+07:00`));
 }
 
+/**
+ * The wall clock, in Bangkok time rather than the display's own.
+ * A TV stick or kiosk PC with its timezone left on the factory default is
+ * common, and a clock on the office wall that is hours out is worse than no
+ * clock at all.
+ */
+function bangkokClock(): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date());
+}
+
 export function TableMonitor() {
   const [events, setEvents] = useState<MonitorEvent[]>([]);
   const [clock, setClock] = useState("--:--:--");
@@ -43,7 +59,7 @@ export function TableMonitor() {
     const tick = () => {
       const d = new Date();
       setClock(
-        `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`,
+        bangkokClock(),
       );
       setToday(
         new Intl.DateTimeFormat("th-TH", {

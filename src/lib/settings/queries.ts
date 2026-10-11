@@ -1,7 +1,15 @@
 // Settings/master-data reads for the admin settings page.
 
 import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/env";
 import type { AppRole } from "@/lib/auth/roles";
+import {
+  departments as mockDepartments,
+  events as mockEvents,
+  locations as mockLocations,
+  people as mockPeople,
+  roles as mockRoles,
+} from "@/data/mock-data";
 
 export type StaffPerson = {
   id: string;
@@ -21,6 +29,16 @@ export type Account = {
 };
 
 export async function getAllPeople(): Promise<StaffPerson[]> {
+  if (!isSupabaseConfigured()) {
+    return mockPeople.map((person) => ({
+      id: person.id,
+      displayName: person.displayName,
+      position: person.position,
+      email: person.email,
+      isActive: person.isActive,
+    }));
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("people")
@@ -47,6 +65,20 @@ export type MasterLists = {
 };
 
 export async function getMasterLists(): Promise<MasterLists> {
+  if (!isSupabaseConfigured()) {
+    return {
+      departments: mockDepartments.map((d) => ({ id: d.id, name: d.name, extra: d.shortName, isActive: true })),
+      locations: mockLocations.map((l) => ({ id: l.id, name: l.name, extra: l.description ?? "", isActive: true })),
+      eventTypes: [...new Set(mockEvents.map((e) => e.eventType))].map((name, i) => ({
+        id: `type_${i}`,
+        name,
+        extra: "",
+        isActive: true,
+      })),
+      roles: mockRoles.map((r) => ({ id: r.id, name: r.name, extra: r.code, isActive: true })),
+    };
+  }
+
   const supabase = await createClient();
   const [d, l, t, r] = await Promise.all([
     supabase.from("departments").select("id, name, short_name, is_active").order("name"),
@@ -73,6 +105,20 @@ export async function getMasterLists(): Promise<MasterLists> {
 }
 
 export async function getAccounts(): Promise<Account[]> {
+  if (!isSupabaseConfigured()) {
+    // The six accounts the department is to be given, as roles rather than as
+    // real sign-ins: demo mode has no auth table and invents no credentials.
+    const demoRoles: AppRole[] = ["admin", "supervisor", "staff", "assignee", "assignee", "display"];
+    return mockPeople.slice(0, demoRoles.length).map((person, i) => ({
+      id: `demo_${i}`,
+      email: "— ตั้งค่าเมื่อเชื่อมฐานข้อมูลจริง —",
+      username: null,
+      role: demoRoles[i],
+      personId: person.id,
+      displayName: person.displayName,
+    }));
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_accounts");
   if (error) throw new Error(`getAccounts: ${error.message}`);
@@ -104,6 +150,24 @@ export type NotificationRow = {
 const first = (v: any) => (Array.isArray(v) ? v[0] : v);
 
 export async function getNotificationFeed(): Promise<NotificationRow[]> {
+  if (!isSupabaseConfigured()) {
+    return mockEvents
+      .flatMap((event) =>
+        event.assignments.map((assignment) => ({
+          id: `${event.id}-${assignment.id}`,
+          type: event.hasChanges ? "change" : "assignment",
+          channel: "line",
+          status: assignment.ackStatus === "acknowledged" ? "sent" : "queued",
+          scheduledFor: `${event.eventDate}T07:00:00+07:00`,
+          sentAt: assignment.acknowledgedAt ?? null,
+          errorMessage: null,
+          eventTitle: event.title,
+          personName: assignment.person.displayName,
+        })),
+      )
+      .slice(0, 30);
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("notifications")
@@ -139,6 +203,18 @@ export type NotificationSettings = {
 };
 
 export async function getNotificationSettings(): Promise<NotificationSettings> {
+  if (!isSupabaseConfigured()) {
+    return {
+      lineEnabled: true,
+      emailEnabled: true,
+      lineMonthlyQuota: 500,
+      defaultReminderHours: 24,
+      sameDayReminderEnabled: true,
+      fallbackWhenLineFails: true,
+      fallbackWhenQuotaExceeded: true,
+    };
+  }
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("settings")

@@ -92,26 +92,15 @@ export default async function SettingsPage({
 }) {
   const { error, notice } = await searchParams;
 
-  if (!isSupabaseConfigured()) {
-    return (
-      <AppShell>
-        <header className="page-header">
-          <div>
-            <h1 className="page-title">ตั้งค่าระบบ</h1>
-            <p className="page-subtitle">จัดการบุคลากร บัญชีผู้ใช้ และข้อมูลหลัก</p>
-          </div>
-        </header>
-        <div className="panel">
-          <p>โหมดทดลองเป็นแบบอ่านอย่างเดียว กรุณาเชื่อม Supabase ก่อนจัดการการตั้งค่าจริง</p>
-        </div>
-      </AppShell>
-    );
-  }
+  const live = isSupabaseConfigured();
 
-  const supabase = await createClient();
-  const user = await getSessionUser(supabase);
+  // Demo mode shows the real layout with sample data, so the screen can be
+  // reviewed for what it offers. Every button on it still posts to a server
+  // action that refuses without a database, so nothing here can be changed.
+  const supabase = live ? await createClient() : null;
+  const user = supabase ? await getSessionUser(supabase) : null;
 
-  if (user?.role !== "admin") {
+  if (live && user?.role !== "admin") {
     return (
       <AppShell>
         <header className="page-header">
@@ -142,9 +131,19 @@ export default async function SettingsPage({
       <header className="page-header">
         <div>
           <h1 className="page-title">ตั้งค่าระบบ</h1>
-          <p className="page-subtitle">จัดการบุคลากร บัญชีผู้ใช้ และบทบาท (ข้อมูลจริง)</p>
+          <p className="page-subtitle">
+            {live
+              ? "จัดการบุคลากร บัญชีผู้ใช้ และบทบาท (ข้อมูลจริง)"
+              : "จัดการบุคลากร บัญชีผู้ใช้ และบทบาท"}
+          </p>
         </div>
       </header>
+
+      {!live ? (
+        <div className="login-error">
+          โหมดตัวอย่าง — ข้อมูลที่เห็นเป็นข้อมูลสมมติ และยังบันทึกการแก้ไขไม่ได้จนกว่าจะเชื่อมฐานข้อมูลจริง
+        </div>
+      ) : null}
 
       {error ? <div className="login-error">{error}</div> : null}
       {notice ? (
