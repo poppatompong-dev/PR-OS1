@@ -51,6 +51,12 @@ curl -s -o /dev/null -w "%{http_code}\n" \
 | `supabase/migrations/0011_nakhon_sawan_master_data.sql` | ข้อมูลหลักสำนัก/กอง สถานที่ ประเภทงาน ของเทศบาลนครนครสวรรค์ | ไม่รันแล้ว dropdown ในฟอร์มจะเหลือแต่ข้อมูลตัวอย่างเดิม |
 | `supabase/migrations/0012_reminders_and_conflict_check.sql` | คิวเตือนล่วงหน้า 24 ชม./1.5 ชม. + `check_staff_conflict()` | ไม่รันแล้วการเตือนเวลาชนและ reminder จะใช้ไม่ได้ |
 | `supabase/migrations/0013_monitor_board.sql` | เพิ่ม `status`, `cancellation_reason`, `assignee_detail` ให้ `get_monitor_events()` (อ่านอย่างเดียว ไม่แตะตาราง/RLS) | ไม่รันแล้วจอ `/monitor` แบบใหม่จะไม่เห็นงานที่ยกเลิกและรายชื่อผู้ที่ยังไม่รับทราบ |
+| `supabase/migrations/0014_workflow_gaps.sql` | ปุ่มไม่สะดวก (`decline_assignment()`), แจ้งหัวหน้า, สรุปงานพรุ่งนี้, `events.source_url`, `notifications.dedupe_key` + **แก้ `enqueue_event_reminders()` ที่ล้มทุกครั้ง** · ตั้ง `same_day_reminder_enabled = true` ตามที่ owner เลือก | ไม่รันแล้วเตือนล่วงหน้าจะไม่เข้าคิวเลย ปุ่มไม่สะดวกขึ้นข้อความ "ยังไม่พร้อมใช้งาน" หน้าเว็บอื่นยังทำงานได้ (มี fallback) |
+
+**0014 — รันได้ทั้งไฟล์ในครั้งเดียว และรันซ้ำได้** (ทดสอบบน Postgres 16 + PostgREST 12: รัน 2 รอบติดกันผ่าน, ทดสอบ 15 สถานการณ์รวม RLS ของแต่ละ role)
+ไฟล์เพิ่มค่า enum ใหม่ 3 ค่า ซึ่ง Postgres อนุญาตใน transaction เดียวกันเพราะไฟล์ใช้ค่าเหล่านี้เฉพาะในตัวฟังก์ชัน
+
+ตรวจหลังรัน 0014 — รัน `supabase/checks/migration_status.sql` อีกครั้ง แถว `0014 workflow gaps` ต้องเป็น true
 
 ถ้ารัน `0010` แล้วเจอ `permission denied for table objects` (บางโปรเจกต์จำกัดสิทธิ์ schema `storage`) ให้ทำสองส่วนแยกกัน: ส่วนตาราง/bucket รันใน SQL Editor ตามปกติ ส่วน policy ของ storage สร้างผ่าน dashboard → Storage → bucket `event-attachments` → Policies โดยใช้เงื่อนไขเดียวกับในไฟล์ migration
 
@@ -99,7 +105,23 @@ order by changed_at desc limit 10;
 
 ---
 
-## 4. เปิดใช้การแจ้งเตือนจริง (ยังค้าง — รอ credential)
+## 4. เปิดตัวเรียกคิวแจ้งเตือน (GitHub Actions ทุก 15 นาที)
+
+owner เลือก GitHub Actions (2026-10-13) — repo เป็น public จึงไม่เสียนาที workflow อยู่ที่
+`.github/workflows/notifications-cron.yml` และ **ปิดอยู่** จนกว่าจะทำครบ 3 ข้อ (Human Gate: เป็น scheduled job ใหม่ + secret ใหม่)
+
+1. สุ่ม secret ยาว ๆ (เช่น `openssl rand -hex 32`) แล้วใส่ใน Vercel → Project → Settings → Environment Variables:
+   `NOTIFICATIONS_CRON_SECRET` (Production) แล้ว Redeploy
+2. GitHub → repo → Settings → Secrets and variables → Actions
+   - แท็บ Secrets: `NOTIFICATIONS_CRON_SECRET` = ค่าเดียวกัน
+   - แท็บ Variables: `NOTIFICATIONS_CRON_ENABLED` = `true`
+3. Actions → "Notification Queue" → Run workflow (ครั้งแรกกดเองเพื่อดูผล) — ต้องได้ `HTTP 200` และ JSON `{"ok":true,...}`
+
+ถ้ายังไม่ใส่ key LINE/Resend ระบบอยู่ในโหมดจำลอง: แถวที่ถึงเวลาจะเป็น `skipped` พร้อมเหตุผล ดูได้ใน `/settings` → คิว/ประวัติล่าสุด
+job จะแดง (และ GitHub ส่งอีเมลแจ้ง) เมื่อ secret ไม่ตรง (401) หรือแอปตอบไม่ใช่ 200 — ไม่มีการรายงานว่าสำเร็จทั้งที่ไม่ได้ทำงาน
+ปิดชั่วคราว: เปลี่ยนตัวแปร `NOTIFICATIONS_CRON_ENABLED` เป็นค่าอื่น
+
+## 4b. เปิดใช้การแจ้งเตือนจริง (ยังค้าง — owner เลื่อนไปก่อน)
 
 ใส่ค่าใน `.env.local` (ห้าม commit) — ชื่อคีย์ต้องตรงกับ `src/lib/env.ts`
 
@@ -120,7 +142,7 @@ APP_BASE_URL=                 # URL production จริง เช่น https:/
 1. restart dev server → เข้า `/settings` หัวข้อการแจ้งเตือน แถบต้องเปลี่ยนจากเหลือง (โหมดจำลอง) เป็นเขียว (เชื่อมต่อแล้ว)
 2. ให้พนักงานเปิด `/mobile/my-tasks` แล้วกด "เชื่อมต่อ LINE" เพื่อผูก LINE user id ของตัวเอง
 3. **ก่อนส่งข้อความจริงหาคนจริงครั้งแรก ต้องยืนยันกับเจ้าของโปรเจกต์เสมอ** (Human Gate) — ทดสอบกับบัญชีตัวเองก่อน
-4. ตั้ง cron ยิง `POST /api/notifications/process` พร้อม header `x-notifications-secret: <NOTIFICATIONS_CRON_SECRET>` — ทำได้เมื่อรู้ URL production แล้ว (Vercel Cron หรือ pg_cron + pg_net)
+4. ตัวเรียกคิวดูข้อ 4 ด้านบน
 
 ---
 

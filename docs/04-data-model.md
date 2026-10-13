@@ -27,7 +27,8 @@ Key columns:
 - `owner_department_id`
 - `event_type_id`
 - `intake_channel`
-- `source_reference`
+- `source_reference` — เลขที่หนังสือราชการ (ภายใน ไม่แสดงบนจอมอนิเตอร์; ฟอร์มใช้ตั้งแต่ 0014)
+- `source_url` — ลิงก์หนังสือใน e-Office; CHECK รับเฉพาะ `http(s)://` ยาวไม่เกิน 500 (`0014`)
 - `status`: `draft`, `published`, `completed`, `canceled`
 - `urgency`: `normal`, `important`, `urgent`
 - `short_note`
@@ -55,6 +56,11 @@ Key columns:
 - `assignment_status`: `assigned`, `removed`
 - `assignment_version`
 - `note`
+- `declined_at`, `declined_version`, `decline_reason` — "ไม่สะดวก" (`0014`). มีผลเฉพาะเมื่อ
+  `declined_version = assignment_version`: แก้สาระสำคัญแล้ว version เพิ่ม ธงเดิมหมดผล
+  เขียนได้ผ่าน `decline_assignment()` เท่านั้น; การรับทราบใหม่ล้างธงด้วย trigger
+  `acknowledgements_clear_decline`. เหตุผลอาจเป็นข้อมูลส่วนบุคคล (เช่น ป่วย) จึงแสดงเฉพาะหน้างาน
+  สำหรับฝ่ายจัดการ ไม่อยู่ในรายงาน/Excel/จอมอนิเตอร์
 - `created_by`
 - `created_at`
 - `removed_at`
@@ -102,7 +108,12 @@ Key columns:
 - `assignment_id`
 - `person_id`
 - `channel`: `line`, `email`
-- `notification_type`: `assignment`, `reminder`, `change`, `cancellation`
+- `notification_type`: `assignment`, `reminder`, `change`, `cancellation`,
+  `declined` (แจ้งหัวหน้าเมื่อมีคนกดไม่สะดวก), `escalation` (แจ้งหัวหน้า N ชม. ก่อนงานถ้ายังมีคนไม่ตอบ),
+  `digest` (สรุปงานพรุ่งนี้ คนละ 1 ข้อความ, `event_id`/`assignment_id` เป็น null) — 3 ค่าหลังมาจาก `0014`
+- `dedupe_key` — unique (null ไม่ชนกัน) กันแถวซ้ำเมื่อ cron กับปุ่มประมวลผลคิวทำงานพร้อมกัน
+  รูปแบบ `digest:<person>:<date>`, `escalation:<event>:<person>:<epoch>`, `reminder:<assignment>:<epoch>`,
+  `declined:<assignment>:<version>:<person>`
 - `scheduled_for`
 - `sent_at`
 - `status`: `queued`, `sent`, `failed`, `skipped`
@@ -170,6 +181,12 @@ Operational rule: admins must be able to add staff, edit contact data, deactivat
 - `description`
 - `updated_at`
 - `updated_by`
+
+คีย์ที่เกี่ยวกับการแจ้งเตือน: `line_enabled`, `email_enabled`, `line_monthly_quota`,
+`default_reminder_hours` (ใช้เมื่อปิดสรุปรายวัน), `same_day_reminder_enabled`,
+`fallback_to_email_when_line_fails`, `fallback_to_email_when_quota_exceeded`,
+`daily_digest_enabled` (ค่าเริ่มต้น true), `daily_digest_hour` (17), `escalation_hours_before` (3, 0 = ปิด)
+— สามตัวหลังมาจาก `0014`
 
 ### display_tokens
 

@@ -6,12 +6,16 @@ import { getSessionUser } from "@/lib/auth/roles";
 import { isSupabaseConfigured } from "@/lib/env";
 import type { EventStatus } from "@/types/domain";
 import { events as mockEvents, people as mockPeople } from "@/data/mock-data";
+import { isMissingColumn } from "@/lib/events/queries";
 
 export type MyTask = {
   assignmentId: string;
   assignmentVersion: number;
   roleName: string;
   acknowledged: boolean;
+  // "ไม่สะดวก" given for the current version; acknowledging clears it.
+  declined: boolean;
+  declineReason?: string;
   event: {
     id: string;
     title: string;
@@ -68,6 +72,8 @@ function mockAssignments(): MyAssignments {
           assignmentVersion: 1,
           roleName: assignment.role.name,
           acknowledged: assignment.ackStatus === "acknowledged",
+          declined: assignment.ackStatus === "declined",
+          declineReason: assignment.declineReason,
           event: {
             id: event.id,
             title: event.title,
@@ -111,11 +117,15 @@ export async function getMyAssignments(): Promise<MyAssignments> {
     .maybeSingle();
   const lineLinked = Boolean(personRow?.line_user_id);
 
-  const { data, error } = await supabase
-    .from("assignments")
-    .select(
-      `
+  // Falls back to the pre-0014 columns if the migration has not run yet
+  // (see PRE_0014_EVENT_SELECT in src/lib/events/queries.ts).
+  const run = (declineColumns: string) =>
+    supabase
+      .from("assignments")
+      .select(
+        `
       id, assignment_version, assignment_status,
+      ${declineColumns}
       role:roles(name),
       acknowledgements(assignment_version),
       event:events!inner(
@@ -124,10 +134,12 @@ export async function getMyAssignments(): Promise<MyAssignments> {
         owner_department:departments(name)
       )
     `,
-    )
-    .eq("person_id", user.personId)
-    .eq("assignment_status", "assigned");
+      )
+      .eq("person_id", user.personId)
+      .eq("assignment_status", "assigned");
 
+  let { data, error } = await run("declined_at, declined_version, decline_reason,");
+  if (isMissingColumn(error)) ({ data, error } = await run(""));
   if (error) throw new Error(`getMyAssignments: ${error.message}`);
 
   const tasks: MyTask[] = (data ?? [])
@@ -139,11 +151,15 @@ export async function getMyAssignments(): Promise<MyAssignments> {
       const acknowledged = acks.some(
         (k: any) => k.assignment_version === a.assignment_version,
       );
+      const declined =
+        !acknowledged && a.declined_at != null && a.declined_version === a.assignment_version;
       return {
         assignmentId: a.id,
         assignmentVersion: a.assignment_version,
         roleName: one(a.role)?.name ?? "—",
         acknowledged,
+        declined,
+        declineReason: declined ? (a.decline_reason ?? undefined) : undefined,
         event: {
           id: ev.id,
           title: ev.title,

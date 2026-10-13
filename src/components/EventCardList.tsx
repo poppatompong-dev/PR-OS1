@@ -12,6 +12,7 @@ function statusTone(status: PrEvent["status"]) {
 
 function EventCard({ event }: { event: PrEvent }) {
   const pending = event.assignments.filter((a) => a.ackStatus === "pending").length;
+  const declined = event.assignments.filter((a) => a.ackStatus === "declined").length;
   const names = event.assignments.map((a) => a.person.displayName).join(", ");
 
   return (
@@ -40,6 +41,7 @@ function EventCard({ event }: { event: PrEvent }) {
 
         <div className="event-card-tags">
           {pending > 0 ? <span className="tag tag-wait">รอรับทราบ {pending}</span> : null}
+          {declined > 0 ? <span className="tag tag-declined">ไม่สะดวก {declined}</span> : null}
           {event.hasChanges ? <span className="tag tag-late">มีการแก้ไข</span> : null}
           {event.urgency !== "normal" ? (
             <span className="tag tag-late">{urgencyLabel(event.urgency)}</span>

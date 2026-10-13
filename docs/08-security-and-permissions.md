@@ -39,6 +39,10 @@ MVP minimum:
 
 - View own assignments
 - Acknowledge own assignments
+- Say "ไม่สะดวก" on own published, not-yet-started assignments — only through
+  `decline_assignment()` (SECURITY DEFINER, checks `current_person_id()`); the
+  assignee still has no UPDATE on `assignments` (verified: a direct update is
+  silently filtered by RLS, another person's call raises "ไม่พบงาน…", anon gets 42501)
 - View allowed attachments for assigned events
 
 ### Display
@@ -72,6 +76,20 @@ Audit logs should capture:
 - human-readable summary
 
 Audit logs should not be editable from the UI. If a correction is needed, create another audit record.
+
+## Decline Reasons (0014)
+
+A "ไม่สะดวก" reason may be personal data (illness, family). It is stored on the
+assignment and shown only on the event detail page (backend roles; RLS lets an
+assignee read only their own rows) and in the LINE/email notice to supervisors.
+It is deliberately left out of the monitor feed, `/reports`, the print view and
+the Excel export, which show the status "ไม่สะดวก" without the reason.
+
+## e-Office Links (0014)
+
+`events.source_url` is rendered as a link, so both the server action and a
+database CHECK accept only `http(s)://` (no `javascript:`), and it opens with
+`rel="noopener noreferrer"`. It is internal and not part of the monitor feed.
 
 ## Attachment Privacy
 

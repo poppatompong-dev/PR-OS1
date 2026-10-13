@@ -1,6 +1,8 @@
 export type EventStatus = "draft" | "published" | "completed" | "canceled";
 export type Urgency = "normal" | "important" | "urgent";
-export type AckStatus = "acknowledged" | "pending" | "not_required";
+// "declined" = the assignee pressed "ไม่สะดวก" for the current assignment
+// version. The name stays on the job until a supervisor reassigns it.
+export type AckStatus = "acknowledged" | "pending" | "declined" | "not_required";
 
 export type Person = {
   id: string;
@@ -36,6 +38,10 @@ export type Assignment = {
   role: Role;
   ackStatus: AckStatus;
   acknowledgedAt?: string;
+  declinedAt?: string;
+  // Internal only — may be personal (e.g. illness). Shown on the event page to
+  // backend roles, never on the monitor or in exported reports.
+  declineReason?: string;
   note?: string;
 };
 
@@ -54,6 +60,9 @@ export type PrEvent = {
   urgency: Urgency;
   shortNote?: string;
   internalNote?: string;
+  // เลขที่หนังสือ / ลิงก์ e-Office — internal, never on the monitor.
+  sourceReference?: string;
+  sourceUrl?: string;
   hasChanges: boolean;
   assignments: Assignment[];
   updatedAt: string;

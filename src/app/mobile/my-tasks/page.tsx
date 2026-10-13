@@ -1,20 +1,58 @@
 import { AppShell } from "@/components/AppShell";
 import { StatusPill } from "@/components/StatusPill";
 import { getMyAssignments } from "@/lib/assignments/queries";
-import { acknowledgeAssignment, acknowledgeAssignmentQuietly } from "@/lib/assignments/mutations";
+import {
+  acknowledgeAssignment,
+  acknowledgeAssignmentQuietly,
+  declineAssignment,
+} from "@/lib/assignments/mutations";
 import { AckButton } from "@/components/AckButton";
 import { eventStatusLabel, formatThaiDate } from "@/lib/format";
 import { isLineLoginConfigured } from "@/lib/env";
-import { CheckCircle2, Clock3, MapPin, MessageCircle } from "lucide-react";
+import { startsInFuture } from "@/lib/date";
+import { CheckCircle2, Clock3, MapPin, MessageCircle, UserX } from "lucide-react";
+
+/**
+ * "ไม่สะดวก" sits behind a disclosure so it is one deliberate step away from
+ * the big green "รับทราบ" — a reason is required, and it reaches the
+ * supervisors the moment it is sent. Plain form post, works without JS.
+ */
+function DeclineForm({ assignmentId, label }: { assignmentId: string; label: string }) {
+  return (
+    <details className="decline">
+      <summary>
+        <UserX size={18} aria-hidden="true" />
+        {label}
+      </summary>
+      <form action={declineAssignment} className="decline-form">
+        <input type="hidden" name="assignmentId" value={assignmentId} />
+        <label className="form-field">
+          เหตุผล (หัวหน้าจะเห็นข้อความนี้)
+          <textarea
+            className="textarea"
+            name="reason"
+            required
+            maxLength={500}
+            rows={3}
+            placeholder="เช่น ติดภารกิจอื่นที่ได้รับมอบหมายก่อน"
+          />
+        </label>
+        <button className="button secondary" type="submit">
+          แจ้งไม่สะดวก
+        </button>
+      </form>
+    </details>
+  );
+}
 
 export const dynamic = "force-dynamic";
 
 export default async function MyTasksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; line?: string }>;
+  searchParams: Promise<{ error?: string; line?: string; declined?: string }>;
 }) {
-  const { error, line } = await searchParams;
+  const { error, line, declined } = await searchParams;
   const { displayName, personLinked, lineLinked, tasks } = await getMyAssignments();
 
   return (
@@ -27,6 +65,11 @@ export default async function MyTasksPage({
       </header>
 
       {error ? <div className="login-error">{error}</div> : null}
+      {declined === "1" ? (
+        <div className="notice-ok" role="status">
+          แจ้งไม่สะดวกแล้ว — ระบบส่งเรื่องให้หัวหน้างานแล้ว ถ้าภายหลังไปได้ กด “รับทราบ” ได้เลย
+        </div>
+      ) : null}
       {line === "linked" ? (
         <div
           className="login-error"
@@ -61,10 +104,16 @@ export default async function MyTasksPage({
           <p>เมื่อมีงานมอบหมายให้คุณ งานจะแสดงที่นี่</p>
         </div>
       ) : (
-        tasks.map((task) => (
+        tasks.map((task) => {
+          // Only live, not-yet-started work can still be answered.
+          const answerable =
+            task.event.status === "published" &&
+            startsInFuture(task.event.eventDate, task.event.startTime);
+          return (
           <article className="task-card" key={task.assignmentId}>
             <div className="task-tags">
               <StatusPill label={task.roleName} tone="teal" />
+              {task.declined ? <StatusPill label="แจ้งไม่สะดวกแล้ว" tone="red" /> : null}
               {task.event.hasChanges ? <StatusPill label="เปลี่ยนแปลง" tone="amber" /> : null}
               {task.event.status !== "published" ? (
                 <StatusPill label={eventStatusLabel(task.event.status)} tone="gray" />
@@ -82,6 +131,13 @@ export default async function MyTasksPage({
             </p>
             {task.event.shortNote ? <p>{task.event.shortNote}</p> : null}
 
+            {task.declined ? (
+              <p className="decline-note">
+                เหตุผลที่แจ้ง: {task.declineReason ?? "—"} · รอหัวหน้าจัดคนแทน
+                {answerable ? " — ถ้าไปได้แล้ว กดรับทราบได้" : ""}
+              </p>
+            ) : null}
+
             {task.acknowledged ? (
               <p className="ack-done">
                 <CheckCircle2 size={18} aria-hidden="true" /> รับทราบแล้ว
@@ -95,8 +151,16 @@ export default async function MyTasksPage({
                 flushAction={acknowledgeAssignmentQuietly}
               />
             )}
+
+            {answerable && !task.declined ? (
+              <DeclineForm
+                assignmentId={task.assignmentId}
+                label={task.acknowledged ? "ไปไม่ได้แล้ว? แจ้งไม่สะดวก" : "ไม่สะดวก"}
+              />
+            ) : null}
           </article>
-        ))
+          );
+        })
       )}
     </AppShell>
   );

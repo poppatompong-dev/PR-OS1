@@ -28,6 +28,9 @@ const NOTIF_TYPE_TH: Record<string, string> = {
   reminder: "เตือนล่วงหน้า",
   change: "เปลี่ยนแปลง",
   cancellation: "ยกเลิก",
+  declined: "แจ้งไม่สะดวก",
+  escalation: "แจ้งหัวหน้า",
+  digest: "สรุปงานพรุ่งนี้",
 };
 const NOTIF_STATUS_TH: Record<string, string> = {
   queued: "รอส่ง",
@@ -384,7 +387,11 @@ export default async function SettingsPage({
           </label>
           <label className="notif-check">
             <input type="checkbox" name="sameDayReminderEnabled" defaultChecked={notifSettings.sameDayReminderEnabled} />
-            เตือนซ้ำ 1 ชม. ก่อนงานในวันเดียวกัน
+            เตือน 1.5 ชม. ก่อนงาน (LINE เฉพาะคนที่ยังไม่รับทราบ คนที่รับทราบแล้วได้ทาง Email)
+          </label>
+          <label className="notif-check">
+            <input type="checkbox" name="dailyDigestEnabled" defaultChecked={notifSettings.dailyDigestEnabled} />
+            ส่งสรุปงานพรุ่งนี้คนละ 1 ข้อความทุกวัน (แทนเตือนล่วงหน้ารายงาน ประหยัดโควต้า LINE)
           </label>
           <label className="notif-check">
             <input type="checkbox" name="fallbackWhenLineFails" defaultChecked={notifSettings.fallbackWhenLineFails} />
@@ -399,7 +406,29 @@ export default async function SettingsPage({
             <input className="input" type="number" name="lineMonthlyQuota" defaultValue={notifSettings.lineMonthlyQuota} />
           </label>
           <label className="form-field">
-            แจ้งล่วงหน้า (ชม.)
+            เวลาส่งสรุปงานพรุ่งนี้ (นาฬิกา 0-23)
+            <input
+              className="input"
+              type="number"
+              name="dailyDigestHour"
+              min={0}
+              max={23}
+              defaultValue={notifSettings.dailyDigestHour}
+            />
+          </label>
+          <label className="form-field">
+            แจ้งหัวหน้าเมื่อยังมีคนไม่รับทราบ ก่อนงาน (ชม., 0 = ปิด)
+            <input
+              className="input"
+              type="number"
+              name="escalationHoursBefore"
+              min={0}
+              max={48}
+              defaultValue={notifSettings.escalationHoursBefore}
+            />
+          </label>
+          <label className="form-field">
+            แจ้งล่วงหน้า (ชม.) — ใช้เมื่อปิดสรุปรายวัน
             <input className="input" type="number" name="defaultReminderHours" defaultValue={notifSettings.defaultReminderHours} />
           </label>
           <button className="button secondary" type="submit">บันทึกการตั้งค่า</button>

@@ -18,7 +18,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 22: the unit tests load TypeScript directly (type stripping)
+          node-version: 22
           cache: 'npm'
 
       - name: Install Dependencies
@@ -26,6 +27,9 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:unit
 
       - name: Build Next.js
         run: npm run build

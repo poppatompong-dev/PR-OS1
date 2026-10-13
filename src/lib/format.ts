@@ -29,6 +29,7 @@ export function ackStatusLabel(status: AckStatus) {
   return {
     acknowledged: "รับทราบแล้ว",
     pending: "รอรับทราบ",
+    declined: "ไม่สะดวก",
     not_required: "ยังไม่ต้องรับทราบ",
   }[status];
 }

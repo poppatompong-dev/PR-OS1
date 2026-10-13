@@ -286,6 +286,7 @@ const baseEvents: PrEvent[] = [
     status: "published",
     urgency: "normal",
     shortNote: "เก็บภาพมุมสูงและภาพจิตอาสาทำความสะอาดริมเขื่อน",
+    sourceReference: "ตัวอย่าง นว 52003/0145",
     hasChanges: true,
     updatedAt: "2026-08-15T11:00:00+07:00",
     assignments: [
@@ -300,7 +301,9 @@ const baseEvents: PrEvent[] = [
         id: "asg_014",
         person: people[3],
         role: roles[2],
-        ackStatus: "pending",
+        ackStatus: "declined",
+        declinedAt: "2026-08-15T12:10:00+07:00",
+        declineReason: "ติดงานถ่ายทำอีกงานที่ได้รับมอบหมายก่อนในช่วงเช้า",
       },
       {
         id: "asg_015",

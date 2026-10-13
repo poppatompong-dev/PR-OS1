@@ -16,5 +16,7 @@ union all select '0012 reminders/conflict', exists (select 1 from pg_proc where 
   and exists (select 1 from pg_proc where proname = 'check_staff_conflict')
 union all select '0013 monitor board',
   coalesce(pg_get_function_result(to_regprocedure('public.get_monitor_events()')) like '%assignee_detail%', false)
+union all select '0014 workflow gaps', to_regprocedure('public.decline_assignment(uuid, text)') is not null
+  and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'events' and column_name = 'source_url')
 union all select 'มี admin อย่างน้อย 1 คน', exists (select 1 from public.profiles where role = 'admin')
 union all select 'มีบุคลากรในระบบ', exists (select 1 from public.people);

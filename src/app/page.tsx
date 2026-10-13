@@ -78,6 +78,7 @@ export default async function HomePage() {
                 <span className="unack-event">{row.eventTitle}</span>
                 <span className="unack-meta">
                   {row.roleName} · {formatThaiDate(row.eventDate)}
+                  {row.status === "declined" ? " · แจ้งไม่สะดวก" : ""}
                 </span>
               </li>
             ))}

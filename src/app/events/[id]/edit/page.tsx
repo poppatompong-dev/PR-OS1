@@ -102,6 +102,30 @@ export default async function EditEventPage({
           </select>
         </label>
         <label className="form-field">
+          เลขที่หนังสือ (ถ้ามี)
+          <input
+            className="input"
+            name="sourceReference"
+            maxLength={200}
+            defaultValue={event.sourceReference ?? ""}
+            placeholder="เช่น นว 52001/1234"
+            autoComplete="off"
+          />
+        </label>
+        <label className="form-field">
+          ลิงก์หนังสือใน e-Office (ถ้ามี)
+          <input
+            className="input"
+            name="sourceUrl"
+            type="url"
+            inputMode="url"
+            maxLength={500}
+            defaultValue={event.sourceUrl ?? ""}
+            placeholder="https://…"
+            autoComplete="off"
+          />
+        </label>
+        <label className="form-field">
           ความสำคัญ
           <select className="select" name="urgency" defaultValue={event.urgency}>
             <option value="normal">ปกติ</option>

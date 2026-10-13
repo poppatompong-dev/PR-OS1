@@ -3,7 +3,7 @@
 Loop state ของ PR-OS — ไฟล์นี้สั้นและอัปเดตบ่อย ใช้ดูว่า "ตอนนี้อยู่ตรงไหน" ก่อนเริ่มงานทุกครั้ง
 รายละเอียดเชิงลึกของสิ่งที่ทำเสร็จแล้วทั้งหมดอยู่ที่ `docs/14-implementation-status.md` — ไฟล์นี้ไม่ซ้ำเนื้อหานั้น
 
-อัปเดตล่าสุด: 2026-10-13 (Production เชื่อม Supabase จริงแล้ว — รอผลตรวจ migration + ตัดสินใจรอบถัดไปแล้ว ดูหัวข้อ "ตัดสินใจแล้ว")
+อัปเดตล่าสุด: 2026-10-13 (ปิดช่องโหว่การทำงานเสร็จบน branch `claude/relaxed-tesla-wn9k2s` — **รัน `0014` บน Supabase จริงก่อน merge**)
 
 ## Production สถานะปัจจุบัน
 
@@ -15,7 +15,7 @@ Loop state ของ PR-OS — ไฟล์นี้สั้นและอั�
   (ถอด Space Grotesk ออกแล้ว: ไม่มีสระ/วรรณยุกต์ไทย หัวเรื่องไทยจึงตกไปใช้ฟอนต์ระบบอยู่ดี)
 - **สี:** ม่วงเทศบาลนครนครสวรรค์ `#5e2f73` + Dark mode ฐานม่วงเทา `#1e1a24`
 - **อุปกรณ์หลัก:** มือถือ + iPad แนวตั้ง (bottom nav) / เดสก์ท็อปใช้ side rail / จอมอนิเตอร์ไม่แตะ
-- **Quality Gates:** `typecheck` ✓ | `lint` ✓ | `build` ✓ | `smoke test (12/12 in mock mode)` ✓
+- **Quality Gates:** `typecheck` ✓ | `lint` ✓ | `test:unit` (13) ✓ | `build` ✓ | `smoke test (12/12 in mock mode)` ✓
 - **Keep-alive:** `.github/workflows/keep-alive.yml` เรียก `/api/health` ทุกวัน ไม่ต้องใช้ secret — เขียวเมื่อถึงฐานข้อมูลจริง แดงเมื่อ pause หรือหลุดกลับไปโหมดตัวอย่าง
 - **DB Security:** `check_staff_conflict()` ใน `0012` และ `combined_0009_to_0012.sql` ได้รับการเสริม Authorization Check (PL/pgSQL) เรียบร้อย
 
@@ -41,11 +41,33 @@ Loop state ของ PR-OS — ไฟล์นี้สั้นและอั�
 
 ทดสอบแล้ว: 16 หน้า x ความกว้าง 360/390/820/1024/1440 x light+dark — ไม่มีหน้าไหนล้นจอหรือ error
 
+## ปิดช่องโหว่การทำงาน (2026-10-13) — เสร็จ รอ owner รัน 0014
+
+| เรื่อง | ที่ทำ |
+| --- | --- |
+| ปุ่ม "ไม่สะดวก" | `/mobile/my-tasks` ใต้ปุ่มรับทราบ ต้องใส่เหตุผล → `decline_assignment()` ติดธงตาม version, ถอนการรับทราบเดิม, audit, แจ้ง supervisor ทันที · หน้างานแสดงเหตุผล · รายงาน/Excel แสดงแค่สถานะ (เหตุผลอาจเป็นข้อมูลส่วนบุคคล) |
+| แจ้งหัวหน้า 3 ชม. ก่อนงาน | แถว `escalation` ต่อ supervisor ตอนส่งตรวจซ้ำ ส่งเฉพาะถ้ายังมีคนไม่รับทราบ/ไม่สะดวก พร้อมรายชื่อ |
+| สรุปงานพรุ่งนี้ 17:00 | `src/lib/notifications/digest.ts` สร้างแถวคนละ 1 ข้อความ (กันซ้ำด้วย `dedupe_key`) แทนเตือน 24 ชม. |
+| เตือน 1.5 ชม. | LINE เฉพาะคนที่ยังไม่รับทราบ · รับทราบแล้ว → อีเมล · ไม่สะดวก → ไม่ส่ง |
+| ตรวจก่อนส่ง | `src/lib/notifications/rules.ts` (มี unit test 13 ข้อ) — งานยกเลิก/ลบ/เริ่มแล้ว/ถูกนำออก → `skipped` พร้อมเหตุผล |
+| เลขที่หนังสือ / e-Office | ฟอร์มเพิ่ม/แก้ไข + หน้างาน (`source_reference` เดิม + `source_url` ใหม่ รับเฉพาะ http(s)) |
+| ตัวเรียกคิว | `.github/workflows/notifications-cron.yml` ทุก 15 นาที **ปิดอยู่** จนกว่าตั้ง secret + ตัวแปร (`docs/15` ข้อ 4) |
+
+บั๊กที่เจอระหว่างทาง (สำคัญ):
+
+- **`enqueue_event_reminders()` ล้มทุกครั้งตั้งแต่ 0012** (`nullif(jsonb, '')`) แอปไม่ตรวจ error → **ไม่เคยมีการเตือนล่วงหน้าเข้าคิวเลย** แก้ใน 0014 และแอป log error ของ rpc แล้ว
+- **"บันทึกและเผยแพร่" จากฟอร์มไม่สร้างคิวแจ้งเตือน** (มีแต่ปุ่มเผยแพร่ในหน้างาน) — แก้แล้ว
+- **แก้วัน/เวลางานแล้วเตือนไม่ย้ายตาม** — ตอนนี้ตั้งเวลาใหม่และ skip แถวเก่าพร้อมเหตุผล
+
+ทดสอบแล้ว: 0014 บน Postgres 16 (รันซ้ำได้ + 15 สถานการณ์ รวม RLS ทุก role) · ตัวประมวลผลคิวจริงผ่าน PostgREST 12 (11 แถว ผลตรงทุกแถว, digest ไม่ซ้ำ, secret ผิด → 401) · fallback บนฐานข้อมูลที่ยังไม่มี 0014 · unit test 13/13 · typecheck/lint/build · หน้าจอ demo 10 หน้า × มือถือ/iPad/เดสก์ท็อป + dark ไม่มี error/ล้นจอ
+
 ## เริ่มตรงนี้ครั้งหน้า
 
-1. **ดูผล `supabase/checks/migration_status.sql`** จาก owner — แถวไหน false ให้รันไฟล์นั้น (ดู `docs/15` ข้อ 2)
-2. **ปิดช่องโหว่การทำงาน** ตามหัวข้อ "ตัดสินใจแล้ว" ด้านล่าง (ต้องมี migration ใหม่ → owner รันเอง)
-3. **ทดสอบ Live Backend Smoke Test** (สร้างงาน, อัปโหลดไฟล์, ตรวจสอบ RLS & Monitor)
+1. **owner รัน `supabase/migrations/0014_workflow_gaps.sql`** ใน SQL Editor แล้วรัน `supabase/checks/migration_status.sql` ซ้ำ (ทุกแถว true) — แล้วค่อย merge branch
+   (ถ้า merge ก่อน หน้าเว็บยังทำงานได้ด้วย fallback แต่ปุ่มไม่สะดวกยังใช้ไม่ได้และเตือนยังไม่เข้าคิว)
+2. เปิดตัวเรียกคิวตาม `docs/15` ข้อ 4 (ยังโหมดจำลองจนกว่าจะใส่ key LINE/Resend)
+3. ทดสอบบน production จริง: กดไม่สะดวกจากบัญชี assignee → หัวหน้าเห็นในหน้างาน + แถว `declined` ใน `/settings`
+4. หลังยืนยัน 0014 บน production แล้ว ลบ `PRE_0014_EVENT_SELECT` fallback ใน `src/lib/events/queries.ts` และ `src/lib/assignments/queries.ts`
 
 ## ตัดสินใจแล้ว (owner, 2026-10-13)
 
@@ -58,9 +80,10 @@ Loop state ของ PR-OS — ไฟล์นี้สั้นและอั�
 
 ## รออะไรจาก human อยู่
 
-1. **ผลของ `supabase/checks/migration_status.sql`** — รู้ว่ารัน migration ถึงตัวไหนแล้ว
-2. **ลิงก์ปลายทางของเครื่องมือ 2 ตัวที่ส่งมาเป็น `share.google`** (โดเมนนี้ถูก network policy บล็อก) เพื่อติดตั้งและทดสอบ
-3. **key สำหรับส่งจริง** (`LINE_MESSAGING_CHANNEL_ACCESS_TOKEN`, `RESEND_API_KEY`, `NOTIFICATIONS_CRON_SECRET`) — เลื่อนไปก่อนตามที่ตกลง
+1. **ผลของ `supabase/checks/migration_status.sql`** — รู้ว่ารัน migration ถึงตัวไหนแล้ว แล้ว**รัน `0014`** (Human Gate: แก้ schema จริง)
+2. **เปิดตัวเรียกคิว** — ตั้ง `NOTIFICATIONS_CRON_SECRET` ใน Vercel + GitHub secret และตัวแปร `NOTIFICATIONS_CRON_ENABLED=true` (Human Gate: scheduled job + secret ใหม่)
+3. **ลิงก์ปลายทางของเครื่องมือ 2 ตัวที่ส่งมาเป็น `share.google`** (โดเมนนี้ถูก network policy บล็อก) เพื่อติดตั้งและทดสอบ
+4. **key สำหรับส่งจริง** (`LINE_MESSAGING_CHANNEL_ACCESS_TOKEN`, `RESEND_API_KEY`) — เลื่อนไปก่อนตามที่ตกลง
 
 ## Attempt log
 
@@ -80,6 +103,8 @@ Loop state ของ PR-OS — ไฟล์นี้สั้นและอั�
   keep-alive ที่ไม่เคย ping จริง (ต้นเหตุ Supabase pause), 5 crash (วันที่ผิดรูปแบบใน URL, การเขียนข้อมูลใน demo mode)
   และ /settings ล้นจอบน iPad แนวตั้ง
 - 2026-10-13 — อัปเดต runbook/สถานะให้ครอบคลุม `0011`–`0013` และ keep-alive; ทำ benchmark ระบบใกล้เคียง +
-  สำรวจความสามารถด้านสื่อของ Claude → `docs/18-benchmark-and-media-ideas.md`
+  สำรวจความสามารถด้านสื่อของ Claude → `docs/18-benchmark-and-media-ideas.md`; พบว่า production เชื่อม Supabase จริงแล้ว
+- 2026-10-13 — ปิดช่องโหว่การทำงาน (`0014`): ไม่สะดวก, แจ้งหัวหน้า, สรุปพรุ่งนี้ 17:00, เตือน 1.5 ชม. ประหยัดโควต้า,
+  เลขที่หนังสือ/e-Office, cron GitHub Actions (ปิดไว้) + แก้บั๊กเตือนล่วงหน้าไม่เคยเข้าคิว
 
 

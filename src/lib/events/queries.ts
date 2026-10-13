@@ -27,18 +27,33 @@ export type ScheduleFilters = {
 
 const EVENT_SELECT = `
   id, title, description, event_date, start_time, end_time,
-  intake_channel, status, urgency, short_note, internal_note, has_changes,
-  cancellation_reason, updated_at,
+  intake_channel, source_reference, source_url, status, urgency, short_note,
+  internal_note, has_changes, cancellation_reason, updated_at,
   location:locations(id, name, description),
   owner_department:departments(id, name, short_name),
   event_type:event_types(id, name, color),
   assignments(
     id, assignment_version, assignment_status, note,
+    declined_at, declined_version, decline_reason,
     person:people(id, display_name, position, is_active),
     role:roles(id, code, name, color),
     acknowledgements(assignment_version, acknowledged_at)
   )
 `;
+
+// The same select without the columns migration 0014 adds. Used only when the
+// database answers 42703 (undefined column): the code may reach production
+// before the owner has run 0014, and the schedule must not go down meanwhile.
+// Drop this once 0014 is confirmed on the live project.
+const PRE_0014_EVENT_SELECT = EVENT_SELECT.replace("source_url, ", "").replace(
+  "declined_at, declined_version, decline_reason,",
+  "",
+);
+
+/** Postgres "undefined column" — the schema is older than the code. */
+export function isMissingColumn(error: { code?: string } | null | undefined): boolean {
+  return error?.code === "42703";
+}
 
 export async function getScheduleEvents(
   filters: ScheduleFilters = {},
@@ -64,27 +79,31 @@ export async function getScheduleEvents(
 
   const supabase = await createClient();
 
-  let query = supabase
-    .from("events")
-    .select(EVENT_SELECT)
-    .is("deleted_at", null)
-    .order("event_date", { ascending: true })
-    .order("start_time", { ascending: true })
-    .limit(100);
+  const run = (select: string) => {
+    let query = supabase
+      .from("events")
+      .select(select)
+      .is("deleted_at", null)
+      .order("event_date", { ascending: true })
+      .order("start_time", { ascending: true })
+      .limit(100);
 
-  if (filters.from) query = query.gte("event_date", filters.from);
-  if (filters.to) query = query.lte("event_date", filters.to);
-  if (filters.status && filters.status !== "all") {
-    query = query.eq("status", filters.status);
-  }
-  if (filters.departmentId && filters.departmentId !== "all") {
-    query = query.eq("owner_department_id", filters.departmentId);
-  }
-  if (filters.search) {
-    query = query.ilike("title", `%${filters.search}%`);
-  }
+    if (filters.from) query = query.gte("event_date", filters.from);
+    if (filters.to) query = query.lte("event_date", filters.to);
+    if (filters.status && filters.status !== "all") {
+      query = query.eq("status", filters.status);
+    }
+    if (filters.departmentId && filters.departmentId !== "all") {
+      query = query.eq("owner_department_id", filters.departmentId);
+    }
+    if (filters.search) {
+      query = query.ilike("title", `%${filters.search}%`);
+    }
+    return query;
+  };
 
-  const { data, error } = await query;
+  let { data, error } = await run(EVENT_SELECT);
+  if (isMissingColumn(error)) ({ data, error } = await run(PRE_0014_EVENT_SELECT));
   if (error) throw new Error(`getScheduleEvents: ${error.message}`);
 
   return (data ?? []).map(mapEvent);
@@ -210,12 +229,19 @@ function mapEvent(row: any): PrEvent {
         (ack: any) => ack.assignment_version === a.assignment_version,
       );
 
+      // A "ไม่สะดวก" flag only counts for the version it was given against: a
+      // significant edit bumps the version and the person has to answer again.
+      const declined =
+        a.declined_at != null && a.declined_version === a.assignment_version;
+
       // Ack only matters for published events; drafts are "not required" yet.
       const ackStatus: AckStatus = !published
         ? "not_required"
         : matched
           ? "acknowledged"
-          : "pending";
+          : declined
+            ? "declined"
+            : "pending";
 
       return {
         id: a.id,
@@ -233,6 +259,8 @@ function mapEvent(row: any): PrEvent {
         },
         ackStatus,
         acknowledgedAt: matched?.acknowledged_at ?? undefined,
+        declinedAt: declined ? a.declined_at : undefined,
+        declineReason: declined ? (a.decline_reason ?? undefined) : undefined,
         note: a.note ?? undefined,
       };
     });
@@ -260,6 +288,8 @@ function mapEvent(row: any): PrEvent {
     urgency: row.urgency,
     shortNote: row.short_note ?? undefined,
     internalNote: row.internal_note ?? undefined,
+    sourceReference: row.source_reference ?? undefined,
+    sourceUrl: row.source_url ?? undefined,
     hasChanges: Boolean(row.has_changes),
     assignments,
     updatedAt: row.updated_at,
@@ -286,12 +316,10 @@ export async function getEventById(id: string): Promise<EventDetail | null> {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("events")
-    .select(EVENT_SELECT)
-    .eq("id", id)
-    .is("deleted_at", null)
-    .maybeSingle();
+  const run = (select: string) =>
+    supabase.from("events").select(select).eq("id", id).is("deleted_at", null).maybeSingle();
+  let { data, error } = await run(EVENT_SELECT);
+  if (isMissingColumn(error)) ({ data, error } = await run(PRE_0014_EVENT_SELECT));
 
   if (error) throw new Error(`getEventById: ${error.message}`);
   if (!data) return null;

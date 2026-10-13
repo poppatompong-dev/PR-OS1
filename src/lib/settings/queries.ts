@@ -200,6 +200,10 @@ export type NotificationSettings = {
   sameDayReminderEnabled: boolean;
   fallbackWhenLineFails: boolean;
   fallbackWhenQuotaExceeded: boolean;
+  // migration 0014
+  dailyDigestEnabled: boolean;
+  dailyDigestHour: number;
+  escalationHoursBefore: number;
 };
 
 export async function getNotificationSettings(): Promise<NotificationSettings> {
@@ -207,11 +211,14 @@ export async function getNotificationSettings(): Promise<NotificationSettings> {
     return {
       lineEnabled: true,
       emailEnabled: true,
-      lineMonthlyQuota: 500,
+      lineMonthlyQuota: 300,
       defaultReminderHours: 24,
       sameDayReminderEnabled: true,
       fallbackWhenLineFails: true,
       fallbackWhenQuotaExceeded: true,
+      dailyDigestEnabled: true,
+      dailyDigestHour: 17,
+      escalationHoursBefore: 3,
     };
   }
 
@@ -227,6 +234,9 @@ export async function getNotificationSettings(): Promise<NotificationSettings> {
       "same_day_reminder_enabled",
       "fallback_to_email_when_line_fails",
       "fallback_to_email_when_quota_exceeded",
+      "daily_digest_enabled",
+      "daily_digest_hour",
+      "escalation_hours_before",
     ]);
 
   const map = new Map((data ?? []).map((r) => [r.key as string, r.value]));
@@ -234,6 +244,13 @@ export async function getNotificationSettings(): Promise<NotificationSettings> {
   const asBool = (v: any, fallback = false) => (v === undefined ? fallback : v === true || v === "true");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const asNum = (v: any) => (typeof v === "number" ? v : Number(v));
+  // Zero is a real value here (digest at midnight, escalation off), so it
+  // must not fall through to the default the way `|| fallback` would.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const asInt = (v: any, fallback: number) => {
+    const n = asNum(v);
+    return v === undefined || v === null || !Number.isInteger(n) ? fallback : n;
+  };
 
   return {
     lineEnabled: asBool(map.get("line_enabled")),
@@ -243,5 +260,9 @@ export async function getNotificationSettings(): Promise<NotificationSettings> {
     sameDayReminderEnabled: asBool(map.get("same_day_reminder_enabled"), false),
     fallbackWhenLineFails: asBool(map.get("fallback_to_email_when_line_fails"), true),
     fallbackWhenQuotaExceeded: asBool(map.get("fallback_to_email_when_quota_exceeded"), true),
+    // Missing key = 0014 not run yet; the digest code treats that as off.
+    dailyDigestEnabled: asBool(map.get("daily_digest_enabled"), false),
+    dailyDigestHour: asInt(map.get("daily_digest_hour"), 17),
+    escalationHoursBefore: asInt(map.get("escalation_hours_before"), 3),
   };
 }

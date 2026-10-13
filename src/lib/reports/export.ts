@@ -90,7 +90,7 @@ export function buildReportSheets(report: ReportData): SheetData[] {
         row.eventTitle,
         row.personName,
         row.roleName,
-        ackStatusLabel("pending"),
+        ackStatusLabel(row.status),
       ]),
     ],
   };
