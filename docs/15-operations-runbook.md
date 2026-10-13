@@ -36,13 +36,13 @@ curl -s -o /dev/null -w "%{http_code}\n" \
 
 4. ถ้า restore ไม่ขึ้น/โปรเจกต์หายไปแล้ว ให้สร้างโปรเจกต์ใหม่ แล้วรัน migration `0001` → `0008` ตามลำดับ + `supabase/seed.sql` จากนั้นทำต่อตามหัวข้อ 2 (`combined_0009_to_0012.sql` แล้ว `0013`) และอัปเดต URL/anon key ใน `.env.local` และ Vercel
 
-**กัน pause ซ้ำ:** มี GitHub Actions `.github/workflows/keep-alive.yml` เรียก `https://pr-os1.vercel.app/api/health` ทุกวัน 10:17 น. (เวลาไทย) ไม่ต้องตั้ง secret ใน GitHub job จะ **ขึ้นสีแดงและส่งอีเมลแจ้ง** เมื่อไม่ได้แตะฐานข้อมูลจริง (Supabase pause หรือ Vercel ยังไม่ได้ใส่ตัวแปร Supabase) — ดังนั้นจนกว่าจะเชื่อม Supabase บน Vercel job นี้จะแดงทุกวัน ซึ่งเป็นสิ่งที่ตั้งใจ
+**กัน pause ซ้ำ:** มี GitHub Actions `.github/workflows/keep-alive.yml` เรียก `https://pr-os1.vercel.app/api/health` ทุกวัน 10:17 น. (เวลาไทย) ไม่ต้องตั้ง secret ใน GitHub job จะ **ขึ้นสีแดงและส่งอีเมลแจ้ง** เมื่อไม่ได้แตะฐานข้อมูลจริง (Supabase pause หรือ Vercel ยังไม่ได้ใส่ตัวแปร Supabase) 
 
 ---
 
 ## 2. Migration ที่ยังไม่ได้รันบน Supabase จริง
 
-รันใน **SQL Editor** ของ dashboard ตามลำดับ (คัดลอกทั้งไฟล์ วางแล้วกด Run) — ทางลัด: รัน `supabase/migrations/combined_0009_to_0012.sql` ไฟล์เดียวแทน 4 แถวแรก แล้วรัน `0013` ต่อ (ไฟล์รวมยังไม่มี `0013`)
+ตรวจก่อนว่ารันไปถึงไหนแล้วด้วย `supabase/checks/migration_status.sql` (อ่านอย่างเดียว แถวที่เป็น false คือไฟล์ที่ยังขาด) แล้วรันใน **SQL Editor** ของ dashboard ตามลำดับ (คัดลอกทั้งไฟล์ วางแล้วกด Run) — ทางลัด: รัน `supabase/migrations/combined_0009_to_0012.sql` ไฟล์เดียวแทน 4 แถวแรก แล้วรัน `0013` ต่อ (ไฟล์รวมยังไม่มี `0013`)
 
 | ไฟล์ | ทำอะไร | หมายเหตุ |
 |---|---|---|

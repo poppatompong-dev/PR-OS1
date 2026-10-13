@@ -3,19 +3,20 @@
 Loop state ของ PR-OS — ไฟล์นี้สั้นและอัปเดตบ่อย ใช้ดูว่า "ตอนนี้อยู่ตรงไหน" ก่อนเริ่มงานทุกครั้ง
 รายละเอียดเชิงลึกของสิ่งที่ทำเสร็จแล้วทั้งหมดอยู่ที่ `docs/14-implementation-status.md` — ไฟล์นี้ไม่ซ้ำเนื้อหานั้น
 
-อัปเดตล่าสุด: 2026-10-13 (โค้ดครบแล้ว — เหลือแค่งานฝั่ง owner: restore Supabase, รัน migration `0009`–`0013`, ใส่ credential)
+อัปเดตล่าสุด: 2026-10-13 (Production เชื่อม Supabase จริงแล้ว — รอผลตรวจ migration + ตัดสินใจรอบถัดไปแล้ว ดูหัวข้อ "ตัดสินใจแล้ว")
 
 ## Production สถานะปัจจุบัน
 
 - **URL:** [https://pr-os1.vercel.app](https://pr-os1.vercel.app/)
 - **สถานะ:** READY (Vercel Next.js 15.5.23)
-- **โหมดการทำงาน:** Mock Demo Fallback (เปิดอ่านตัวอย่าง ปลอดภัย หน้าไม่ล่ม 500)
+- **โหมดการทำงาน:** **Live** — `/api/health` ตอบ `mode: live, database: connected` (keep-alive ผ่านตั้งแต่ 2026-10-12)
+  ยังไม่รู้ว่ารัน migration ถึงตัวไหน → ให้ owner รัน `supabase/checks/migration_status.sql` (อ่านอย่างเดียว)
 - **Font:** Self-hosted — IBM Plex Sans Thai (หัวเรื่องและเนื้อความ) + JetBrains Mono (ตัวเลข)
   (ถอด Space Grotesk ออกแล้ว: ไม่มีสระ/วรรณยุกต์ไทย หัวเรื่องไทยจึงตกไปใช้ฟอนต์ระบบอยู่ดี)
 - **สี:** ม่วงเทศบาลนครนครสวรรค์ `#5e2f73` + Dark mode ฐานม่วงเทา `#1e1a24`
 - **อุปกรณ์หลัก:** มือถือ + iPad แนวตั้ง (bottom nav) / เดสก์ท็อปใช้ side rail / จอมอนิเตอร์ไม่แตะ
 - **Quality Gates:** `typecheck` ✓ | `lint` ✓ | `build` ✓ | `smoke test (12/12 in mock mode)` ✓
-- **Keep-alive:** `.github/workflows/keep-alive.yml` เรียก `/api/health` ทุกวัน ไม่ต้องใช้ secret — **จะแดงทุกวันจนกว่าจะเชื่อม Supabase จริง** (ตั้งใจให้แดง ไม่ใช่บั๊ก)
+- **Keep-alive:** `.github/workflows/keep-alive.yml` เรียก `/api/health` ทุกวัน ไม่ต้องใช้ secret — เขียวเมื่อถึงฐานข้อมูลจริง แดงเมื่อ pause หรือหลุดกลับไปโหมดตัวอย่าง
 - **DB Security:** `check_staff_conflict()` ใน `0012` และ `combined_0009_to_0012.sql` ได้รับการเสริม Authorization Check (PL/pgSQL) เรียบร้อย
 
 ## UI Redesign (2026-10-10) — เสร็จครบ 4 เฟส
@@ -42,19 +43,24 @@ Loop state ของ PR-OS — ไฟล์นี้สั้นและอั�
 
 ## เริ่มตรงนี้ครั้งหน้า
 
-1. **Restore / เตรียม Supabase Project**
-   - ถ้าโปรเจกต์เดิม: รัน `supabase/migrations/combined_0009_to_0012.sql` แล้วรัน `0013_monitor_board.sql` ต่อ
-   - ถ้าโปรเจกต์ใหม่: รัน `0001` ถึง `0008` + `seed.sql` ก่อน แล้วจึงรัน `combined_0009_to_0012.sql` และ `0013`
-2. **สร้างผู้ใช้และตั้งสิทธิ์ Admin** ผ่าน `public.profiles` (update `role = 'admin'::app_role`)
-3. **ใส่ Supabase Credentials บน Vercel** (สำหรับ Production environment) เพื่อเชื่อมต่อฐานข้อมูลจริง
-4. **ตั้ง Cron Job** ยิง `POST https://pr-os1.vercel.app/api/notifications/process` พร้อม header `x-notifications-secret: <NOTIFICATIONS_CRON_SECRET>`
-5. **ทดสอบ Live Backend Smoke Test** (สร้างงาน, อัปโหลดไฟล์, ตรวจสอบ RLS & Monitor)
+1. **ดูผล `supabase/checks/migration_status.sql`** จาก owner — แถวไหน false ให้รันไฟล์นั้น (ดู `docs/15` ข้อ 2)
+2. **ปิดช่องโหว่การทำงาน** ตามหัวข้อ "ตัดสินใจแล้ว" ด้านล่าง (ต้องมี migration ใหม่ → owner รันเอง)
+3. **ทดสอบ Live Backend Smoke Test** (สร้างงาน, อัปโหลดไฟล์, ตรวจสอบ RLS & Monitor)
+
+## ตัดสินใจแล้ว (owner, 2026-10-13)
+
+- **LINE:** สรุปงานของวันพรุ่งนี้ คนละ 1 ข้อความ เวลา 17:00 (แทนเตือน 24 ชม. รายงาน) + เตือน 1.5 ชม. ทาง LINE เฉพาะคนที่ยังไม่รับทราบ ที่เหลือส่ง Email
+- **Escalation:** ยังมีคนไม่รับทราบเมื่อเหลือ 3 ชม. ก่อนงาน → แจ้งทุกคนที่เป็น supervisor
+- **ปุ่ม "ไม่สะดวก":** ติดธง + เหตุผล แสดงในหน้างาน/รายงาน + แจ้ง supervisor — ไม่ถอดชื่ออัตโนมัติ หัวหน้าเปลี่ยนคนเอง
+- **ช่องเลขที่หนังสือ / ลิงก์ e-Office** ในงาน
+- **ตัวเรียกคิว:** GitHub Actions ทุก 15 นาที (repo เป็น public จึงไม่เสียนาที) ใช้ repo secret `NOTIFICATIONS_CRON_SECRET`
+- **ยังไม่ส่งจริง:** LINE/Resend key ยังไม่ใส่ — สร้างฟีเจอร์ในโหมดจำลอง (คิวขึ้น `skipped`)
 
 ## รออะไรจาก human อยู่
 
-1. **Restore / สร้าง Supabase project** — กู้คืนโปรเจกต์หรือสร้างโปรเจกต์ใหม่
-2. **รัน migration บน Supabase จริง** ผ่าน SQL Editor (`combined_0009_to_0012.sql` + `0013`)
-3. **credential Supabase บน Vercel Production** — `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NOTIFICATIONS_CRON_SECRET`
+1. **ผลของ `supabase/checks/migration_status.sql`** — รู้ว่ารัน migration ถึงตัวไหนแล้ว
+2. **ลิงก์ปลายทางของเครื่องมือ 2 ตัวที่ส่งมาเป็น `share.google`** (โดเมนนี้ถูก network policy บล็อก) เพื่อติดตั้งและทดสอบ
+3. **key สำหรับส่งจริง** (`LINE_MESSAGING_CHANNEL_ACCESS_TOKEN`, `RESEND_API_KEY`, `NOTIFICATIONS_CRON_SECRET`) — เลื่อนไปก่อนตามที่ตกลง
 
 ## Attempt log
 
