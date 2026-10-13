@@ -168,3 +168,13 @@ test("supervisor notices name the people and the reason, and link to the job", (
   assert.match(escalation, /ยังไม่รับทราบ: นาย ข \(พิธีกร\)/);
   assert.match(escalation, /แจ้งไม่สะดวก: นาย ก \(ช่างภาพ\)/);
 });
+
+test("a ไม่สะดวก notice is not sent once the job is cancelled", () => {
+  const d = decideDelivery({
+    ...base,
+    type: "declined",
+    event: event({ status: "canceled" }),
+    assignment: assignment({ declinedVersion: 2 }),
+  });
+  assert.equal(d.send, false);
+});

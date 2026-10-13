@@ -264,7 +264,10 @@ Response `200`:
 { "ok": true, "processed": 11, "sent": 0, "failed": 0, "skipped": 11, "digestsQueued": 3 }
 ```
 
-Each run first creates today's digest rows (from `daily_digest_hour` Bangkok,
+Each run claims its rows with `claim_due_notifications()` (SKIP LOCKED +
+`claimed_at`, reclaimable after 10 minutes), so overlapping runs never send the
+same row twice. LINE quota is counted against the Bangkok month the message is
+sent in. Each run first creates today's digest rows (from `daily_digest_hour` Bangkok,
 same day only), then works through due rows. Before sending, every row is
 re-checked against the current data (`src/lib/notifications/rules.ts`): removed,
 cancelled, deleted, already-started, declined or fully acknowledged work is

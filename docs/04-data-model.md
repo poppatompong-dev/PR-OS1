@@ -114,6 +114,7 @@ Key columns:
 - `dedupe_key` — unique (null ไม่ชนกัน) กันแถวซ้ำเมื่อ cron กับปุ่มประมวลผลคิวทำงานพร้อมกัน
   รูปแบบ `digest:<person>:<date>`, `escalation:<event>:<person>:<epoch>`, `reminder:<assignment>:<epoch>`,
   `declined:<assignment>:<version>:<person>`
+- `claimed_at` — ตัวประมวลผลจองแถวไว้ (`claim_due_notifications()`, `0014`) กันสองรอบส่งซ้ำ
 - `scheduled_for`
 - `sent_at`
 - `status`: `queued`, `sent`, `failed`, `skipped`

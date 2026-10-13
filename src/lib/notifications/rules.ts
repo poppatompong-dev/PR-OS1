@@ -56,7 +56,8 @@ export function decideDelivery(input: RuleInput): RuleDecision {
   if (!event) return skip("ไม่พบข้อมูลงาน");
   if (event.deletedAt) return skip("งานถูกลบแล้ว");
 
-  const liveOnly = type === "assignment" || type === "reminder" || type === "escalation";
+  const liveOnly =
+    type === "assignment" || type === "reminder" || type === "escalation" || type === "declined";
   if (liveOnly && event.status !== "published") return skip("งานไม่ได้อยู่ในสถานะเผยแพร่แล้ว");
 
   const start = eventStart(event.eventDate, event.startTime);

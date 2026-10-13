@@ -16,6 +16,13 @@
 -- ("invalid input syntax for type json") แอปไม่ได้ตรวจ error ของ rpc นี้
 -- การเตือนล่วงหน้าทั้ง 24 ชม. และ 1.5 ชม. จึงไม่เคยถูกเข้าคิวเลย
 --
+-- และปิดช่องโหว่สิทธิ์ที่มีอยู่แล้วบน production (เจอตอน review 2026-10-13):
+-- Supabase ให้ EXECUTE กับ anon บนฟังก์ชันใหม่ใน public โดยอัตโนมัติ และการเช็ก
+-- `current_app_role() not in (...)` ผ่านเมื่อ role เป็น NULL (NULL not in ... = NULL = ไม่ raise)
+-- ผู้ไม่ได้ล็อกอินจึงเรียก process_notification_queue() (ล้างคิวทั้งหมดเป็น skipped),
+-- cancel_event_reminders(), enqueue_event_notifications() และ check_staff_conflict() ได้
+-- ไฟล์นี้ใช้ coalesce ในทุกการเช็ก และ revoke anon ออกจากทุกฟังก์ชันที่ไม่ได้ตั้งใจให้สาธารณะ (ข้อ 10)
+--
 -- รันซ้ำได้ (idempotent) — ทุกคำสั่งใช้ if not exists / create or replace / on conflict
 -- ห้ามรันบน production จนกว่า owner ยืนยัน (Human Gate ใน CLAUDE.md)
 
@@ -58,6 +65,9 @@ alter table public.assignments add constraint assignments_decline_reason_len
 alter table public.notifications add column if not exists dedupe_key text;
 create unique index if not exists notifications_dedupe_key_uq
   on public.notifications (dedupe_key);
+
+-- ตัวประมวลผลจองแถวก่อนส่ง (ดู claim_due_notifications) กันส่งซ้ำเมื่อสองรอบทำงานซ้อนกัน
+alter table public.notifications add column if not exists claimed_at timestamptz;
 
 -- ---------------------------------------------------------------------------
 -- 5. ค่าตั้งต้น
@@ -174,6 +184,7 @@ begin
   end if;
 
   select asg.id, asg.event_id, asg.person_id, asg.assignment_version,
+         (asg.declined_at is not null and asg.declined_version = asg.assignment_version) as already_declined,
          e.title, e.status, e.deleted_at, e.event_date, e.start_time,
          p.display_name, r.name as role_name
     into a
@@ -219,6 +230,11 @@ begin
   );
 
   -- แจ้งหัวหน้าทันที (ไม่แจ้งตัวเอง ถ้าคนแจ้งเป็นหัวหน้าเอง)
+  -- แจ้งซ้ำเพื่อแก้เหตุผลไม่ต้องส่งใหม่ — แต่ถ้ารับทราบไปแล้วกลับมาแจ้งอีก (ธงถูกล้าง) ต้องส่ง
+  if a.already_declined then
+    return;
+  end if;
+
   insert into public.notifications
     (event_id, assignment_id, person_id, channel, notification_type, scheduled_for, status, quota_month, dedupe_key)
   select
@@ -226,7 +242,8 @@ begin
     case when sp.line_user_id is not null then 'line'::notification_channel else 'email'::notification_channel end,
     'declined'::notification_type,
     now(), 'queued', v_month,
-    format('declined:%s:%s:%s', a.id, a.assignment_version, sp.id)
+    -- เวลาอยู่ในคีย์: แจ้งไม่สะดวก → รับทราบ → แจ้งไม่สะดวกอีกครั้ง ต้องได้แจ้งหัวหน้าใหม่
+    format('declined:%s:%s:%s:%s', a.id, a.assignment_version, sp.id, extract(epoch from now())::bigint)
   from public.people sp
   where sp.id in (select public.supervisor_person_ids())
     and sp.id <> v_person
@@ -282,7 +299,7 @@ declare
   v_escalate timestamptz;
   v_month text := to_char(now() at time zone 'Asia/Bangkok', 'YYYY-MM');
 begin
-  if public.current_app_role() not in ('admin', 'supervisor', 'staff') then
+  if coalesce(public.current_app_role()::text, '') not in ('admin', 'supervisor', 'staff') then
     raise exception 'insufficient role to enqueue reminders';
   end if;
 
@@ -371,20 +388,176 @@ as $$
 declare
   v_count int := 0;
 begin
-  if public.current_app_role() not in ('admin', 'supervisor', 'staff') then
+  if coalesce(public.current_app_role()::text, '') not in ('admin', 'supervisor', 'staff') then
     raise exception 'insufficient role to cancel reminders';
+  end if;
+
+  -- ปลด dedupe_key: ถ้างานถูกนำกลับมาเผยแพร่ใหม่ เตือนชุดใหม่ต้องเข้าคิวได้
+  update public.notifications
+  set status = 'skipped',
+      sent_at = now(),
+      dedupe_key = null,
+      error_message = 'งานถูกยกเลิก: ยกเลิกการเตือนล่วงหน้า'
+  where event_id = p_event_id
+    and status = 'queued'
+    and notification_type::text in ('reminder', 'escalation', 'declined');
+
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 8b. จองแถวที่ถึงเวลาส่ง (เรียกด้วย service role จากตัวประมวลผลคิวเท่านั้น)
+--     cron กับปุ่ม "ประมวลผลคิว" อาจทำงานพร้อมกัน — แถวที่อีกรอบจองไว้จะถูกข้าม
+--     (skip locked + claimed_at) ถ้ารอบหนึ่งล่มกลางทาง แถวจะถูกจองใหม่ได้หลัง 10 นาที
+-- ---------------------------------------------------------------------------
+create or replace function public.claim_due_notifications(p_limit int default 200)
+returns setof uuid
+language sql
+security definer
+set search_path = public
+as $$
+  update public.notifications n
+  set claimed_at = now()
+  where n.id in (
+    select q.id
+    from public.notifications q
+    where q.status = 'queued'
+      and q.scheduled_for <= now()
+      and (q.claimed_at is null or q.claimed_at < now() - interval '10 minutes')
+    order by q.scheduled_for
+    limit greatest(1, least(coalesce(p_limit, 200), 500))
+    for update skip locked
+  )
+  returning n.id;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 8c. ฟังก์ชันเดิมที่เช็กสิทธิ์แบบปล่อย NULL ผ่าน — สร้างใหม่ด้วย coalesce (เนื้อหาเหมือนเดิม)
+-- ---------------------------------------------------------------------------
+create or replace function public.enqueue_event_notifications(
+  p_event_id uuid,
+  p_type notification_type
+)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_count int := 0;
+  v_month text := to_char(now() at time zone 'Asia/Bangkok', 'YYYY-MM');
+begin
+  if coalesce(public.current_app_role()::text, '') not in ('admin', 'supervisor', 'staff') then
+    raise exception 'insufficient role to enqueue notifications';
+  end if;
+
+  insert into public.notifications
+    (event_id, assignment_id, person_id, channel, notification_type, scheduled_for, status, quota_month)
+  select
+    p_event_id,
+    a.id,
+    a.person_id,
+    case when p.line_user_id is not null
+         then 'line'::notification_channel
+         else 'email'::notification_channel end,
+    p_type,
+    now(),
+    'queued',
+    v_month
+  from public.assignments a
+  join public.people p on p.id = a.person_id
+  where a.event_id = p_event_id
+    and a.assignment_status = 'assigned'
+    and not exists (
+      select 1 from public.notifications n
+      where n.assignment_id = a.id
+        and n.notification_type = p_type
+        and n.status = 'queued'
+    );
+
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+
+-- ไม่มีโค้ดเรียกแล้ว (แทนด้วย processDueNotifications) แต่ยังอยู่ในฐานข้อมูล:
+-- ปิดช่องที่ anon เรียกแล้วล้างคิวทั้งหมดได้
+create or replace function public.process_notification_queue()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_count int := 0;
+begin
+  if public.current_app_role() is distinct from 'admin' then
+    raise exception 'admin only';
   end if;
 
   update public.notifications
   set status = 'skipped',
       sent_at = now(),
-      error_message = 'งานถูกยกเลิก: ยกเลิกการเตือนล่วงหน้า'
-  where event_id = p_event_id
-    and status = 'queued'
-    and notification_type::text in ('reminder', 'escalation');
+      error_message = 'โหมดจำลอง: ยังไม่ได้เชื่อมต่อ LINE/Email provider'
+  where status = 'queued'
+    and scheduled_for <= now();
 
   get diagnostics v_count = row_count;
   return v_count;
+end;
+$$;
+
+create or replace function public.check_staff_conflict(
+  p_person_id uuid,
+  p_event_date date,
+  p_start_time time,
+  p_end_time time default null,
+  p_exclude_event_id uuid default null
+)
+returns table (
+  conflicting_event_id uuid,
+  conflicting_event_title text,
+  conflicting_start_time time,
+  conflicting_end_time time,
+  conflicting_location_name text,
+  conflicting_role_name text
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if coalesce(public.current_app_role()::text, '') not in ('admin', 'supervisor', 'staff')
+     and (public.current_person_id() is null or public.current_person_id() <> p_person_id) then
+    raise exception 'insufficient role to check staff conflict';
+  end if;
+
+  return query
+  select
+    e.id as conflicting_event_id,
+    e.title as conflicting_event_title,
+    e.start_time as conflicting_start_time,
+    e.end_time as conflicting_end_time,
+    coalesce(l.name, '—') as conflicting_location_name,
+    coalesce(r.name, '—') as conflicting_role_name
+  from public.assignments a
+  join public.events e on e.id = a.event_id
+  left join public.locations l on l.id = e.location_id
+  left join public.roles r on r.id = a.role_id
+  where a.person_id = p_person_id
+    and a.assignment_status = 'assigned'
+    and e.status in ('published', 'draft')
+    and e.deleted_at is null
+    and e.event_date = p_event_date
+    and (p_exclude_event_id is null or e.id <> p_exclude_event_id)
+    and (
+      (p_start_time, coalesce(p_end_time, p_start_time + interval '2 hours'))
+      overlaps
+      (e.start_time, coalesce(e.end_time, e.start_time + interval '2 hours'))
+    );
 end;
 $$;
 
@@ -399,6 +572,51 @@ revoke all on function public.decline_assignment(uuid, text) from public;
 revoke all on function public.enqueue_event_reminders(uuid) from public;
 revoke all on function public.cancel_event_reminders(uuid) from public;
 
+revoke all on function public.claim_due_notifications(int) from public;
+
 grant execute on function public.decline_assignment(uuid, text) to authenticated;
 grant execute on function public.enqueue_event_reminders(uuid) to authenticated;
 grant execute on function public.cancel_event_reminders(uuid) to authenticated;
+grant execute on function public.claim_due_notifications(int) to service_role;
+
+-- ---------------------------------------------------------------------------
+-- 10. ถอนสิทธิ์ที่ Supabase ให้ anon/authenticated โดยอัตโนมัติ
+--     `revoke ... from public` ไม่ลบ grant ที่ให้ role anon ตรง ๆ ต้องระบุชื่อ
+--     ฟังก์ชันที่ตั้งใจให้สาธารณะ (คงไว้): get_monitor_events, get_monitor_team,
+--     get_login_email, และ current_app_role/current_person_id/attachment_event_id
+--     ที่ RLS policy เรียกใช้ระหว่างตรวจสิทธิ์
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  f text;
+begin
+  -- ผู้ใช้ที่ล็อกอินเรียกได้ แต่ anon ห้าม
+  foreach f in array array[
+    'public.enqueue_event_notifications(uuid, notification_type)',
+    'public.enqueue_event_reminders(uuid)',
+    'public.cancel_event_reminders(uuid)',
+    'public.check_staff_conflict(uuid, date, time, time, uuid)',
+    'public.decline_assignment(uuid, text)',
+    'public.get_accounts()'
+  ] loop
+    if to_regprocedure(f) is not null then
+      execute format('revoke execute on function %s from anon', f);
+    end if;
+  end loop;
+
+  -- ภายในเท่านั้น: ทั้ง anon และ authenticated ห้าม
+  foreach f in array array[
+    'public.process_notification_queue()',
+    'public.setting_int(text, int)',
+    'public.setting_bool(text, boolean)',
+    'public.supervisor_person_ids()',
+    'public.clear_decline_on_ack()',
+    'public.claim_due_notifications(int)',
+    'public.handle_new_user()'
+  ] loop
+    if to_regprocedure(f) is not null then
+      execute format('revoke execute on function %s from public, anon, authenticated', f);
+    end if;
+  end loop;
+end;
+$$;

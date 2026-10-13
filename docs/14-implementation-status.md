@@ -78,4 +78,4 @@
 `0001` schema · `0002` auth/RLS/views · `0003` monitor feed · `0004` DB hardening · `0005` accounts · `0006` notifications · `0007` username login · `0008` monitor assignees · `0009` notification delivery settings · `0010` event attachments · `0011` nakhon sawan master data · `0012` reminders & conflict check · `0013` monitor board (status/การยกเลิก/ผู้รับทราบรายคน) · `0014` workflow gaps (ไม่สะดวก, แจ้งหัวหน้า, สรุปรายวัน, e-Office, แก้ reminder)
 
 ## Quality gates (ผ่านล่าสุด 13 ต.ค. 2026)
-`npm run build` ✓ · `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run test:unit` 13/13 · smoke test 12/12 (mock mode)
+`npm run build` ✓ · `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run test:unit` 14/14 · smoke test 12/12 (mock mode)

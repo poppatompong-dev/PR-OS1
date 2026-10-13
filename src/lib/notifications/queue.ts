@@ -19,7 +19,7 @@ import {
   type DigestItem,
   type NotificationContext,
 } from "@/lib/notifications/templates";
-import { decideDelivery, type RuleNotificationType } from "@/lib/notifications/rules";
+import { bangkokDate, decideDelivery, type RuleNotificationType } from "@/lib/notifications/rules";
 import { enqueueDailyDigests } from "@/lib/notifications/digest";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -145,6 +145,55 @@ const NOTIFICATION_SELECT = `
   person:people(display_name, email, line_user_id)
 `;
 
+// Without the columns migration 0014 adds, for a database that has not run it
+// yet (42703). Declines cannot exist there, so nothing is lost. Remove with
+// PRE_0014_EVENT_SELECT once 0014 is confirmed on the live project.
+const PRE_0014_NOTIFICATION_SELECT = NOTIFICATION_SELECT.replace(
+  "declined_version, decline_reason,",
+  "",
+);
+
+/**
+ * Take the due rows for this run. claim_due_notifications() marks them in
+ * one statement with SKIP LOCKED, so a cron run and the admin button running
+ * together cannot both send the same row. Before 0014 the function does not
+ * exist (PGRST202) and the run falls back to reading due rows directly.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function loadDueRows(admin: SupabaseClient, now: Date): Promise<any[]> {
+  const claimed = await admin.rpc("claim_due_notifications", { p_limit: 200 });
+  if (!claimed.error) {
+    const ids = ((claimed.data ?? []) as unknown[]).map((v) =>
+      typeof v === "string" ? v : String((v as Record<string, unknown>).claim_due_notifications ?? ""),
+    );
+    if (ids.length === 0) return [];
+    const { data, error } = await admin
+      .from("notifications")
+      .select(NOTIFICATION_SELECT)
+      .in("id", ids)
+      .eq("status", "queued")
+      .order("scheduled_for", { ascending: true });
+    if (error) throw new Error(`processDueNotifications: ${error.message}`);
+    return data ?? [];
+  }
+  if (claimed.error.code !== "PGRST202") {
+    throw new Error(`claim_due_notifications: ${claimed.error.message}`);
+  }
+
+  const run = (select: string) =>
+    admin
+      .from("notifications")
+      .select(select)
+      .eq("status", "queued")
+      .lte("scheduled_for", now.toISOString())
+      .order("scheduled_for", { ascending: true })
+      .limit(200);
+  let { data, error } = await run(NOTIFICATION_SELECT);
+  if (error?.code === "42703") ({ data, error } = await run(PRE_0014_NOTIFICATION_SELECT));
+  if (error) throw new Error(`processDueNotifications: ${error.message}`);
+  return data ?? [];
+}
+
 /** Who on a job has not answered, and who said ไม่สะดวก — for the supervisor alert. */
 async function loadOpenAssignees(
   admin: SupabaseClient,
@@ -234,28 +283,27 @@ export async function processDueNotifications(now = new Date()): Promise<Process
   const summary: ProcessSummary = { processed: 0, sent: 0, failed: 0, skipped: 0, digestsQueued: 0 };
 
   // Create today's digest rows first (no-op before the digest hour or once
-  // they exist), so the same run sends them.
-  summary.digestsQueued = await enqueueDailyDigests(admin, now);
+  // they exist), so the same run sends them. A failure here must not hold up
+  // the assignment and change notices behind it.
+  try {
+    summary.digestsQueued = await enqueueDailyDigests(admin, now);
+  } catch (err) {
+    console.error("enqueueDailyDigests", err instanceof Error ? err.message : err);
+  }
 
-  const { data, error } = await admin
-    .from("notifications")
-    .select(NOTIFICATION_SELECT)
-    .eq("status", "queued")
-    .lte("scheduled_for", now.toISOString())
-    .order("scheduled_for", { ascending: true })
-    .limit(200);
-  if (error) throw new Error(`processDueNotifications: ${error.message}`);
+  const data = await loadDueRows(admin, now);
+  // LINE counts a message in the month it is sent, in Thailand: a reminder
+  // queued on 28 Oct and sent on 3 Nov belongs to November's quota.
+  const quotaMonth = bangkokDate(now).slice(0, 7);
 
   const ackUrl = new URL("/mobile/my-tasks", env.appBaseUrl).toString();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const row of (data ?? []) as any[]) {
+  for (const row of data) {
     summary.processed += 1;
     const type = row.notification_type as RuleNotificationType;
     const ev = one(row.event);
     const assignment = one(row.assignment);
     const person = one(row.person);
-    const quotaMonth = row.quota_month ?? new Date().toISOString().slice(0, 7);
 
     if (!person) {
       await markRow(admin, row.id, "failed", "ไม่พบข้อมูลบุคคล");

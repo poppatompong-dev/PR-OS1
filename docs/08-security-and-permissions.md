@@ -77,6 +77,30 @@ Audit logs should capture:
 
 Audit logs should not be editable from the UI. If a correction is needed, create another audit record.
 
+## Function Privileges (fixed in 0014)
+
+Supabase grants EXECUTE on every new function in `public` to `anon` and
+`authenticated`; `revoke all ... from public` does not remove those grants. And
+`current_app_role() not in (...)` lets a NULL role through, because
+`NULL not in (...)` is NULL, not true. Together, before 0014 a visitor with only
+the public anon key could call `process_notification_queue()` (mark the whole
+queue skipped), `cancel_event_reminders()`, `enqueue_event_notifications()` and
+`check_staff_conflict()` — reproduced on a Supabase-shaped database.
+
+Rules from 0014 on:
+
+- Role checks use `coalesce(public.current_app_role()::text, '') not in (...)`
+  or `is distinct from`.
+- Every function that is not meant for visitors is revoked from `anon` by name;
+  internal helpers are revoked from `public, anon, authenticated` as well.
+- Publicly executable on purpose: `get_monitor_events`, `get_monitor_team`,
+  `get_login_email`, plus `current_app_role`, `current_person_id` and
+  `attachment_event_id`, which RLS policies call while checking access.
+- A new function must state its grants explicitly (revoke from `anon` unless
+  it is one of the above). Check with:
+  `select proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute');`
+
 ## Decline Reasons (0014)
 
 A "ไม่สะดวก" reason may be personal data (illness, family). It is stored on the
