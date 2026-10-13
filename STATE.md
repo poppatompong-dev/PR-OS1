@@ -3,7 +3,7 @@
 Loop state ของ PR-OS — ไฟล์นี้สั้นและอัปเดตบ่อย ใช้ดูว่า "ตอนนี้อยู่ตรงไหน" ก่อนเริ่มงานทุกครั้ง
 รายละเอียดเชิงลึกของสิ่งที่ทำเสร็จแล้วทั้งหมดอยู่ที่ `docs/14-implementation-status.md` — ไฟล์นี้ไม่ซ้ำเนื้อหานั้น
 
-อัปเดตล่าสุด: 2026-10-10 (UI Redesign ครบ 4 เฟส — รอเชื่อม Supabase จริง)
+อัปเดตล่าสุด: 2026-10-13 (โค้ดครบแล้ว — เหลือแค่งานฝั่ง owner: restore Supabase, รัน migration `0009`–`0013`, ใส่ credential)
 
 ## Production สถานะปัจจุบัน
 
@@ -14,7 +14,8 @@ Loop state ของ PR-OS — ไฟล์นี้สั้นและอั�
   (ถอด Space Grotesk ออกแล้ว: ไม่มีสระ/วรรณยุกต์ไทย หัวเรื่องไทยจึงตกไปใช้ฟอนต์ระบบอยู่ดี)
 - **สี:** ม่วงเทศบาลนครนครสวรรค์ `#5e2f73` + Dark mode ฐานม่วงเทา `#1e1a24`
 - **อุปกรณ์หลัก:** มือถือ + iPad แนวตั้ง (bottom nav) / เดสก์ท็อปใช้ side rail / จอมอนิเตอร์ไม่แตะ
-- **Quality Gates:** `typecheck` ✓ | `build` ✓ | `smoke test (8/8 in mock mode)` ✓
+- **Quality Gates:** `typecheck` ✓ | `lint` ✓ | `build` ✓ | `smoke test (12/12 in mock mode)` ✓
+- **Keep-alive:** `.github/workflows/keep-alive.yml` เรียก `/api/health` ทุกวัน ไม่ต้องใช้ secret — **จะแดงทุกวันจนกว่าจะเชื่อม Supabase จริง** (ตั้งใจให้แดง ไม่ใช่บั๊ก)
 - **DB Security:** `check_staff_conflict()` ใน `0012` และ `combined_0009_to_0012.sql` ได้รับการเสริม Authorization Check (PL/pgSQL) เรียบร้อย
 
 ## UI Redesign (2026-10-10) — เสร็จครบ 4 เฟส
@@ -42,8 +43,8 @@ Loop state ของ PR-OS — ไฟล์นี้สั้นและอั�
 ## เริ่มตรงนี้ครั้งหน้า
 
 1. **Restore / เตรียม Supabase Project**
-   - ถ้าโปรเจกต์เดิม: รัน `supabase/migrations/combined_0009_to_0012.sql`
-   - ถ้าโปรเจกต์ใหม่: รัน `0001` ถึง `0008` ก่อน แล้วจึงรัน `combined_0009_to_0012.sql`
+   - ถ้าโปรเจกต์เดิม: รัน `supabase/migrations/combined_0009_to_0012.sql` แล้วรัน `0013_monitor_board.sql` ต่อ
+   - ถ้าโปรเจกต์ใหม่: รัน `0001` ถึง `0008` + `seed.sql` ก่อน แล้วจึงรัน `combined_0009_to_0012.sql` และ `0013`
 2. **สร้างผู้ใช้และตั้งสิทธิ์ Admin** ผ่าน `public.profiles` (update `role = 'admin'::app_role`)
 3. **ใส่ Supabase Credentials บน Vercel** (สำหรับ Production environment) เพื่อเชื่อมต่อฐานข้อมูลจริง
 4. **ตั้ง Cron Job** ยิง `POST https://pr-os1.vercel.app/api/notifications/process` พร้อม header `x-notifications-secret: <NOTIFICATIONS_CRON_SECRET>`
@@ -52,7 +53,7 @@ Loop state ของ PR-OS — ไฟล์นี้สั้นและอั�
 ## รออะไรจาก human อยู่
 
 1. **Restore / สร้าง Supabase project** — กู้คืนโปรเจกต์หรือสร้างโปรเจกต์ใหม่
-2. **รัน migration บน Supabase จริง** ผ่าน SQL Editor
+2. **รัน migration บน Supabase จริง** ผ่าน SQL Editor (`combined_0009_to_0012.sql` + `0013`)
 3. **credential Supabase บน Vercel Production** — `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NOTIFICATIONS_CRON_SECRET`
 
 ## Attempt log
@@ -68,5 +69,11 @@ Loop state ของ PR-OS — ไฟล์นี้สั้นและอั�
   ม่วงเทศบาล + dark mode, การ์ดแทนตารางบนมือถือ, บอร์ดสถานะ, ฟอร์ม 4 ขั้นตอน, แนบรูปจากกล้อง,
   รายงาน 3 แบบ, PWA + ออฟไลน์ (service worker + คิวรับทราบใน IndexedDB)
   พร้อมแก้บั๊ก timezone, ตัวแปรฟอนต์ที่ไม่มีอยู่จริง และ reduced-motion
+- 2026-10-11 — จอมอนิเตอร์ใหม่ "แบบ 1 · รายการเต็ม" ที่ทีมเลือก (`0013` เพิ่มงานที่ยกเลิก + รายชื่อผู้ยังไม่รับทราบรายคน),
+  demo mode แสดงหน้า settings/print ได้, นาฬิกาจอตรึงเวลาไทย; full test pass แก้ PWA ที่โดน login redirect บัง,
+  keep-alive ที่ไม่เคย ping จริง (ต้นเหตุ Supabase pause), 5 crash (วันที่ผิดรูปแบบใน URL, การเขียนข้อมูลใน demo mode)
+  และ /settings ล้นจอบน iPad แนวตั้ง
+- 2026-10-13 — อัปเดต runbook/สถานะให้ครอบคลุม `0011`–`0013` และ keep-alive; ทำ benchmark ระบบใกล้เคียง +
+  สำรวจความสามารถด้านสื่อของ Claude → `docs/18-benchmark-and-media-ideas.md`
 
 

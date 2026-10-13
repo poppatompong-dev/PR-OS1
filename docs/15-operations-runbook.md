@@ -34,20 +34,23 @@ curl -s -o /dev/null -w "%{http_code}\n" \
 # คาดหวัง 200
 ```
 
-4. ถ้า restore ไม่ขึ้น/โปรเจกต์หายไปแล้ว ให้สร้างโปรเจกต์ใหม่ แล้วรัน migration `0001` → `0010` ตามลำดับ + `supabase/seed.sql` และอัปเดต URL/anon key ใน `.env.local`
+4. ถ้า restore ไม่ขึ้น/โปรเจกต์หายไปแล้ว ให้สร้างโปรเจกต์ใหม่ แล้วรัน migration `0001` → `0008` ตามลำดับ + `supabase/seed.sql` จากนั้นทำต่อตามหัวข้อ 2 (`combined_0009_to_0012.sql` แล้ว `0013`) และอัปเดต URL/anon key ใน `.env.local` และ Vercel
 
-**กัน pause ซ้ำ:** ถ้าจะเว้นช่วงไม่แตะโปรเจกต์เกิน 7 วัน ให้ตั้ง cron ภายนอก (เช่น GitHub Actions / cron-job.org) ยิง REST ping สัปดาห์ละครั้ง หรือเข้า dashboard สัปดาห์ละครั้ง
+**กัน pause ซ้ำ:** มี GitHub Actions `.github/workflows/keep-alive.yml` เรียก `https://pr-os1.vercel.app/api/health` ทุกวัน 10:17 น. (เวลาไทย) ไม่ต้องตั้ง secret ใน GitHub job จะ **ขึ้นสีแดงและส่งอีเมลแจ้ง** เมื่อไม่ได้แตะฐานข้อมูลจริง (Supabase pause หรือ Vercel ยังไม่ได้ใส่ตัวแปร Supabase) — ดังนั้นจนกว่าจะเชื่อม Supabase บน Vercel job นี้จะแดงทุกวัน ซึ่งเป็นสิ่งที่ตั้งใจ
 
 ---
 
 ## 2. Migration ที่ยังไม่ได้รันบน Supabase จริง
 
-รันใน **SQL Editor** ของ dashboard ตามลำดับ (คัดลอกทั้งไฟล์ วางแล้วกด Run)
+รันใน **SQL Editor** ของ dashboard ตามลำดับ (คัดลอกทั้งไฟล์ วางแล้วกด Run) — ทางลัด: รัน `supabase/migrations/combined_0009_to_0012.sql` ไฟล์เดียวแทน 4 แถวแรก แล้วรัน `0013` ต่อ (ไฟล์รวมยังไม่มี `0013`)
 
 | ไฟล์ | ทำอะไร | หมายเหตุ |
 |---|---|---|
 | `supabase/migrations/0009_notification_delivery_settings.sql` | เพิ่ม settings 3 คีย์ (reminder วันเดียวกัน, fallback อีเมลเมื่อ LINE ล้มเหลว/โควต้าเต็ม) | ไม่รันแล้ว toggle ในหน้า `/settings` จะบันทึกไม่ได้ |
 | `supabase/migrations/0010_event_attachments.sql` | ตาราง `event_attachments` + bucket `event-attachments` (private) + RLS ทั้ง table และ storage | ไม่รันแล้วแถบไฟล์แนบในหน้างานจะ error |
+| `supabase/migrations/0011_nakhon_sawan_master_data.sql` | ข้อมูลหลักสำนัก/กอง สถานที่ ประเภทงาน ของเทศบาลนครนครสวรรค์ | ไม่รันแล้ว dropdown ในฟอร์มจะเหลือแต่ข้อมูลตัวอย่างเดิม |
+| `supabase/migrations/0012_reminders_and_conflict_check.sql` | คิวเตือนล่วงหน้า 24 ชม./1.5 ชม. + `check_staff_conflict()` | ไม่รันแล้วการเตือนเวลาชนและ reminder จะใช้ไม่ได้ |
+| `supabase/migrations/0013_monitor_board.sql` | เพิ่ม `status`, `cancellation_reason`, `assignee_detail` ให้ `get_monitor_events()` (อ่านอย่างเดียว ไม่แตะตาราง/RLS) | ไม่รันแล้วจอ `/monitor` แบบใหม่จะไม่เห็นงานที่ยกเลิกและรายชื่อผู้ที่ยังไม่รับทราบ |
 
 ถ้ารัน `0010` แล้วเจอ `permission denied for table objects` (บางโปรเจกต์จำกัดสิทธิ์ schema `storage`) ให้ทำสองส่วนแยกกัน: ส่วนตาราง/bucket รันใน SQL Editor ตามปกติ ส่วน policy ของ storage สร้างผ่าน dashboard → Storage → bucket `event-attachments` → Policies โดยใช้เงื่อนไขเดียวกับในไฟล์ migration
 
