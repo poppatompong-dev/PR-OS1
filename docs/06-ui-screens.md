@@ -78,7 +78,7 @@ Sections:
 
 - Main info
 - Date/time and location
-- Owner and intake channel
+- Owner and intake channel, เลขที่หนังสือ and ลิงก์ e-Office (optional, both also on `/events/[id]/edit`; not copied by "คัดลอกงาน")
 - Assignments and roles
 - Attachments
 - Notification setting
@@ -109,6 +109,12 @@ Attachment panel (implemented):
 - Upload/delete visible only to admin/supervisor/staff
 - Assignees see only the files of events assigned to them; monitor never sees any of it
 
+Assignee answers (0014):
+
+- An assignee who pressed "ไม่สะดวก" shows as `— ไม่สะดวก` with the reason in a red note under
+  their name; managers see "นำออกแล้วเพิ่มคนแทนได้ด้านล่าง" and reassign with the existing controls
+- "เลขที่หนังสือ" and an "เปิดใน e-Office" link (new tab, http(s) only) under ข้อมูลหลัก when filled
+
 ## Screen 5: Mobile My Tasks
 
 Route: `/mobile/my-tasks`
@@ -126,6 +132,11 @@ Mobile priorities:
 - Location
 - Acknowledge button
 - Change warning
+- "ไม่สะดวก" (0014): a disclosure under the acknowledge button, one deliberate step away from it.
+  Opens a required reason box (≤ 500 chars, "หัวหน้าจะเห็นข้อความนี้") and a "แจ้งไม่สะดวก" button.
+  Only for published work that has not started. After an acknowledgement it reads
+  "ไปไม่ได้แล้ว? แจ้งไม่สะดวก". A declined card shows a red "แจ้งไม่สะดวกแล้ว" pill, the reason, and
+  keeps the acknowledge button so the person can take it back. Online only (not queued offline).
 
 ## Screen 6: Reports
 

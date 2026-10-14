@@ -137,12 +137,20 @@ export async function processNotificationQueue() {
   let error: string | undefined;
   try {
     const summary = await processDueNotifications();
-    notice = `ประมวลผล ${summary.processed} รายการ — ส่งแล้ว ${summary.sent}, ล้มเหลว ${summary.failed}, ข้าม ${summary.skipped}`;
+    notice =
+      `ประมวลผล ${summary.processed} รายการ — ส่งแล้ว ${summary.sent}, ล้มเหลว ${summary.failed}, ข้าม ${summary.skipped}` +
+      (summary.digestsQueued > 0 ? ` (สร้างสรุปงานพรุ่งนี้ ${summary.digestsQueued} รายการ)` : "");
   } catch (err) {
     error = err instanceof Error ? err.message : "ประมวลผลคิวไม่สำเร็จ";
   }
   revalidatePath("/settings");
   done(error, notice);
+}
+
+/** Whole number within [min, max], or the fallback — 0 is a valid answer. */
+function intInRange(value: FormDataEntryValue | null, min: number, max: number, fallback: number): number {
+  const n = Number(String(value ?? "").trim());
+  return String(value ?? "").trim() !== "" && Number.isInteger(n) && n >= min && n <= max ? n : fallback;
 }
 
 export async function updateNotificationSettings(formData: FormData) {
@@ -174,6 +182,21 @@ export async function updateNotificationSettings(formData: FormData) {
     {
       key: "fallback_to_email_when_quota_exceeded",
       value: formData.get("fallbackWhenQuotaExceeded") === "on",
+      updated_by: user.id,
+    },
+    {
+      key: "daily_digest_enabled",
+      value: formData.get("dailyDigestEnabled") === "on",
+      updated_by: user.id,
+    },
+    {
+      key: "daily_digest_hour",
+      value: intInRange(formData.get("dailyDigestHour"), 0, 23, 17),
+      updated_by: user.id,
+    },
+    {
+      key: "escalation_hours_before",
+      value: intInRange(formData.get("escalationHoursBefore"), 0, 48, 3),
       updated_by: user.id,
     },
   ];

@@ -16,6 +16,33 @@ function fail(message: string): never {
   redirect(`/events/new?error=${encodeURIComponent(message)}`);
 }
 
+/**
+ * เลขที่หนังสือ + ลิงก์ e-Office. Only http(s) links are accepted, so a
+ * pasted `javascript:` URL can never become a clickable link on the event
+ * page (the database enforces the same rule — migration 0014).
+ */
+function readSource(
+  formData: FormData,
+): { ok: true; source_reference: string | null; source_url: string | null } | { ok: false; error: string } {
+  const reference = emptyToNull(formData.get("sourceReference"));
+  const url = emptyToNull(formData.get("sourceUrl"));
+  if (reference && reference.length > 200) {
+    return { ok: false, error: "เลขที่หนังสือยาวเกิน 200 ตัวอักษร" };
+  }
+  if (url) {
+    let parsed: URL | null = null;
+    try {
+      parsed = new URL(url);
+    } catch {
+      parsed = null;
+    }
+    if (!parsed || (parsed.protocol !== "https:" && parsed.protocol !== "http:") || url.length > 500) {
+      return { ok: false, error: "ลิงก์ e-Office ต้องขึ้นต้นด้วย https:// หรือ http://" };
+    }
+  }
+  return { ok: true, source_reference: reference, source_url: url };
+}
+
 export async function createEvent(formData: FormData) {
   await blockWritesInDemoMode();
   const supabase = await createClient();
@@ -38,6 +65,8 @@ export async function createEvent(formData: FormData) {
 
   const personId = emptyToNull(formData.get("personId"));
   const roleId = emptyToNull(formData.get("roleId"));
+  const source = readSource(formData);
+  if (!source.ok) fail(source.error);
 
   const { data: created, error } = await supabase
     .from("events")
@@ -50,6 +79,8 @@ export async function createEvent(formData: FormData) {
       owner_department_id: emptyToNull(formData.get("ownerDepartmentId")),
       event_type_id: emptyToNull(formData.get("eventTypeId")),
       intake_channel: emptyToNull(formData.get("intakeChannel")) ?? "อื่นๆ",
+      source_reference: source.source_reference,
+      source_url: source.source_url,
       urgency: String(formData.get("urgency") ?? "normal"),
       short_note: emptyToNull(formData.get("shortNote")),
       internal_note: emptyToNull(formData.get("internalNote")),
@@ -93,8 +124,38 @@ export async function createEvent(formData: FormData) {
     },
   });
 
+  // "บันทึกและเผยแพร่" from the form publishes in one step, so it needs the
+  // same queueing as the publish button on the detail page — before this,
+  // work published from the form never notified its assignee at all.
+  if (publish) await queueOnPublish(supabase, created.id);
+
   revalidatePath("/schedule");
   redirect("/schedule");
+}
+
+/**
+ * Notification queueing is best-effort: a failed enqueue must not undo a
+ * saved event. It is logged, not swallowed — the reminder function failed
+ * on every call from 0012 until 0014 and nobody could tell.
+ */
+async function queueOnPublish(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  eventId: string,
+) {
+  const assignment = await supabase.rpc("enqueue_event_notifications", {
+    p_event_id: eventId,
+    p_type: "assignment",
+  });
+  if (assignment.error) console.error("enqueue_event_notifications", eventId, assignment.error.message);
+  await queueReminders(supabase, eventId);
+}
+
+async function queueReminders(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  eventId: string,
+) {
+  const reminders = await supabase.rpc("enqueue_event_reminders", { p_event_id: eventId });
+  if (reminders.error) console.error("enqueue_event_reminders", eventId, reminders.error.message);
 }
 
 // --- lifecycle actions (called from the event detail page) -----------------
@@ -147,6 +208,8 @@ export async function editEvent(formData: FormData) {
   }
   const endTime = emptyToNull(formData.get("endTime"));
   const locationId = emptyToNull(formData.get("locationId"));
+  const source = readSource(formData);
+  if (!source.ok) redirect(`${editPath}?error=${encodeURIComponent(source.error)}`);
 
   const { data: current, error: loadErr } = await supabase
     .from("events")
@@ -177,6 +240,8 @@ export async function editEvent(formData: FormData) {
     owner_department_id: emptyToNull(formData.get("ownerDepartmentId")),
     event_type_id: emptyToNull(formData.get("eventTypeId")),
     intake_channel: emptyToNull(formData.get("intakeChannel")) ?? "อื่นๆ",
+    source_reference: source.source_reference,
+    source_url: source.source_url,
     urgency: String(formData.get("urgency") ?? "normal"),
     short_note: emptyToNull(formData.get("shortNote")),
     internal_note: emptyToNull(formData.get("internalNote")),
@@ -202,10 +267,14 @@ export async function editEvent(formData: FormData) {
         .eq("id", a.id);
     }
     // Queue change notifications so affected assignees re-acknowledge.
-    await supabase.rpc("enqueue_event_notifications", {
+    const change = await supabase.rpc("enqueue_event_notifications", {
       p_event_id: eventId,
       p_type: "change",
     });
+    if (change.error) console.error("enqueue_event_notifications", eventId, change.error.message);
+    // A new date or time moves the reminders and the supervisor alert with it;
+    // the function skips the queued ones that no longer fit (migration 0014).
+    await queueReminders(supabase, eventId);
   }
 
   await writeAudit(
@@ -248,15 +317,8 @@ export async function publishEvent(formData: FormData) {
   if (error) redirect(`/events/${eventId}?error=${encodeURIComponent(error.message)}`);
 
   await writeAudit(supabase, user, eventId, "publish", "เผยแพร่งาน", { status: "published" });
-  // Queue assignment notifications for assignees (best-effort).
-  await supabase.rpc("enqueue_event_notifications", {
-    p_event_id: eventId,
-    p_type: "assignment",
-  });
-  // Enqueue advance (24h) and same-day (1.5h) reminders.
-  await supabase.rpc("enqueue_event_reminders", {
-    p_event_id: eventId,
-  });
+  // Assignment notices, the 1.5-hour reminder and the supervisor alert.
+  await queueOnPublish(supabase, eventId);
   revalidatePath("/schedule");
   revalidatePath(`/events/${eventId}`);
   redirect(`/events/${eventId}`);

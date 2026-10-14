@@ -4,7 +4,7 @@
 
 PR-OS คือระบบบริหารจัดการงานประชาสัมพันธ์ของหน่วยงานเทศบาล มีเป้าหมายให้ฝ่ายประชาสัมพันธ์บันทึกงาน, มอบหมายผู้รับผิดชอบ, แสดงตารางงานบนจอมอนิเตอร์, รับทราบงานผ่านมือถือ, แจ้งเตือน, และสรุปรายงานผู้บริหารได้จากระบบเดียว
 
-สถานะปัจจุบัน: **เชื่อม Supabase จริงแล้ว** (Auth + PostgreSQL + RLS + SECURITY DEFINER functions) ทำงานบนแผนฟรีทั้งหมด — core workflow ใช้งานได้จริงแล้ว: auth, event lifecycle, assignment/ack, monitor, ไฟล์แนบส่วนตัว (private Storage + signed URL), reports + export Excel/PDF, settings, notification queue (ยังโหมดจำลองจนกว่าจะใส่ credential) ⚠️ ตอนนี้ Supabase project ถูก pause อยู่ ต้อง restore ก่อนใช้งาน และ migration `0009`/`0010` ยังไม่ได้รันบนโปรเจกต์จริง — ดู `STATE.md`, `docs/15-operations-runbook.md`, `docs/14-implementation-status.md`
+สถานะปัจจุบัน: **เชื่อม Supabase จริงแล้ว** (Auth + PostgreSQL + RLS + SECURITY DEFINER functions) ทำงานบนแผนฟรีทั้งหมด — core workflow ใช้งานได้จริงแล้ว: auth, event lifecycle, assignment/ack, monitor, ไฟล์แนบส่วนตัว (private Storage + signed URL), reports + export Excel/PDF, settings, notification queue (ยังโหมดจำลองจนกว่าจะใส่ credential) Production (pr-os1.vercel.app) เชื่อม Supabase จริงแล้วตั้งแต่ 2026-10-12 — ยังต้องยืนยันว่ารัน migration ถึงตัวไหน (`supabase/checks/migration_status.sql`) และ `0014` ยังรอ owner รัน — ดู `STATE.md`, `docs/15-operations-runbook.md`, `docs/14-implementation-status.md`
 
 ## Quick Start For Agents
 
@@ -45,6 +45,7 @@ npm install
 npm run dev
 npm run build
 npm run typecheck
+npm run test:unit
 ```
 
 Notes:
@@ -226,6 +227,7 @@ The system must support:
 - Significant changes should reset acknowledgement only for affected assignees.
 - Significant fields include title, date, time, location, and assignees.
 - Acknowledgement should store timestamp and channel/context.
+- An assignee may answer "ไม่สะดวก" with a reason (`decline_assignment()`, migration 0014). It is tied to the assignment version like an acknowledgement, never removes the person automatically (a supervisor reassigns), and the reason stays off the monitor, reports and exports.
 
 ## Monitor Rules
 
@@ -270,6 +272,8 @@ Current design:
 - Track send status and provider message id
 - Track monthly LINE quota
 - Configurable timing, such as 24 hours or 1 hour before event
+- Current policy (owner, 2026-10-13): one "งานพรุ่งนี้" digest per person at 17:00 instead of per-job 24h reminders; the 1.5h reminder uses LINE only for people who have not acknowledged; supervisors get `declined` and `escalation` notices. See `docs/09-notification-design.md`.
+- Every queued row is re-checked at send time (`src/lib/notifications/rules.ts`, unit-tested) — keep new rules there, not in the queue loop.
 
 LINE free-tier concern:
 

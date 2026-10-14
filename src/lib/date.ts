@@ -105,3 +105,9 @@ export function safeRange(
   if (f > t) [f, t] = [t, f];
   return { from: f, to: t };
 }
+
+/** Whether a job (date + HH:MM, Thai local time) has not started yet. */
+export function startsInFuture(eventDate: string, startTime: string, now = new Date()): boolean {
+  const start = new Date(`${eventDate}T${startTime.slice(0, 5)}:00+07:00`);
+  return !Number.isNaN(start.getTime()) && start.getTime() > now.getTime();
+}

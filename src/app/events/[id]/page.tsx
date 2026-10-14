@@ -18,7 +18,7 @@ import {
   formatThaiDate,
   urgencyLabel,
 } from "@/lib/format";
-import { AlertTriangle, Copy, Download, Paperclip } from "lucide-react";
+import { AlertTriangle, Copy, Download, ExternalLink, FileText, Paperclip, UserX } from "lucide-react";
 import type { EventStatus } from "@/types/domain";
 import { AttachmentUpload } from "@/components/AttachmentUpload";
 
@@ -104,6 +104,18 @@ export default async function EventDetailPage({
         <p>เจ้าของเรื่อง: {event.ownerDepartment.name}</p>
         <p>ประเภทงาน: {event.eventType} · ความสำคัญ: {urgencyLabel(event.urgency)}</p>
         <p>ช่องทางรับเรื่อง: {event.intakeChannel}</p>
+        {event.sourceReference || event.sourceUrl ? (
+          <p className="source-ref">
+            <FileText size={18} aria-hidden="true" />
+            <span>เลขที่หนังสือ: {event.sourceReference ?? "—"}</span>
+            {event.sourceUrl ? (
+              <a href={event.sourceUrl} target="_blank" rel="noopener noreferrer">
+                เปิดใน e-Office
+                <ExternalLink size={15} aria-hidden="true" />
+              </a>
+            ) : null}
+          </p>
+        ) : null}
         {event.shortNote ? <p>หมายเหตุจอมอนิเตอร์: {event.shortNote}</p> : null}
         {event.internalNote ? <p>หมายเหตุภายใน: {event.internalNote}</p> : null}
         {event.status === "canceled" && event.cancellationReason ? (
@@ -132,6 +144,13 @@ export default async function EventDetailPage({
                       </form>
                     ) : null}
                   </div>
+                  {assignment.ackStatus === "declined" ? (
+                    <p className="decline-reason">
+                      <UserX size={15} aria-hidden="true" />{" "}
+                      <strong>แจ้งไม่สะดวก:</strong> {assignment.declineReason ?? "ไม่ระบุเหตุผล"}
+                      {canManageAssignments ? " — นำออกแล้วเพิ่มคนแทนได้ด้านล่าง" : ""}
+                    </p>
+                  ) : null}
                   {personConflicts.length > 0 ? (
                     <div
                       style={{

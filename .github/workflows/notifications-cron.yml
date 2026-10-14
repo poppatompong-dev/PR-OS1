@@ -1,0 +1,59 @@
+name: Notification Queue
+
+# Runs the app's notification queue every 15 minutes: sends what is due
+# (assignment notices, the 1.5-hour reminder, supervisor alerts) and, from
+# 17:00 Bangkok, creates and sends the "งานพรุ่งนี้" digest. The app decides
+# what is due; this job only knocks on the door.
+#
+# OFF until the owner turns it on, so it cannot fail every 15 minutes before
+# the secret exists. To turn it on (docs/15-operations-runbook.md):
+#   1. Vercel → Environment Variables: NOTIFICATIONS_CRON_SECRET=<long random>
+#   2. GitHub → Settings → Secrets and variables → Actions:
+#        secret   NOTIFICATIONS_CRON_SECRET  (same value)
+#        variable NOTIFICATIONS_CRON_ENABLED = true
+# Until LINE/Resend keys are set in Vercel the app runs the queue in
+# simulation mode: rows are marked "skipped", nothing is sent.
+#
+# Once on, it fails red (with GitHub's failure email) when the call does not
+# succeed — it never reports success for a run that did nothing.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: notification-queue
+  cancel-in-progress: false
+
+jobs:
+  process:
+    if: github.event_name == 'workflow_dispatch' || vars.NOTIFICATIONS_CRON_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Process due notifications
+        env:
+          APP_URL: https://pr-os1.vercel.app
+          CRON_SECRET: ${{ secrets.NOTIFICATIONS_CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Repository secret NOTIFICATIONS_CRON_SECRET is not set."
+            exit 1
+          fi
+          # No --retry: a timed-out call may still be sending on the server, and
+          # a second POST would race it. The next run, 15 minutes on, picks up.
+          code=$(curl -sS -o body.json -w '%{http_code}' --max-time 120 \
+            -X POST "$APP_URL/api/notifications/process" \
+            -H "x-notifications-secret: $CRON_SECRET") || true
+          code=${code:-000}
+          echo "HTTP $code"
+          cat body.json 2>/dev/null; echo
+          if [ "$code" = "401" ]; then
+            echo "::error::The app rejected the secret. Make NOTIFICATIONS_CRON_SECRET identical in Vercel and GitHub."
+            exit 1
+          fi
+          if [ "$code" != "200" ]; then
+            echo "::error::Queue processor answered HTTP $code."
+            exit 1
+          fi

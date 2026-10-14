@@ -39,6 +39,10 @@ MVP minimum:
 
 - View own assignments
 - Acknowledge own assignments
+- Say "ไม่สะดวก" on own published, not-yet-started assignments — only through
+  `decline_assignment()` (SECURITY DEFINER, checks `current_person_id()`); the
+  assignee still has no UPDATE on `assignments` (verified: a direct update is
+  silently filtered by RLS, another person's call raises "ไม่พบงาน…", anon gets 42501)
 - View allowed attachments for assigned events
 
 ### Display
@@ -72,6 +76,44 @@ Audit logs should capture:
 - human-readable summary
 
 Audit logs should not be editable from the UI. If a correction is needed, create another audit record.
+
+## Function Privileges (fixed in 0014)
+
+Supabase grants EXECUTE on every new function in `public` to `anon` and
+`authenticated`; `revoke all ... from public` does not remove those grants. And
+`current_app_role() not in (...)` lets a NULL role through, because
+`NULL not in (...)` is NULL, not true. Together, before 0014 a visitor with only
+the public anon key could call `process_notification_queue()` (mark the whole
+queue skipped), `cancel_event_reminders()`, `enqueue_event_notifications()` and
+`check_staff_conflict()` — reproduced on a Supabase-shaped database.
+
+Rules from 0014 on:
+
+- Role checks use `coalesce(public.current_app_role()::text, '') not in (...)`
+  or `is distinct from`.
+- Every function that is not meant for visitors is revoked from `anon` by name;
+  internal helpers are revoked from `public, anon, authenticated` as well.
+- Publicly executable on purpose: `get_monitor_events`, `get_monitor_team`,
+  `get_login_email`, plus `current_app_role`, `current_person_id` and
+  `attachment_event_id`, which RLS policies call while checking access.
+- A new function must state its grants explicitly (revoke from `anon` unless
+  it is one of the above). Check with:
+  `select proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute');`
+
+## Decline Reasons (0014)
+
+A "ไม่สะดวก" reason may be personal data (illness, family). It is stored on the
+assignment and shown only on the event detail page (backend roles; RLS lets an
+assignee read only their own rows) and in the LINE/email notice to supervisors.
+It is deliberately left out of the monitor feed, `/reports`, the print view and
+the Excel export, which show the status "ไม่สะดวก" without the reason.
+
+## e-Office Links (0014)
+
+`events.source_url` is rendered as a link, so both the server action and a
+database CHECK accept only `http(s)://` (no `javascript:`), and it opens with
+`rel="noopener noreferrer"`. It is internal and not part of the monitor feed.
 
 ## Attachment Privacy
 

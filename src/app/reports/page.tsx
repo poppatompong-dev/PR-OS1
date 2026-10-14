@@ -248,6 +248,7 @@ export default async function ReportsPage({
                       </span>
                       <span>
                         {row.eventTitle} — {row.personName} ({row.roleName})
+                        {row.status === "declined" ? " · แจ้งไม่สะดวก" : ""}
                       </span>
                     </li>
                   ))}

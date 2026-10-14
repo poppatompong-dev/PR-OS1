@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { can, getSessionUser } from "@/lib/auth/roles";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getReportData } from "@/lib/reports/queries";
-import { eventStatusLabel, formatThaiDate } from "@/lib/format";
+import { ackStatusLabel, eventStatusLabel, formatThaiDate } from "@/lib/format";
 import { isIsoDate, safeRange } from "@/lib/date";
 import { PrintButton } from "./PrintButton";
 
@@ -201,6 +201,7 @@ export default async function ReportPrintPage({
               <th>งาน/กิจกรรม</th>
               <th>ผู้รับผิดชอบ</th>
               <th>บทบาท</th>
+              <th>สถานะ</th>
             </tr>
           </thead>
           <tbody>
@@ -210,11 +211,12 @@ export default async function ReportPrintPage({
                 <td>{row.eventTitle}</td>
                 <td>{row.personName}</td>
                 <td>{row.roleName}</td>
+                <td>{ackStatusLabel(row.status)}</td>
               </tr>
             ))}
             {report.unacked.length === 0 ? (
               <tr>
-                <td colSpan={4}>รับทราบครบแล้ว</td>
+                <td colSpan={5}>รับทราบครบแล้ว</td>
               </tr>
             ) : null}
           </tbody>

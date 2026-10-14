@@ -152,6 +152,28 @@ export default async function NewEventPage({
               </select>
             </label>
             <label className="form-field">
+              เลขที่หนังสือ (ถ้ามี)
+              <input
+                className="input"
+                name="sourceReference"
+                maxLength={200}
+                placeholder="เช่น นว 52001/1234"
+                autoComplete="off"
+              />
+            </label>
+            <label className="form-field">
+              ลิงก์หนังสือใน e-Office (ถ้ามี)
+              <input
+                className="input"
+                name="sourceUrl"
+                type="url"
+                inputMode="url"
+                maxLength={500}
+                placeholder="https://…"
+                autoComplete="off"
+              />
+            </label>
+            <label className="form-field">
               ความสำคัญ
               <select
                 className="select"

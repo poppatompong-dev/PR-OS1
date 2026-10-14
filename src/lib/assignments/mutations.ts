@@ -73,6 +73,49 @@ export async function acknowledgeAssignmentQuietly(formData: FormData): Promise<
   return recordAcknowledgement(assignmentId, version);
 }
 
+/**
+ * "ไม่สะดวก" — the assignee says they cannot do this job, with a reason.
+ *
+ * The name stays on the job (the supervisor decides who goes instead); the
+ * database function flags the assignment for its current version, withdraws
+ * an earlier acknowledgement of that version, writes the audit row and
+ * queues a notice to the supervisors, all in one transaction (0014).
+ * Online only: unlike an acknowledgement it carries a reason someone has to
+ * act on now, so it is not queued for later.
+ */
+export async function declineAssignment(formData: FormData) {
+  const assignmentId = String(formData.get("assignmentId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  const back = (message: string): never =>
+    redirect(`/mobile/my-tasks?error=${encodeURIComponent(message)}`);
+
+  if (!isSupabaseConfigured()) {
+    back("โหมดตัวอย่าง: ยังไม่ได้เชื่อมฐานข้อมูล จึงยังบันทึก \"ไม่สะดวก\" ไม่ได้");
+  }
+  if (!reason) back("กรุณาระบุเหตุผลที่ไม่สะดวก");
+  if (reason.length > 500) back("เหตุผลยาวเกิน 500 ตัวอักษร");
+
+  const supabase = await createClient();
+  const user = await getSessionUser(supabase);
+  if (!user) redirect("/login");
+
+  const { error } = await supabase.rpc("decline_assignment", {
+    p_assignment_id: assignmentId,
+    p_reason: reason,
+  });
+  if (error) {
+    // PGRST202 = function not found: the code is live but migration 0014 is not.
+    back(
+      error.code === "PGRST202"
+        ? "ปุ่มไม่สะดวกยังไม่พร้อมใช้งาน (รอผู้ดูแลอัปเดตฐานข้อมูล) — กรุณาแจ้งหัวหน้าโดยตรง"
+        : error.message,
+    );
+  }
+
+  revalidatePath("/mobile/my-tasks");
+  redirect("/mobile/my-tasks?declined=1");
+}
+
 export async function addAssignment(formData: FormData) {
   await blockWritesInDemoMode();
   const eventId = String(formData.get("eventId") ?? "");
@@ -108,14 +151,15 @@ export async function addAssignment(formData: FormData) {
     new_values: { person_id: personId, role_id: roleId },
   });
 
-  // Best-effort notification and reminder enqueue
-  await supabase.rpc("enqueue_event_notifications", {
+  // Best-effort notification and reminder enqueue: never undo the saved
+  // assignment, but do not hide a failure either.
+  const notice = await supabase.rpc("enqueue_event_notifications", {
     p_event_id: eventId,
     p_type: "assignment",
   });
-  await supabase.rpc("enqueue_event_reminders", {
-    p_event_id: eventId,
-  });
+  if (notice.error) console.error("enqueue_event_notifications", eventId, notice.error.message);
+  const reminders = await supabase.rpc("enqueue_event_reminders", { p_event_id: eventId });
+  if (reminders.error) console.error("enqueue_event_reminders", eventId, reminders.error.message);
 
   revalidatePath(`/events/${eventId}`);
   redirect(`/events/${eventId}`);

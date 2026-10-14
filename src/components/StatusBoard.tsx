@@ -36,6 +36,7 @@ export function StatusBoard({ events, today }: { events: PrEvent[]; today: strin
               <ul className="board-list">
                 {items.map((event) => {
                   const pending = event.assignments.filter((a) => a.ackStatus === "pending").length;
+                  const declined = event.assignments.filter((a) => a.ackStatus === "declined").length;
 
                   return (
                     <li key={event.id} className="board-card">
@@ -48,6 +49,9 @@ export function StatusBoard({ events, today }: { events: PrEvent[]; today: strin
                         <span className="board-where">{event.ownerDepartment.shortName}</span>
                         {pending > 0 ? (
                           <span className="tag tag-wait">รอรับทราบ {pending}</span>
+                        ) : null}
+                        {declined > 0 ? (
+                          <span className="tag tag-declined">ไม่สะดวก {declined}</span>
                         ) : null}
                       </Link>
                     </li>

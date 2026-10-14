@@ -12,6 +12,9 @@ export type UnackedRow = {
   eventDate: string;
   personName: string;
   roleName: string;
+  // "declined" = pressed ไม่สะดวก. The reason is deliberately not carried
+  // into reports or exports: it can be personal (illness, family).
+  status: "pending" | "declined";
 };
 
 export type ReportData = {
@@ -61,7 +64,7 @@ export async function getReportData(filters: {
         assignment.person.displayName,
         (workloadMap.get(assignment.person.displayName) ?? 0) + 1,
       );
-      if (assignment.ackStatus === "pending") {
+      if (assignment.ackStatus === "pending" || assignment.ackStatus === "declined") {
         pendingAcks += 1;
         if (event.status === "published") {
           unacked.push({
@@ -69,6 +72,7 @@ export async function getReportData(filters: {
             eventDate: event.eventDate,
             personName: assignment.person.displayName,
             roleName: assignment.role.name,
+            status: assignment.ackStatus,
           });
         }
       }

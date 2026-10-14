@@ -129,6 +129,8 @@ export function byPerson(events: PrEvent[]): PersonRow[] {
       row.total += 1;
       if (assignment.ackStatus === "acknowledged") row.acknowledged += 1;
       if (assignment.ackStatus === "pending") row.pending += 1;
+      // "ไม่สะดวก" with a reason is an answer, not a missed acknowledgement, so
+      // it counts in neither column and does not lower anyone's response rate.
       if (event.urgency !== "normal") row.urgent += 1;
       if (event.eventDate > row.lastDate) row.lastDate = event.eventDate;
       row.roles.set(assignment.role.name, (row.roles.get(assignment.role.name) ?? 0) + 1);

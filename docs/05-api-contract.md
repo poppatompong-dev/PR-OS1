@@ -142,6 +142,32 @@ Response:
 }
 ```
 
+### "ไม่สะดวก" — `decline_assignment(p_assignment_id uuid, p_reason text)` (RPC, `0014`)
+
+Implemented as a SECURITY DEFINER function called by the server action
+`declineAssignment` (`src/lib/assignments/mutations.ts`) from `/mobile/my-tasks`.
+
+- Caller must be the assigned person (`current_person_id()`), the event must be
+  published, not deleted and not yet started; reason required, ≤ 500 chars.
+- Flags the assignment for its current version, withdraws an acknowledgement of
+  that version (old timestamp kept in the audit row), writes
+  `audit_logs(action='decline')`, and queues a `declined` notification to every
+  supervisor (admins if there is none). Repeating it updates the reason without
+  a second notice.
+- Errors are raised in Thai and shown on the page as is. `PGRST202` (function
+  missing) means 0014 has not been run.
+- Acknowledging afterwards clears the flag (trigger on `acknowledgements`).
+
+### `enqueue_event_reminders(p_event_id uuid)` (RPC, rewritten in `0014`)
+
+Called on publish (detail page and "บันทึกและเผยแพร่" in the form), when an
+assignee is added, and after a significant edit. Idempotent. Queues the
+1.5-hour reminder per assignee, the 24-hour one only when the daily digest is
+off, and an `escalation` row per supervisor at `escalation_hours_before`.
+Queued reminder/escalation rows whose time no longer matches the event are
+marked `skipped` ("เวลางานเปลี่ยน"). The 0012 version failed on every call
+(`nullif(jsonb, '')`), so no reminder was queued before 0014.
+
 ## Monitor
 
 ### GET /api/monitor/events
@@ -230,7 +256,24 @@ Server actions in `src/lib/attachments/mutations.ts` (`uploadAttachment`, `delet
 
 Implemented in `src/app/api/notifications/process/route.ts`. Triggers `processDueNotifications()` — sends every queued notification whose `scheduled_for` has passed via LINE Messaging API / Resend email, applying quota guard and fallback settings.
 
-Not session-gated (no user is logged in when an external cron calls it); instead requires header `x-notifications-secret` to match `NOTIFICATIONS_CRON_SECRET`. Returns `401` if missing/mismatched. Intended caller: pg_cron + pg_net (or any external scheduler) once a production URL exists — not yet wired up.
+Not session-gated (no user is logged in when an external cron calls it); instead requires header `x-notifications-secret` to match `NOTIFICATIONS_CRON_SECRET`. Returns `401` if missing/mismatched. Caller: `.github/workflows/notifications-cron.yml` every 15 minutes, off until the repo variable `NOTIFICATIONS_CRON_ENABLED=true` is set (see `docs/15`).
+
+Response `200`:
+
+```json
+{ "ok": true, "processed": 11, "sent": 0, "failed": 0, "skipped": 11, "digestsQueued": 3 }
+```
+
+Each run claims its rows with `claim_due_notifications()` (SKIP LOCKED +
+`claimed_at`, reclaimable after 10 minutes), so overlapping runs never send the
+same row twice. LINE quota is counted against the Bangkok month the message is
+sent in. Each run first creates today's digest rows (from `daily_digest_hour` Bangkok,
+same day only), then works through due rows. Before sending, every row is
+re-checked against the current data (`src/lib/notifications/rules.ts`): removed,
+cancelled, deleted, already-started, declined or fully acknowledged work is
+marked `skipped` with the reason in `error_message`. A same-day reminder to
+someone who already acknowledged goes by email only (or is skipped if there is
+no email), to keep LINE quota for the people who still need to answer.
 
 Also reachable manually from `/settings` via the "ประมวลผลคิว" button (calls the same underlying function server-side, bypassing the secret check since it's already behind `requireAdmin()`).
 
