@@ -1,7 +1,7 @@
 # Operations Runbook
 
 คู่มือปฏิบัติการสำหรับเจ้าของโปรเจกต์ (ไม่ใช่ agent) — งานที่ต้องทำเองบน Supabase / เครื่อง production
-อัปเดตล่าสุด: 13 สิงหาคม 2569
+อัปเดตล่าสุด: 19 ตุลาคม 2569
 
 รายการในไฟล์นี้อยู่หลัง **Human Gate** ตาม `CLAUDE.md` คือ agent เตรียม SQL/โค้ดให้ได้ แต่ไม่รันให้เอง เพราะกระทบ project จริง/ข้อมูลจริง/ส่งข้อความจริง
 
@@ -10,49 +10,44 @@
 
 ---
 
-## 1. Supabase project ถูก pause (ต้องกู้คืนก่อนใช้งาน)
+## 1. สถานะฐานข้อมูลจริง (ใช้งานแล้ว)
 
-**อาการที่ตรวจพบ 13 ส.ค. 2569:** โฮสต์ของโปรเจกต์ resolve ไม่ได้เลย
+ตั้งแต่ 11 ต.ค. 2569 production ต่อ Supabase จริงแล้ว — project ref `ewwbmqpwxnbfqwpmoomp` รัน migration `0001`–`0013` ครบ
 
-```text
-nslookup ewwbmqpwxnbfqwpmoomp.supabase.co 8.8.8.8
-*** dns.google can't find ewwbmqpwxnbfqwpmoomp.supabase.co: Non-existent domain
-```
+> ⛔ **ห้ามรัน `supabase db push` / `supabase migration up`** migration ทั้งหมดรันมือผ่าน SQL Editor ตาราง tracker ของ CLI จึงว่าง
+> CLI จะพยายามรัน `0001` ใหม่ทับฐานข้อมูลจริง → `type already exists` และอาจพังกลางทาง
 
-Supabase แผนฟรีจะ pause โปรเจกต์ที่ไม่มี activity เกิน 7 วัน (commit ล่าสุดของ repo คือ 3 ก.ค. 2569 — ห่างกว่า 6 สัปดาห์) เมื่อ pause แล้ว DNS ของ project host จะหายไป ทุกหน้าที่อ่านข้อมูลจึงพังหมด
-
-**วิธีกู้คืน**
-
-1. เข้า https://supabase.com/dashboard → เลือกโปรเจกต์ PR-OS (ref `ewwbmqpwxnbfqwpmoomp`)
-2. กด **Restore project** แล้วรอจนสถานะเป็น Active (ปกติไม่กี่นาที)
-3. ตรวจว่ากลับมาแล้ว:
+**ตรวจว่าระบบยังต่อฐานข้อมูลอยู่**
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" \
-  -H "apikey: <NEXT_PUBLIC_SUPABASE_ANON_KEY>" \
-  "https://ewwbmqpwxnbfqwpmoomp.supabase.co/rest/v1/"
-# คาดหวัง 200
+curl -s https://pr-os1.vercel.app/api/health
+# ต้องเห็น "mode":"live" และ "database":"connected"
 ```
 
-4. ถ้า restore ไม่ขึ้น/โปรเจกต์หายไปแล้ว ให้สร้างโปรเจกต์ใหม่ แล้วรัน migration `0001` → `0008` ตามลำดับ + `supabase/seed.sql` จากนั้นทำต่อตามหัวข้อ 2 (`combined_0009_to_0012.sql` แล้ว `0013`) และอัปเดต URL/anon key ใน `.env.local` และ Vercel
-
-**กัน pause ซ้ำ:** มี GitHub Actions `.github/workflows/keep-alive.yml` เรียก `https://pr-os1.vercel.app/api/health` ทุกวัน 10:17 น. (เวลาไทย) ไม่ต้องตั้ง secret ใน GitHub job จะ **ขึ้นสีแดงและส่งอีเมลแจ้ง** เมื่อไม่ได้แตะฐานข้อมูลจริง (Supabase pause หรือ Vercel ยังไม่ได้ใส่ตัวแปร Supabase) — ดังนั้นจนกว่าจะเชื่อม Supabase บน Vercel job นี้จะแดงทุกวัน ซึ่งเป็นสิ่งที่ตั้งใจ
+**กัน pause:** `.github/workflows/keep-alive.yml` เรียก `/api/health` ทุกวัน 10:17 น. (ไม่ต้องตั้ง secret) ต้องเขียวทุกวัน
+ถ้าแดงและได้อีเมลแจ้งจาก GitHub → เข้า https://supabase.com/dashboard ดูว่าโปรเจกต์ถูก pause ไหม ถ้าใช่กด **Restore project**
+(แผนฟรี pause เมื่อไม่มี activity 7 วัน และกู้คืนได้ภายใน 90 วัน) ถ้าโปรเจกต์ไม่ได้ pause ให้ตรวจตัวแปร Supabase บน Vercel
 
 ---
 
-## 2. Migration ที่ยังไม่ได้รันบน Supabase จริง
+## 2. Migration — ประวัติ และวิธีรันตัวใหม่
 
-รันใน **SQL Editor** ของ dashboard ตามลำดับ (คัดลอกทั้งไฟล์ วางแล้วกด Run) — ทางลัด: รัน `supabase/migrations/combined_0009_to_0012.sql` ไฟล์เดียวแทน 4 แถวแรก แล้วรัน `0013` ต่อ (ไฟล์รวมยังไม่มี `0013`)
+รันครบแล้วทั้งหมด (มือ ผ่าน SQL Editor) **ไม่ต้องรันซ้ำ**
 
-| ไฟล์ | ทำอะไร | หมายเหตุ |
-|---|---|---|
-| `supabase/migrations/0009_notification_delivery_settings.sql` | เพิ่ม settings 3 คีย์ (reminder วันเดียวกัน, fallback อีเมลเมื่อ LINE ล้มเหลว/โควต้าเต็ม) | ไม่รันแล้ว toggle ในหน้า `/settings` จะบันทึกไม่ได้ |
-| `supabase/migrations/0010_event_attachments.sql` | ตาราง `event_attachments` + bucket `event-attachments` (private) + RLS ทั้ง table และ storage | ไม่รันแล้วแถบไฟล์แนบในหน้างานจะ error |
-| `supabase/migrations/0011_nakhon_sawan_master_data.sql` | ข้อมูลหลักสำนัก/กอง สถานที่ ประเภทงาน ของเทศบาลนครนครสวรรค์ | ไม่รันแล้ว dropdown ในฟอร์มจะเหลือแต่ข้อมูลตัวอย่างเดิม |
-| `supabase/migrations/0012_reminders_and_conflict_check.sql` | คิวเตือนล่วงหน้า 24 ชม./1.5 ชม. + `check_staff_conflict()` | ไม่รันแล้วการเตือนเวลาชนและ reminder จะใช้ไม่ได้ |
-| `supabase/migrations/0013_monitor_board.sql` | เพิ่ม `status`, `cancellation_reason`, `assignee_detail` ให้ `get_monitor_events()` (อ่านอย่างเดียว ไม่แตะตาราง/RLS) | ไม่รันแล้วจอ `/monitor` แบบใหม่จะไม่เห็นงานที่ยกเลิกและรายชื่อผู้ที่ยังไม่รับทราบ |
+| ไฟล์ | ทำอะไร |
+|---|---|
+| `0001`–`0008` | schema, auth/RLS, monitor feed, hardening, บัญชี, คิวแจ้งเตือน, ล็อกอินด้วย username, รายชื่อบนจอ |
+| `0009`–`0012` (หรือ `combined_0009_to_0012.sql`) | settings การส่ง, ไฟล์แนบ, ข้อมูลหลักนครสวรรค์, คิวเตือนล่วงหน้า + เช็กเวลาชน |
+| `0013_monitor_board.sql` | `get_monitor_events()` เพิ่ม status / เหตุผลยกเลิก / ผู้รับทราบรายคน (ตรวจผลแล้ว 11 ต.ค.) |
 
-ถ้ารัน `0010` แล้วเจอ `permission denied for table objects` (บางโปรเจกต์จำกัดสิทธิ์ schema `storage`) ให้ทำสองส่วนแยกกัน: ส่วนตาราง/bucket รันใน SQL Editor ตามปกติ ส่วน policy ของ storage สร้างผ่าน dashboard → Storage → bucket `event-attachments` → Policies โดยใช้เงื่อนไขเดียวกับในไฟล์ migration
+**migration ใหม่ต่อจากนี้** (`0014` เฟส LINE, `0015` ฟีเจอร์หลัง LINE)
+
+1. agent เขียนไฟล์ครอบ `begin;` … `commit;` และทดสอบกับ Postgres จำลองก่อน
+2. agent เขียน SQL ตรวจผล (read-only) แนบมาด้วย
+3. owner วางรันใน SQL Editor เอง แล้วรัน SQL ตรวจผล — ถ้า error ทั้งก้อนจะ rollback เอง ฐานข้อมูลเดิมไม่เสีย
+4. **สำรองข้อมูลก่อนทุกครั้ง** — กด Run workflow "Database backup" ใน GitHub Actions (ข้อ 7) แล้วรอให้เขียวก่อนรัน migration
+
+### อ้างอิง: ตรวจไฟล์แนบ (จาก migration 0010)
 
 **ตรวจหลังรัน 0010**
 
@@ -70,7 +65,7 @@ select policyname from pg_policies
 where schemaname = 'public' and tablename = 'event_attachments';
 ```
 
-**ทดสอบด้วยมือ (หลัง restore + รัน migration)**
+**ทดสอบไฟล์แนบด้วยมือ**
 
 1. ล็อกอินเป็น `admin` → เปิดงานสักงาน → แนบไฟล์ PDF → ต้องเห็นชื่อไฟล์ + ขนาด
 2. กดชื่อไฟล์ → ต้องดาวน์โหลดได้ (ลิงก์หมดอายุใน 60 วินาที ลองเปิดลิงก์ที่ redirect ไปซ้ำหลัง 1 นาที ต้องใช้ไม่ได้)
@@ -81,8 +76,6 @@ where schemaname = 'public' and tablename = 'event_attachments';
 ---
 
 ## 3. ทดสอบ Export รายงาน
-
-ไม่ต้องรอ migration — ใช้ได้ทันทีหลัง Supabase กลับมา
 
 1. `/reports` → เลือกช่วงวันที่ → กด **ดาวน์โหลด Excel** → ได้ไฟล์ `pr-os-report-<from>_<to>.xlsx` เปิดใน Excel เห็น 4 ชีต (สรุป / รายการงาน / ภาระงานตามบุคคล / ค้างรับทราบ) ภาษาไทยไม่เพี้ยน
 2. กด **พิมพ์ / บันทึกเป็น PDF** → เปิดแท็บใหม่ `/reports/print` → กดปุ่มพิมพ์ → เลือก "Save as PDF" ในกล่องพิมพ์ของเบราว์เซอร์
@@ -99,28 +92,25 @@ order by changed_at desc limit 10;
 
 ---
 
-## 4. เปิดใช้การแจ้งเตือนจริง (ยังค้าง — รอ credential)
+## 4. เปิดใช้การแจ้งเตือนจริงผ่าน LINE (ยังค้าง — รอ owner สร้าง OA)
 
-ใส่ค่าใน `.env.local` (ห้าม commit) — ชื่อคีย์ต้องตรงกับ `src/lib/env.ts`
+ไม่ใช้อีเมล (owner เลือก 19 ต.ค. 2569) จึงไม่ต้องใส่ `RESEND_API_KEY` รูปแบบการส่งดู `STATE.md` หัวข้อ "ตัดสินใจแล้ว — LINE bot"
 
-```dotenv
-LINE_LOGIN_CHANNEL_ID=
-LINE_LOGIN_CHANNEL_SECRET=
-LINE_MESSAGING_CHANNEL_ACCESS_TOKEN=
-RESEND_API_KEY=
-RESEND_FROM_EMAIL=            # ใส่เมื่อมีโดเมนที่ verify แล้ว
-NOTIFICATIONS_CRON_SECRET=    # สุ่มสตริงยาว ๆ
-APP_BASE_URL=                 # URL production จริง เช่น https://pr-os.vercel.app
-```
+1. สร้าง LINE Official Account ชื่อ "ผู้ช่วยงาน ปชส." แล้วเปิด Messaging API
+2. ใน LINE Developers สร้าง channel **LINE Login** ใต้ **Provider เดียวกัน** กับ Messaging API (คนละ Provider = userId ไม่ตรงกัน ผูกบัญชีไม่ได้)
+   callback URL: `https://pr-os1.vercel.app/api/auth/line/callback`
+3. owner ใส่ค่าใน Vercel → Project `pr-os1` → Settings → Environment Variables (Production) เอง — **ห้ามวางค่าในแชท**
 
-⚠️ `.env.local` ปัจจุบันยังมีคีย์ชื่อเก่า `LINE_CHANNEL_ACCESS_TOKEN` ซึ่ง **โค้ดไม่อ่านแล้ว** — ต้องเปลี่ยนชื่อเป็น `LINE_MESSAGING_CHANNEL_ACCESS_TOKEN`
+| ตัวแปร | เอามาจาก |
+|---|---|
+| `LINE_MESSAGING_CHANNEL_ACCESS_TOKEN` | Messaging API channel → Channel access token (long-lived) |
+| `LINE_MESSAGING_CHANNEL_SECRET` | Messaging API channel → Basic settings → Channel secret (ใช้ตรวจลายเซ็น webhook) |
+| `LINE_LOGIN_CHANNEL_ID` | LINE Login channel → Channel ID |
+| `LINE_LOGIN_CHANNEL_SECRET` | LINE Login channel → Channel secret |
+| `NOTIFICATIONS_CRON_SECRET` | สุ่มสตริงยาว ๆ เอง — ต้องตรงกับ secret ชื่อเดียวกันใน GitHub (ข้อ 6) |
 
-ขั้นตอนหลังใส่ค่า
-
-1. restart dev server → เข้า `/settings` หัวข้อการแจ้งเตือน แถบต้องเปลี่ยนจากเหลือง (โหมดจำลอง) เป็นเขียว (เชื่อมต่อแล้ว)
-2. ให้พนักงานเปิด `/mobile/my-tasks` แล้วกด "เชื่อมต่อ LINE" เพื่อผูก LINE user id ของตัวเอง
-3. **ก่อนส่งข้อความจริงหาคนจริงครั้งแรก ต้องยืนยันกับเจ้าของโปรเจกต์เสมอ** (Human Gate) — ทดสอบกับบัญชีตัวเองก่อน
-4. ตั้ง cron ยิง `POST /api/notifications/process` พร้อม header `x-notifications-secret: <NOTIFICATIONS_CRON_SECRET>` — ทำได้เมื่อรู้ URL production แล้ว (Vercel Cron หรือ pg_cron + pg_net)
+4. Redeploy บน Vercel (ตัวแปรใหม่มีผลหลัง deploy ใหม่เท่านั้น)
+5. **ก่อนส่งข้อความจริงหาคนจริงครั้งแรก ต้องยืนยันกับ owner เสมอ** (Human Gate) — ทดสอบกับบัญชีตัวเองก่อน
 
 ---
 
@@ -135,3 +125,81 @@ APP_BASE_URL=                 # URL production จริง เช่น https:/
 - ถ้าคีย์หลุดไปแล้ว: Supabase dashboard → Settings → API → **rotate service role key** แล้วอัปเดตในเครื่อง
 
 ดูบริบทที่ควรส่งให้ที่ปรึกษาที่ `docs/16-external-review-brief.md`
+
+---
+
+## 6. ตัวตั้งเวลาส่งแจ้งเตือน (GitHub Actions)
+
+`.github/workflows/notifications.yml` เรียก `POST /api/notifications/process` ทุก 15 นาที ช่วง 06:00–20:00 น.
+(GitHub อาจเริ่มช้ากว่าเวลาจริงไม่กี่นาที — รับได้สำหรับการเตือนแบบนี้)
+
+**ตั้งครั้งเดียว**
+
+1. คิดรหัสสุ่มยาว ๆ 1 ชุด (เช่น เปิด PowerShell พิมพ์ `[guid]::NewGuid().ToString() + [guid]::NewGuid().ToString()`)
+2. Vercel → `pr-os1` → Settings → Environment Variables → เพิ่ม `NOTIFICATIONS_CRON_SECRET` = รหัสนั้น (Production) → Redeploy
+3. GitHub → repo `PR-OS1` → Settings → Secrets and variables → Actions → **New repository secret**
+   ชื่อ `NOTIFICATIONS_CRON_SECRET` ค่าเดียวกันเป๊ะ
+4. GitHub → Actions → "Notifications — process due queue" → **Run workflow** → ต้องเขียว และใน log เห็น `HTTP 200`
+
+| ผลใน log | แปลว่า |
+|---|---|
+| notice "is not set in GitHub yet" (เขียว) | ยังไม่ได้ทำข้อ 3 — ไม่มีอะไรถูกส่ง |
+| `HTTP 401` (แดง) | ค่าใน GitHub กับ Vercel ไม่ตรงกัน หรือยังไม่ได้ redeploy Vercel |
+| `HTTP 200` + `"skipped":N` | ทำงานแล้ว แต่ยังไม่มี LINE credential คิวจึงถูกข้ามแบบโหมดจำลอง |
+| `HTTP 200` + `"sent":N` | ส่งจริงแล้ว |
+
+> ก่อนมี LINE ตัวตั้งเวลาจะ mark คิวที่ถึงเวลาเป็น `skipped` ไป ไม่มีผลเสีย เพราะยังไม่มีช่องทางส่งอยู่แล้ว
+
+---
+
+## 7. สำรองฐานข้อมูลรายสัปดาห์ + วิธีกู้คืน
+
+`.github/workflows/db-backup.yml` ทำงานทุกวันจันทร์ 02:41 น. dump ฐานข้อมูล → **เข้ารหัส AES-256 ด้วยรหัสของ owner** → เก็บใน GitHub 90 วัน
+
+- สำรอง: ทุกตารางใน schema `public` (งาน บุคลากร การมอบหมาย การรับทราบ คิวแจ้งเตือน settings audit log) + บัญชีล็อกอิน `auth.users` / `auth.identities`
+- **ไม่ได้สำรอง:** ไฟล์แนบใน Storage — ถ้าไฟล์สำคัญให้เก็บต้นฉบับไว้ที่อื่นด้วย
+- ไฟล์มีชื่อจริงและเบอร์โทรเจ้าหน้าที่ จึงเข้ารหัสเสมอ ต่อให้ repo เป็น public คนอื่นก็เปิดไม่ได้
+
+**ตั้งครั้งเดียว**
+
+1. Supabase → โปรเจกต์ PR-OS1 → ปุ่ม **Connect** ด้านบน → เลือก **Session pooler** (ไม่ใช่ Direct connection — GitHub ไม่มี IPv6)
+   คัดลอก URI หน้าตา `postgresql://postgres.ewwbmqpwxnbfqwpmoomp:[YOUR-PASSWORD]@aws-…pooler.supabase.com:5432/postgres`
+   แล้วแทน `[YOUR-PASSWORD]` ด้วยรหัสผ่านฐานข้อมูล (ลืม → Project Settings → Database → Reset database password)
+2. GitHub → Settings → Secrets and variables → Actions → New repository secret
+   - `SUPABASE_DB_URL` = URI จากข้อ 1
+   - `BACKUP_PASSPHRASE` = รหัสยาว ๆ ที่ตั้งเอง **จดเก็บไว้นอกคอมพิวเตอร์ด้วย** ถ้าลืม ไฟล์สำรองทุกไฟล์จะเปิดไม่ได้
+3. GitHub → Actions → "Database backup (weekly, encrypted)" → **Run workflow** → ต้องเขียว และมีไฟล์ `pr-os-backup-YYYY-MM-DD` ในส่วน Artifacts
+
+**ดาวน์โหลดและเปิดไฟล์สำรอง** (เครื่องที่มี `gpg` และ PostgreSQL client 17 เช่น WSL/Ubuntu)
+
+```bash
+unzip pr-os-backup-2026-10-26.zip            # GitHub ห่อ artifact เป็น zip
+gpg --decrypt pr-os-backup-2026-10-26.tar.gpg > backup.tar   # ถามรหัส BACKUP_PASSPHRASE
+tar -xf backup.tar                              # ได้ public.dump และ auth.dump
+pg_restore --list public.dump | head            # ดูว่ามีอะไรบ้าง
+```
+
+**กู้คืน** — ทำเมื่อฐานข้อมูลเสียหายจริงเท่านั้น และให้ agent ช่วยดูก่อนทุกครั้ง
+
+- กู้ลง **โปรเจกต์ Supabase ใหม่** ปลอดภัยที่สุด (ทดสอบขั้นตอนนี้กับ Postgres จำลองแล้ว 19 ต.ค. 2569) — **ไม่ต้อง** รัน migration ในโปรเจกต์ใหม่ก่อน
+  เพราะ `public.dump` มีทั้งโครงสร้าง ฟังก์ชัน RLS สิทธิ์ และข้อมูลครบ
+
+```bash
+# 1) บัญชีล็อกอินก่อน (profiles อ้างถึง auth.users) — replica = ไม่ให้ trigger สร้าง profile ซ้ำ
+pg_restore -f auth.sql auth.dump
+psql "$NEW_DB_URL" -v ON_ERROR_STOP=1 --single-transaction \
+  -c 'set session_replication_role = replica' -f auth.sql
+
+# 2) schema public ทั้งหมด (ข้ามคำสั่ง CREATE SCHEMA public เพราะโปรเจกต์ใหม่มีอยู่แล้ว)
+pg_restore --list public.dump | grep -v ' SCHEMA - public ' > restore.list
+pg_restore --dbname "$NEW_DB_URL" --no-owner --exit-on-error --single-transaction \
+  --use-list=restore.list public.dump
+
+# 3) trigger บน auth.users ไม่อยู่ใน public.dump ต้องสร้างคืนเอง (จาก migration 0002)
+psql "$NEW_DB_URL" -c "create trigger on_auth_user_created after insert on auth.users \
+  for each row execute function public.handle_new_user();"
+```
+
+  จากนั้นเปลี่ยน `NEXT_PUBLIC_SUPABASE_URL` / anon key / service role key บน Vercel ไปที่โปรเจกต์ใหม่ แล้ว redeploy
+  ไฟล์แนบใน Storage ต้องอัปโหลดคืนเอง และสร้าง bucket `event-attachments` + policy ตาม migration `0010`
+- ห้าม `pg_restore --clean` ลงโปรเจกต์เดิมที่ใช้งานอยู่ — จะลบข้อมูลปัจจุบันทิ้งก่อน

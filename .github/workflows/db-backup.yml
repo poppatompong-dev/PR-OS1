@@ -1,0 +1,82 @@
+name: Database backup (weekly, encrypted)
+
+# Dumps the live Supabase database once a week, encrypts the dump with a
+# passphrase only the owner knows, and keeps it as a workflow artifact for 90
+# days. The dump contains real staff names and phone numbers, so it is never
+# stored unencrypted - not even inside GitHub.
+#
+# Secrets (Settings -> Secrets and variables -> Actions):
+#   SUPABASE_DB_URL    Session pooler connection string (port 5432) from
+#                      Supabase -> Connect. GitHub runners have no IPv6, so the
+#                      "Direct connection" string will not work here.
+#   BACKUP_PASSPHRASE  Long passphrase. Keep a copy offline: without it the
+#                      backups cannot be opened.
+#
+# What is covered: everything in the public schema (events, people,
+# assignments, notifications, settings, audit log ...) plus the login rows in
+# auth.users / auth.identities. NOT covered: files in Storage (attachments).
+# Grants are kept on purpose: the anon/authenticated EXECUTE grants on the
+# SECURITY DEFINER functions are part of the security model.
+# Restore steps (tested end to end): docs/15 section 7.
+
+on:
+  schedule:
+    - cron: '41 19 * * 0'   # Monday 02:41 Bangkok
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check secrets
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$DB_URL" ] || [ -z "$PASSPHRASE" ]; then
+            echo "::error::SUPABASE_DB_URL and BACKUP_PASSPHRASE must both be set. See docs/15 section 7."
+            exit 1
+          fi
+
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo apt-get install -y -q curl ca-certificates gnupg >/dev/null
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -q >/dev/null
+          sudo apt-get install -y -q postgresql-client-17 >/dev/null
+          /usr/lib/postgresql/17/bin/pg_dump --version
+
+      - name: Dump and encrypt
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          umask 077
+          PGBIN=/usr/lib/postgresql/17/bin
+          stamp=$(TZ=Asia/Bangkok date +%Y-%m-%d)
+          mkdir -p out work
+          "$PGBIN/pg_dump" "$DB_URL" --format=custom --no-owner \
+            --schema=public --file=work/public.dump
+          "$PGBIN/pg_dump" "$DB_URL" --format=custom --data-only \
+            --table=auth.users --table=auth.identities --file=work/auth.dump
+          "$PGBIN/pg_restore" --list work/public.dump | grep -c 'TABLE DATA' | xargs echo "public tables with data:"
+          tar -C work -cf "work/pr-os-backup-$stamp.tar" public.dump auth.dump
+          printf '%s' "$PASSPHRASE" | gpg --batch --yes --quiet --pinentry-mode loopback \
+            --passphrase-fd 0 --symmetric --cipher-algo AES256 \
+            --output "out/pr-os-backup-$stamp.tar.gpg" "work/pr-os-backup-$stamp.tar"
+          rm -rf work
+          ls -l out
+          echo "STAMP=$stamp" >> "$GITHUB_ENV"
+
+      - name: Keep the encrypted file for 90 days
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-os-backup-${{ env.STAMP }}
+          path: out/*.gpg
+          retention-days: 90
+          if-no-files-found: error

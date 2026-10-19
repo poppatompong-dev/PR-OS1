@@ -1,12 +1,12 @@
 # Implementation Status
 
-สถานะการพัฒนา PR-OS (อัปเดตต่อเนื่องตามงานจริง) — ล่าสุด 13 ตุลาคม 2026 (ประวัติรายรอบอยู่ใน `STATE.md` หัวข้อ Attempt log)
+สถานะการพัฒนา PR-OS (อัปเดตต่อเนื่องตามงานจริง) — ล่าสุด 19 ตุลาคม 2569 (ประวัติรายรอบอยู่ใน `STATE.md` หัวข้อ Attempt log)
 
 - **Production URL:** [https://pr-os1.vercel.app](https://pr-os1.vercel.app/) (Vercel Next.js 15.5.23)
-- **โหมดปัจจุบัน:** Mock Fallback (อ่านตัวอย่าง ปลอดภัย หน้าไม่ล่ม 500)
+- **โหมดปัจจุบัน:** **Live** — ใช้งานจริงกับ Supabase ตั้งแต่ 11 ต.ค. 2569 (mock fallback ยังอยู่ในโค้ดสำหรับพัฒนาในเครื่อง)
 - ระบบเชื่อมต่อโค้ด **Supabase จริง** (Auth + PostgreSQL + RLS + SECURITY DEFINER functions) รองรับแผนฟรีทั้งหมด (ดู `docs/13-setup-free-tier.md`)
 
-> ⚠️ **Supabase project ถูก pause อยู่** (แผนฟรี pause หลังไม่มี activity 7 วัน) จึงทำงานในโหมด Mock Fallback จนกว่าจะกด Restore และรัน migration `0009`–`0013` — ขั้นตอนอยู่ใน `docs/15-operations-runbook.md`
+> ✅ Supabase project `ewwbmqpwxnbfqwpmoomp` ทำงานอยู่ และรัน migration `0001`–`0013` ครบแล้ว (รันมือผ่าน SQL Editor) — **ห้ามใช้ `supabase db push`** ดู `STATE.md` หัวข้อข้อห้าม
 
 ## ✅ ทำเสร็จแล้ว (ใช้งานได้จริง)
 
@@ -64,14 +64,17 @@
 - ตัวประมวลผลจริง `processDueNotifications()` (`src/lib/notifications/queue.ts`) — ดึงคิวที่ถึงเวลา, ส่ง LINE ผ่าน Messaging API / Email ผ่าน Resend, เช็คโควต้า LINE รายเดือน, fallback ไป email ตาม settings
 
 ## ⚠️ ยังเหลือ / ข้อจำกัด
-- **Supabase project ถูก pause** — ต้อง Restore ที่ dashboard ก่อนทุกอย่าง (ดู `docs/15-operations-runbook.md` ข้อ 1)
-- **ส่งแจ้งเตือนจริง — รอ credential**: โค้ดส่งจริงพร้อมแล้ว แต่ `LINE_LOGIN_CHANNEL_ID`/`LINE_LOGIN_CHANNEL_SECRET`/`LINE_MESSAGING_CHANNEL_ACCESS_TOKEN`/`RESEND_API_KEY`/`NOTIFICATIONS_CRON_SECRET` ยังไม่ถูกตั้งใน `.env.local` จึงยังคง mark `skipped` (โหมดจำลอง) อยู่จนกว่าเจ้าของโปรเจกต์จะใส่ค่าจริง
-- **migration `0009`–`0013` ยังไม่ได้รันบน Supabase project จริง** — รัน `combined_0009_to_0012.sql` แล้ว `0013` ใน SQL Editor
-- **ยังไม่ได้ตั้ง cron** ยิง `POST https://pr-os1.vercel.app/api/notifications/process` (header `x-notifications-secret`) — production URL รู้แล้ว แต่การสร้าง scheduled job ที่ยิงออกภายนอก + secret อยู่ใน Human Gate รอ owner ยืนยัน
-- **keep-alive** (`.github/workflows/keep-alive.yml`) เรียก `/api/health` ทุกวัน จะแดงจนกว่า Vercel จะเชื่อม Supabase จริง
+- **ส่งแจ้งเตือนจริง — รอ LINE OA**: ตัวส่งพร้อมแล้ว แต่ยังไม่มี OA/credential บน Vercel คิวจึงถูก mark `skipped` (โหมดจำลอง) จนกว่าจะใส่ค่า
+  รูปแบบการส่งเปลี่ยนเป็น "แบบผสม" ตามที่ owner ตัดสินใจ 19 ต.ค. (ดู `STATE.md`) — โค้ดส่วนสรุป 07:00, ปุ่มไม่สะดวก, แจ้งแอดมิน 17:00 และ webhook ยังไม่ได้ทำ
+- **ยังไม่มี LINE webhook / rich menu / คำสั่งแชท** — งานเฟส LINE
+- **อีเมล (Resend) ไม่ใช้** — owner เลือกไม่ใช้อีเมลสำรอง โค้ด fallback ยังอยู่แต่จะไม่ทำงานเพราะไม่มี `RESEND_API_KEY`
+- **ตัวตั้งเวลาเรียก `/api/notifications/process`** — มี `.github/workflows/notifications.yml` แล้ว (ทุก 15 นาที 06:00–20:00) รอ owner ใส่ secret `NOTIFICATIONS_CRON_SECRET` ใน GitHub
+- **สำรองข้อมูล** — มี `.github/workflows/db-backup.yml` แล้ว (รายสัปดาห์ เข้ารหัส) รอ owner ใส่ `SUPABASE_DB_URL` + `BACKUP_PASSPHRASE`
+  ไฟล์แนบใน Storage **ไม่ได้** อยู่ในไฟล์สำรอง (สำรองเฉพาะฐานข้อมูล)
+- **keep-alive** (`.github/workflows/keep-alive.yml`) ต้องเขียวทุกวัน ถ้าแดง = Supabase หลับหรือ Vercel หลุดจากฐานข้อมูล
 
 ## Migrations
 `0001` schema · `0002` auth/RLS/views · `0003` monitor feed · `0004` DB hardening · `0005` accounts · `0006` notifications · `0007` username login · `0008` monitor assignees · `0009` notification delivery settings · `0010` event attachments · `0011` nakhon sawan master data · `0012` reminders & conflict check · `0013` monitor board (status/การยกเลิก/ผู้รับทราบรายคน)
 
-## Quality gates (ผ่านล่าสุด 13 ต.ค. 2026)
+## Quality gates (ผ่านล่าสุด 13 ต.ค. 2569)
 `npm run build` ✓ · `npm run typecheck` ✓ · `npm run lint` ✓ · smoke test 12/12 (mock mode)

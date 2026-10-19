@@ -3,19 +3,20 @@
 Loop state ของ PR-OS — ไฟล์นี้สั้นและอัปเดตบ่อย ใช้ดูว่า "ตอนนี้อยู่ตรงไหน" ก่อนเริ่มงานทุกครั้ง
 รายละเอียดเชิงลึกของสิ่งที่ทำเสร็จแล้วทั้งหมดอยู่ที่ `docs/14-implementation-status.md` — ไฟล์นี้ไม่ซ้ำเนื้อหานั้น
 
-อัปเดตล่าสุด: 2026-10-13 (โค้ดครบแล้ว — เหลือแค่งานฝั่ง owner: restore Supabase, รัน migration `0009`–`0013`, ใส่ credential)
+อัปเดตล่าสุด: 2026-10-19 (ใช้งานจริงตั้งแต่ 11 ต.ค. 2569 — งานถัดไปคือ LINE bot ตามการตัดสินใจของ owner ด้านล่าง)
 
 ## Production สถานะปัจจุบัน
 
 - **URL:** [https://pr-os1.vercel.app](https://pr-os1.vercel.app/)
 - **สถานะ:** READY (Vercel Next.js 15.5.23)
-- **โหมดการทำงาน:** Mock Demo Fallback (เปิดอ่านตัวอย่าง ปลอดภัย หน้าไม่ล่ม 500)
+- **โหมดการทำงาน:** **Live** — ต่อ Supabase จริง (`/api/health` ตอบ `"mode":"live","database":"connected"` ตรวจ 19 ต.ค. 2569)
+  โหมดตัวอย่าง (mock) ยังอยู่ในโค้ด ใช้เฉพาะตอนพัฒนาในเครื่องที่ไม่มี `.env.local`
 - **Font:** Self-hosted — IBM Plex Sans Thai (หัวเรื่องและเนื้อความ) + JetBrains Mono (ตัวเลข)
   (ถอด Space Grotesk ออกแล้ว: ไม่มีสระ/วรรณยุกต์ไทย หัวเรื่องไทยจึงตกไปใช้ฟอนต์ระบบอยู่ดี)
 - **สี:** ม่วงเทศบาลนครนครสวรรค์ `#5e2f73` + Dark mode ฐานม่วงเทา `#1e1a24`
 - **อุปกรณ์หลัก:** มือถือ + iPad แนวตั้ง (bottom nav) / เดสก์ท็อปใช้ side rail / จอมอนิเตอร์ไม่แตะ
 - **Quality Gates:** `typecheck` ✓ | `lint` ✓ | `build` ✓ | `smoke test (12/12 in mock mode)` ✓
-- **Keep-alive:** `.github/workflows/keep-alive.yml` เรียก `/api/health` ทุกวัน ไม่ต้องใช้ secret — **จะแดงทุกวันจนกว่าจะเชื่อม Supabase จริง** (ตั้งใจให้แดง ไม่ใช่บั๊ก)
+- **Keep-alive:** `.github/workflows/keep-alive.yml` เรียก `/api/health` ทุกวัน 10:17 น. ไม่ต้องใช้ secret — ตอนนี้ต้อง **เขียว** ทุกวัน ถ้าแดงแปลว่า Supabase หลับหรือ Vercel หลุดจากฐานข้อมูล ต้องดูทันที
 - **DB Security:** `check_staff_conflict()` ใน `0012` และ `combined_0009_to_0012.sql` ได้รับการเสริม Authorization Check (PL/pgSQL) เรียบร้อย
 
 ## UI Redesign (2026-10-10) — เสร็จครบ 4 เฟส
@@ -40,21 +41,57 @@ Loop state ของ PR-OS — ไฟล์นี้สั้นและอั�
 
 ทดสอบแล้ว: 16 หน้า x ความกว้าง 360/390/820/1024/1440 x light+dark — ไม่มีหน้าไหนล้นจอหรือ error
 
-## เริ่มตรงนี้ครั้งหน้า
+## ⛔ ข้อห้าม (อ่านก่อนแตะฐานข้อมูล)
 
-1. **Restore / เตรียม Supabase Project**
-   - ถ้าโปรเจกต์เดิม: รัน `supabase/migrations/combined_0009_to_0012.sql` แล้วรัน `0013_monitor_board.sql` ต่อ
-   - ถ้าโปรเจกต์ใหม่: รัน `0001` ถึง `0008` + `seed.sql` ก่อน แล้วจึงรัน `combined_0009_to_0012.sql` และ `0013`
-2. **สร้างผู้ใช้และตั้งสิทธิ์ Admin** ผ่าน `public.profiles` (update `role = 'admin'::app_role`)
-3. **ใส่ Supabase Credentials บน Vercel** (สำหรับ Production environment) เพื่อเชื่อมต่อฐานข้อมูลจริง
-4. **ตั้ง Cron Job** ยิง `POST https://pr-os1.vercel.app/api/notifications/process` พร้อม header `x-notifications-secret: <NOTIFICATIONS_CRON_SECRET>`
-5. **ทดสอบ Live Backend Smoke Test** (สร้างงาน, อัปโหลดไฟล์, ตรวจสอบ RLS & Monitor)
+- **ห้ามรัน `supabase db push` / `supabase migration up`** — migration `0001`–`0013` ทั้งหมดรันมือผ่าน SQL Editor
+  ตาราง tracker ของ CLI จึงว่าง CLI จะคิดว่าฐานข้อมูลว่างแล้วพยายามรัน `0001` ใหม่ทับของจริง
+- **ห้ามรัน `combined_0009_to_0012.sql` หรือ migration เก่าซ้ำ** — รันครบแล้ว ไม่ต้อง restore ไม่ต้องรันอะไรย้อนหลัง
+- **push ขึ้น `main` = deploy production ทันที** (Vercel ผูกกับ GitHub) — agent ห้าม push เอง owner เป็นคน push
+- migration ใหม่: เขียนเป็นไฟล์ `00NN_*.sql` ครอบ `begin;`/`commit;` + runbook ตรวจผล แล้วให้ owner วางรันใน SQL Editor เอง
+
+## ฐานข้อมูลจริง (ตรวจ 11 ต.ค. 2569)
+
+- Supabase project ref `ewwbmqpwxnbfqwpmoomp` (ap-southeast-1) สถานะ Healthy — migration `0001`–`0013` รันครบ
+- ล้างงานตัวอย่างออกหมดแล้ว เหลือข้อมูลหลัก (บุคลากร / หน่วยงาน / สถานที่ / ประเภทงาน)
+- บัญชี: admin 1 + เจ้าหน้าที่ 7 คน — owner ต้องการสิทธิ์แค่ 2 ระดับ จึงตั้งเจ้าหน้าที่ทุกคนเป็น role `supervisor` (ทำงานได้เท่ากัน)
+- ชื่อในระบบเป็นชื่อจริงของเจ้าหน้าที่ — ห้ามคัดลอกออกนอกโปรเจกต์ (`docs/16`)
+
+## ตัดสินใจแล้ว — LINE bot (owner ยืนยัน 19 ต.ค. 2569, แทนข้อตกลง 11 ต.ค. เรื่อง "ส่งจนโควต้าหมด")
+
+โควต้า LINE OA ฟรี 300 ข้อความ/เดือน (push นับต่อผู้รับ, reply ฟรี) ส่งทีละงานจะพอแค่ราว 40 งาน/เดือน จึงใช้แบบผสม
+
+| เหตุการณ์ | ส่งอย่างไร |
+| --- | --- |
+| มอบหมายงานใหม่ / งานถูกแก้สาระสำคัญ / ยกเลิก | push ทันที ถึงผู้ถูกมอบหมาย ปุ่ม **รับทราบ / ไม่สะดวก / ดูรายละเอียด** |
+| สรุปงานวันนี้ + พรุ่งนี้ | 07:00 คนละ 1 ข้อความ **เฉพาะวันที่มีงาน** (รวมเสาร์–อาทิตย์ถ้ามีงาน) |
+| เตือนก่อนงานเริ่ม 1.5 ชม. | เฉพาะคนที่ **ยังไม่รับทราบ** |
+| กด "ไม่สะดวก" + เหตุผล | แจ้งแอดมินทันที — **ไม่ถอดชื่อ** ติดป้าย "ไม่สะดวก" บนเว็บ/จอทีวี แอดมินหาคนแทนเอง |
+| 17:00 วันก่อนงาน | รายชื่อคนที่ยังไม่รับทราบงานพรุ่งนี้ ถึงแอดมิน 2 คน (owner + หัวหน้างาน ปชส.) รวม 1 ข้อความ ไม่มีคนค้าง = ไม่ส่ง |
+| โควต้าใกล้หมด / คนที่ยังไม่ผูก LINE | แจ้งแอดมิน 1 ครั้งตอนเหลือ ~30 ข้อความ หมดแล้วหยุดส่ง ดูผ่านเว็บแทน — **ไม่ใช้อีเมลสำรอง** |
+
+ที่ตกลงไว้ 11 ต.ค. และยังใช้: ส่งเดี่ยวเฉพาะผู้ถูกมอบหมาย, คำสั่งแชท "งานของฉัน" / "งานวันนี้" / "งานพรุ่งนี้" / "ยังไม่รับทราบ",
+rich menu, ล็อกอินเว็บด้วย LINE, บอทอยู่ในกลุ่มไลน์เดิมของฝ่ายแต่ตอบเฉพาะเมื่อมีคนถาม, ชื่อบอท "ผู้ช่วยงาน ปชส.",
+LINE Login กับ Messaging API ต้องอยู่ใต้ Provider เดียวกัน (ไม่งั้น userId ไม่ตรงกัน)
+
+ตัวตั้งเวลา: GitHub Actions `.github/workflows/notifications.yml` ทุก 15 นาที 06:00–20:00 น.
+สำรองข้อมูล: GitHub Actions `.github/workflows/db-backup.yml` ทุกสัปดาห์ เข้ารหัสก่อนเก็บ (ดู `docs/15` ข้อ 6–7)
+
+## เริ่มตรงนี้ครั้งหน้า — ลำดับงานที่ owner กำหนด
+
+1. **LINE bot** ตามตารางข้างบน — SQL ที่ต้องแก้ฐานข้อมูลรวมเป็นก้อนเดียว (`0014`) ทดสอบกับฐานข้อมูลจำลองก่อน owner รันเอง
+2. **หลัง LINE** (SQL ก้อนเดียว `0015`): ช่องเลขที่หนังสือ / ลิงก์ eOffice, ปฏิทินส่วนตัว (ICS) เข้า Google/iPhone,
+   เช็กลิสต์หลังงาน, ลิงก์คลังภาพ + ธงห้ามเผยแพร่ (ที่มา `docs/18`)
+3. **วิดีโอสอนใช้งาน** — ถ่ายครั้งเดียวหลังฟีเจอร์ครบ
 
 ## รออะไรจาก human อยู่
 
-1. **Restore / สร้าง Supabase project** — กู้คืนโปรเจกต์หรือสร้างโปรเจกต์ใหม่
-2. **รัน migration บน Supabase จริง** ผ่าน SQL Editor (`combined_0009_to_0012.sql` + `0013`)
-3. **credential Supabase บน Vercel Production** — `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NOTIFICATIONS_CRON_SECRET`
+1. **GitHub → Settings → Secrets and variables → Actions** ใส่ 3 ตัว (วิธีอยู่ใน `docs/15` ข้อ 6–7)
+   `NOTIFICATIONS_CRON_SECRET` (ค่าเดียวกับบน Vercel), `SUPABASE_DB_URL`, `BACKUP_PASSPHRASE`
+2. **Vercel** ใส่ `NOTIFICATIONS_CRON_SECRET` ถ้ายังไม่มี
+3. **LINE** สร้าง OA "ผู้ช่วยงาน ปชส." + Messaging API + LINE Login ใต้ Provider เดียวกัน แล้วใส่ใน Vercel เอง
+   `LINE_MESSAGING_CHANNEL_ACCESS_TOKEN`, `LINE_MESSAGING_CHANNEL_SECRET`, `LINE_LOGIN_CHANNEL_ID`, `LINE_LOGIN_CHANNEL_SECRET`
+   callback `https://pr-os1.vercel.app/api/auth/line/callback`
+4. ทดสอบแบบล็อกอินจริงบน production, ใส่ตำแหน่งของเจ้าหน้าที่ใหม่ใน `/settings`, ทดสอบเพิ่มไอคอนลงหน้าจอมือถือ
 
 ## Attempt log
 
@@ -75,5 +112,6 @@ Loop state ของ PR-OS — ไฟล์นี้สั้นและอั�
   และ /settings ล้นจอบน iPad แนวตั้ง
 - 2026-10-13 — อัปเดต runbook/สถานะให้ครอบคลุม `0011`–`0013` และ keep-alive; ทำ benchmark ระบบใกล้เคียง +
   สำรวจความสามารถด้านสื่อของ Claude → `docs/18-benchmark-and-media-ideas.md`
-
-
+- 2026-10-19 — ตรวจงานรอบ 13 ต.ค. พบเอกสารยังบอกว่า Supabase หลับ/โหมดตัวอย่าง ซึ่งผิด แก้ STATE/docs 14/15 ให้ตรง production จริง;
+  owner ตัดสินใจรูปแบบแจ้งเตือน LINE แบบผสม + ปุ่มไม่สะดวก + แจ้งแอดมิน 17:00 + ลำดับงานใหม่;
+  เพิ่ม workflow ตั้งเวลาส่งแจ้งเตือนทุก 15 นาที และสำรองฐานข้อมูลรายสัปดาห์แบบเข้ารหัส

@@ -1,0 +1,50 @@
+name: Notifications — process due queue
+
+# Calls the app every 15 minutes between 06:00 and 20:00 Bangkok time so that
+# queued LINE notifications (assignment / change / cancellation, the 07:00
+# summary, the 1.5-hour reminder and the 17:00 admin report) actually go out.
+#
+# GitHub cron is UTC and best-effort: a run can start a few minutes late, which
+# is fine for these reminders. Bangkok 06:00–20:00 = UTC 23:00–13:00.
+#
+# Needs one repository secret, NOTIFICATIONS_CRON_SECRET, with exactly the same
+# value as the NOTIFICATIONS_CRON_SECRET variable on Vercel. Until it is set the
+# job prints a notice and exits green, so it never spams failure emails.
+
+on:
+  schedule:
+    - cron: '*/15 23 * * *'   # 06:00–06:45 Bangkok
+    - cron: '*/15 0-12 * * *' # 07:00–19:45 Bangkok
+    - cron: '0 13 * * *'      # 20:00 Bangkok
+  workflow_dispatch:
+
+concurrency:
+  group: notifications
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Process the notification queue
+        env:
+          APP_URL: https://pr-os1.vercel.app
+          CRON_SECRET: ${{ secrets.NOTIFICATIONS_CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::notice::NOTIFICATIONS_CRON_SECRET is not set in GitHub yet - nothing sent. See docs/15 section 6."
+            exit 0
+          fi
+          code=$(curl -sS -o body.json -w "%{http_code}" --max-time 60 --retry 2 --retry-delay 15 \
+            -X POST -H "x-notifications-secret: $CRON_SECRET" "$APP_URL/api/notifications/process" || echo 000)
+          echo "HTTP $code"
+          cat body.json 2>/dev/null; echo
+          if [ "$code" = "401" ]; then
+            echo "::error::The app rejected the secret. The GitHub secret and the Vercel variable NOTIFICATIONS_CRON_SECRET must be identical."
+            exit 1
+          fi
+          if [ "$code" != "200" ]; then
+            echo "::error::Notification processing failed (HTTP $code)."
+            exit 1
+          fi
