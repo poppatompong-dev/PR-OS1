@@ -2,10 +2,14 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { safeNextPath } from "@/lib/auth/next-path";
 
 export async function signIn(formData: FormData) {
   const usernameOrEmail = String(formData.get("username") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const next = safeNextPath(formData.get("next"));
+  const back = (msg: string) =>
+    `/login?error=${encodeURIComponent(msg)}${next !== "/" ? `&next=${encodeURIComponent(next)}` : ""}`;
 
   const supabase = await createClient();
 
@@ -17,16 +21,16 @@ export async function signIn(formData: FormData) {
       p_username: usernameOrEmail.toLowerCase(),
     });
     if (!data) {
-      redirect(`/login?error=${encodeURIComponent("ไม่พบชื่อผู้ใช้นี้")}`);
+      redirect(back("ไม่พบชื่อผู้ใช้นี้"));
     }
     email = data as string;
   }
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    redirect(`/login?error=${encodeURIComponent("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง")}`);
+    redirect(back("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"));
   }
-  redirect("/");
+  redirect(next);
 }
 
 export async function signOut() {

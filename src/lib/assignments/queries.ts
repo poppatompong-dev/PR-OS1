@@ -12,6 +12,7 @@ export type MyTask = {
   assignmentVersion: number;
   roleName: string;
   acknowledged: boolean;
+  unavailableReason: string | null;
   event: {
     id: string;
     title: string;
@@ -68,6 +69,7 @@ function mockAssignments(): MyAssignments {
           assignmentVersion: 1,
           roleName: assignment.role.name,
           acknowledged: assignment.ackStatus === "acknowledged",
+          unavailableReason: null,
           event: {
             id: event.id,
             title: event.title,
@@ -115,7 +117,7 @@ export async function getMyAssignments(): Promise<MyAssignments> {
     .from("assignments")
     .select(
       `
-      id, assignment_version, assignment_status,
+      id, assignment_version, assignment_status, unavailable_at, unavailable_reason,
       role:roles(name),
       acknowledgements(assignment_version),
       event:events!inner(
@@ -144,6 +146,7 @@ export async function getMyAssignments(): Promise<MyAssignments> {
         assignmentVersion: a.assignment_version,
         roleName: one(a.role)?.name ?? "—",
         acknowledged,
+        unavailableReason: a.unavailable_at ? (a.unavailable_reason ?? "ไม่ระบุเหตุผล") : null,
         event: {
           id: ev.id,
           title: ev.title,

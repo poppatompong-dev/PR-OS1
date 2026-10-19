@@ -17,7 +17,8 @@ function redirectWithError(message: string) {
 export async function GET() {
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
-  if (!user) return NextResponse.redirect(new URL("/login", env.appBaseUrl));
+  // Opened from the bot's "ผูกบัญชี" button inside LINE's browser: sign in first, then come straight back here.
+  if (!user) return NextResponse.redirect(new URL("/login?next=%2Fapi%2Fauth%2Fline%2Fstart", env.appBaseUrl));
   if (!user.personId) {
     return redirectWithError("บัญชีนี้ยังไม่ผูกกับรายชื่อบุคลากร ให้ผู้ดูแลระบบผูกในหน้าตั้งค่าก่อน");
   }
@@ -28,12 +29,8 @@ export async function GET() {
   const state = randomBytes(16).toString("hex");
   const redirectUri = new URL("/api/auth/line/callback", env.appBaseUrl).toString();
   const response = NextResponse.redirect(buildLineLoginUrl(state, redirectUri));
-  response.cookies.set("line_oauth_state", state, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 600,
-    path: "/",
-  });
+  const cookie = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, maxAge: 600, path: "/" };
+  response.cookies.set("line_oauth_state", state, cookie);
+  response.cookies.set("line_oauth_mode", "link", cookie);
   return response;
 }

@@ -303,7 +303,8 @@ export function TableMonitor() {
             <p className="tv-empty">วันนี้ไม่มีงานประชาสัมพันธ์ตามแผน</p>
           ) : (
             todayEvents.map((e, i) => {
-              const pending = e.assigneeDetail.filter((p) => !p.ack).length;
+              const pending = e.assigneeDetail.filter((p) => !p.ack && !p.unavailable).length;
+              const unavailable = e.assigneeDetail.filter((p) => p.unavailable).length;
               const past = minutesOf(e.endTime || e.startTime) < nowMinutes;
               return (
                 <article
@@ -323,10 +324,14 @@ export function TableMonitor() {
                       {e.assigneeDetail.map((p, k) => (
                         <i className="tv-person" key={`${e.id}-${k}`}>
                           <b>{p.name}</b> <small>({p.role})</small>
+                          {p.unavailable ? <small className="tv-unavailable"> ไม่สะดวก</small> : null}
                         </i>
                       ))}
                       {pending > 0 ? (
                         <span className="tv-ack">ยังไม่รับทราบ {pending}</span>
+                      ) : null}
+                      {unavailable > 0 ? (
+                        <span className="tv-ack tv-ack-unavailable">ต้องหาคนแทน {unavailable}</span>
                       ) : null}
                     </div>
                   </div>

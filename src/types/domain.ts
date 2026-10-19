@@ -36,6 +36,8 @@ export type Assignment = {
   role: Role;
   ackStatus: AckStatus;
   acknowledgedAt?: string;
+  /** Set when the assignee pressed "ไม่สะดวก" and has not acknowledged since. */
+  unavailableReason?: string;
   note?: string;
 };
 

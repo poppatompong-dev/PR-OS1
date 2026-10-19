@@ -203,3 +203,70 @@ psql "$NEW_DB_URL" -c "create trigger on_auth_user_created after insert on auth.
   จากนั้นเปลี่ยน `NEXT_PUBLIC_SUPABASE_URL` / anon key / service role key บน Vercel ไปที่โปรเจกต์ใหม่ แล้ว redeploy
   ไฟล์แนบใน Storage ต้องอัปโหลดคืนเอง และสร้าง bucket `event-attachments` + policy ตาม migration `0010`
 - ห้าม `pg_restore --clean` ลงโปรเจกต์เดิมที่ใช้งานอยู่ — จะลบข้อมูลปัจจุบันทิ้งก่อน
+
+---
+
+## 8. เปิดใช้ LINE bot — ทำตามลำดับนี้เท่านั้น
+
+> ⚠️ **ลำดับสำคัญ:** ต้องรัน `0014` **ก่อน** push โค้ดเฟส LINE ขึ้น GitHub
+> โค้ดใหม่อ่านคอลัมน์ `unavailable_at` ที่ `0014` เพิ่ม — ถ้า push ก่อน หน้าตารางงาน/งานของฉันจะ error จนกว่าจะรัน `0014`
+
+**ขั้น 1 — สำรองข้อมูลก่อน** GitHub → Actions → "Database backup (weekly, encrypted)" → Run workflow → รอเขียว (ข้อ 7)
+
+**ขั้น 2 — ตรวจก่อนรัน** (read-only) วางใน SQL Editor ต้องได้ **0 แถว** (ไม่มี LINE userId ซ้ำ) ถ้าได้แถว หยุดแล้วบอก agent
+
+```sql
+select line_user_id, count(*) from public.people
+where line_user_id is not null group by 1 having count(*) > 1;
+```
+
+**ขั้น 3 — รัน migration** เปิด `supabase/migrations/0014_line_bot.sql` คัดลอกทั้งไฟล์ วางใน SQL Editor แล้ว Run
+ต้องขึ้น `Success. No rows returned` ถ้า error ให้คัดลอกข้อความ error มาให้ agent — ไฟล์ครอบ `begin`/`commit` ไว้ จะ rollback เอง
+
+**ขั้น 4 — ตรวจผล** (read-only)
+
+```sql
+select enum_range(null::public.notification_type);
+-- ต้องมี daily_summary, admin_report, unavailable, quota_warning
+
+select column_name from information_schema.columns
+where table_schema = 'public' and table_name = 'assignments' and column_name like 'unavailable%';
+-- ต้องได้ 2 แถว
+
+select key, value from public.settings
+where key in ('line_admin_person_ids', 'same_day_reminder_enabled', 'line_monthly_quota');
+-- ต้องได้ 3 แถว (same_day_reminder_enabled = true)
+
+select has_function_privilege('anon', 'public.get_monitor_events()', 'execute');
+-- ต้องได้ true (จอทีวียังดึงข้อมูลได้)
+```
+
+**ขั้น 5 — push โค้ด** `git push` ใน `D:\PR-OS1` แล้วรอ Vercel deploy เสร็จ จากนั้นเปิด `/monitor` และ `/schedule` ดูว่าปกติ
+
+**ขั้น 6 — สร้าง LINE** ตามข้อ 4 (OA + Messaging API + LINE Login ใต้ Provider เดียวกัน, ใส่ 4 ตัวแปรบน Vercel, Redeploy)
+
+**ขั้น 7 — ตั้งค่าใน LINE**
+
+- LINE Developers → Messaging API → **Webhook URL** = ค่าที่หน้า `/settings` แสดง (`https://pr-os1.vercel.app/api/line/webhook`) → กด Verify ต้องขึ้น Success → เปิด **Use webhook**
+- Messaging API → **Allow bot to join group chats** = เปิด (จะดึงบอทเข้ากลุ่มฝ่ายได้)
+- LINE Official Account Manager → การตั้งค่าการตอบกลับ: **ปิด** ข้อความตอบกลับอัตโนมัติ และ **ปิด** ข้อความทักทาย (บอทส่งข้อความต้อนรับเอง)
+
+**ขั้น 8 — ตั้งค่าในระบบ** `/settings` หัวข้อการแจ้งเตือน
+
+1. ติ๊ก "ผู้รับแจ้งเตือนฝั่งแอดมิน" = ตัวคุณ + หัวหน้างาน ปชส. → บันทึก
+2. กด **ตั้งค่าเมนูใต้แชท LINE** (ทำครั้งเดียว กดซ้ำได้ ไม่เสียอะไร)
+
+**ขั้น 9 — ทดสอบกับตัวเองก่อน (Human Gate)**
+
+1. แอดเพื่อน OA ด้วยมือถือตัวเอง → บอทจะส่งปุ่ม "ผูกบัญชี" → กด → เข้าด้วยชื่อผู้ใช้ → อนุญาต LINE → กลับมาที่ "งานของฉัน" ขึ้นว่าเชื่อมต่อสำเร็จ
+2. สร้างงานทดสอบ มอบหมายให้ตัวเอง → เผยแพร่ → รอไม่เกิน 15 นาที (หรือกด "ประมวลผลคิว") → ต้องได้การ์ดมีปุ่ม รับทราบ / ไม่สะดวก / ดูรายละเอียด
+3. กด "รับทราบ" → หน้า "งานของฉัน" ต้องขึ้นรับทราบแล้ว · พิมพ์ "งานวันนี้" / "งานพรุ่งนี้" ต้องตอบ
+4. ลบ/ยกเลิกงานทดสอบ
+
+**ขั้น 10 — เปิดให้ทีม** ส่ง QR ของ OA ให้เจ้าหน้าที่แอดเพื่อนและกดผูกบัญชีคนละครั้ง แล้วเชิญบอทเข้ากลุ่มไลน์ฝ่าย
+จากนั้น **แอดมินพิมพ์ `อนุญาตกลุ่มนี้` ในกลุ่ม 1 ครั้ง** — บอทจะไม่ตอบในกลุ่มที่ยังไม่อนุญาต
+(กันคนนอกเชิญบอทเข้ากลุ่มของตัวเองแล้วถามตารางงานที่มีชื่อเจ้าหน้าที่)
+หน้า `/settings` บอกว่าใครยังไม่ผูก LINE
+
+**ค่าใช้โควต้า (แผนฟรี 300/เดือน)** การ์ดมอบหมาย/แก้ไข/ยกเลิก · สรุป 07:00 · เตือน 1.5 ชม. · รายงาน 17:00 · แจ้งไม่สะดวก — นับทุกข้อความ
+การพิมพ์ถามบอทและการกดปุ่มในแชท **ไม่นับ** (เป็นการตอบกลับ)

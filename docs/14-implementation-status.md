@@ -64,17 +64,16 @@
 - ตัวประมวลผลจริง `processDueNotifications()` (`src/lib/notifications/queue.ts`) — ดึงคิวที่ถึงเวลา, ส่ง LINE ผ่าน Messaging API / Email ผ่าน Resend, เช็คโควต้า LINE รายเดือน, fallback ไป email ตาม settings
 
 ## ⚠️ ยังเหลือ / ข้อจำกัด
-- **ส่งแจ้งเตือนจริง — รอ LINE OA**: ตัวส่งพร้อมแล้ว แต่ยังไม่มี OA/credential บน Vercel คิวจึงถูก mark `skipped` (โหมดจำลอง) จนกว่าจะใส่ค่า
-  รูปแบบการส่งเปลี่ยนเป็น "แบบผสม" ตามที่ owner ตัดสินใจ 19 ต.ค. (ดู `STATE.md`) — โค้ดส่วนสรุป 07:00, ปุ่มไม่สะดวก, แจ้งแอดมิน 17:00 และ webhook ยังไม่ได้ทำ
-- **ยังไม่มี LINE webhook / rich menu / คำสั่งแชท** — งานเฟส LINE
-- **อีเมล (Resend) ไม่ใช้** — owner เลือกไม่ใช้อีเมลสำรอง โค้ด fallback ยังอยู่แต่จะไม่ทำงานเพราะไม่มี `RESEND_API_KEY`
+- **LINE bot — โค้ดเสร็จ รอเปิดใช้**: ต้องรัน `0014_line_bot.sql` ก่อน push แล้วสร้าง OA + ใส่ 4 ตัวแปรบน Vercel (`docs/15` ข้อ 8)
+  ก่อนมี credential คิวจะถูก mark `skipped` (โหมดจำลอง) ตามเดิม · ยังไม่ได้ทดสอบกับ LINE จริง
+- **อีเมล (Resend) ไม่ใช้** — owner เลือกไม่ใช้อีเมลสำรอง โค้ดส่งอีเมลถูกถอดออกแล้ว (19 ต.ค.)
 - **ตัวตั้งเวลาเรียก `/api/notifications/process`** — มี `.github/workflows/notifications.yml` แล้ว (ทุก 15 นาที 06:00–20:00) รอ owner ใส่ secret `NOTIFICATIONS_CRON_SECRET` ใน GitHub
 - **สำรองข้อมูล** — มี `.github/workflows/db-backup.yml` แล้ว (รายสัปดาห์ เข้ารหัส) รอ owner ใส่ `SUPABASE_DB_URL` + `BACKUP_PASSPHRASE`
   ไฟล์แนบใน Storage **ไม่ได้** อยู่ในไฟล์สำรอง (สำรองเฉพาะฐานข้อมูล)
 - **keep-alive** (`.github/workflows/keep-alive.yml`) ต้องเขียวทุกวัน ถ้าแดง = Supabase หลับหรือ Vercel หลุดจากฐานข้อมูล
 
 ## Migrations
-`0001` schema · `0002` auth/RLS/views · `0003` monitor feed · `0004` DB hardening · `0005` accounts · `0006` notifications · `0007` username login · `0008` monitor assignees · `0009` notification delivery settings · `0010` event attachments · `0011` nakhon sawan master data · `0012` reminders & conflict check · `0013` monitor board (status/การยกเลิก/ผู้รับทราบรายคน)
+`0001` schema · `0002` auth/RLS/views · `0003` monitor feed · `0004` DB hardening · `0005` accounts · `0006` notifications · `0007` username login · `0008` monitor assignees · `0009` notification delivery settings · `0010` event attachments · `0011` nakhon sawan master data · `0012` reminders & conflict check · `0013` monitor board (status/การยกเลิก/ผู้รับทราบรายคน) · `0014` LINE bot (**ยังไม่ได้รันบน production**)
 
 ## Quality gates (ผ่านล่าสุด 13 ต.ค. 2569)
 `npm run build` ✓ · `npm run typecheck` ✓ · `npm run lint` ✓ · smoke test 12/12 (mock mode)

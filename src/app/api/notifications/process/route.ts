@@ -7,6 +7,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 import { processDueNotifications } from "@/lib/notifications/queue";
 
+// One run can push the 07:00 summaries one by one; give it room (Vercel Hobby allows up to 60 s).
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   const provided = request.headers.get("x-notifications-secret");
   if (!env.notificationsCronSecret || provided !== env.notificationsCronSecret) {

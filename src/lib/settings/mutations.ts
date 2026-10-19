@@ -7,6 +7,15 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { can, getSessionUser, type AppRole } from "@/lib/auth/roles";
 import { processDueNotifications } from "@/lib/notifications/queue";
+import { env, isLineMessagingConfigured } from "@/lib/env";
+import {
+  createRichMenu,
+  deleteRichMenu,
+  listRichMenuIds,
+  setDefaultRichMenu,
+  uploadRichMenuImage,
+} from "@/lib/line/api";
+import { RICH_MENU_IMAGE_PATH, richMenuDefinition } from "@/lib/line/rich-menu";
 
 function emptyToNull(value: FormDataEntryValue | null): string | null {
   const text = String(value ?? "").trim();
@@ -137,7 +146,11 @@ export async function processNotificationQueue() {
   let error: string | undefined;
   try {
     const summary = await processDueNotifications();
-    notice = `ประมวลผล ${summary.processed} รายการ — ส่งแล้ว ${summary.sent}, ล้มเหลว ${summary.failed}, ข้าม ${summary.skipped}`;
+    notice =
+      `ประมวลผล ${summary.processed} รายการ — ส่งแล้ว ${summary.sent}, ล้มเหลว ${summary.failed}, ข้าม ${summary.skipped}` +
+      (summary.dailySummaries ? ` · สรุปเช้า ${summary.dailySummaries} คน` : "") +
+      (summary.adminReports ? ` · รายงานแอดมิน ${summary.adminReports}` : "") +
+      (summary.quotaRemaining !== null ? ` · โควต้าเหลือ ${summary.quotaRemaining}` : "");
   } catch (err) {
     error = err instanceof Error ? err.message : "ประมวลผลคิวไม่สำเร็จ";
   }
@@ -148,17 +161,12 @@ export async function processNotificationQueue() {
 export async function updateNotificationSettings(formData: FormData) {
   await blockWritesInDemoMode();
   const { supabase, user } = await requireAdmin();
+  const adminIds = formData.getAll("adminPersonIds").map(String).filter(Boolean);
   const rows = [
     { key: "line_enabled", value: formData.get("lineEnabled") === "on", updated_by: user.id },
-    { key: "email_enabled", value: formData.get("emailEnabled") === "on", updated_by: user.id },
     {
       key: "line_monthly_quota",
       value: Number(formData.get("lineMonthlyQuota") ?? 300) || 300,
-      updated_by: user.id,
-    },
-    {
-      key: "default_reminder_hours",
-      value: Number(formData.get("defaultReminderHours") ?? 24) || 24,
       updated_by: user.id,
     },
     {
@@ -166,22 +174,40 @@ export async function updateNotificationSettings(formData: FormData) {
       value: formData.get("sameDayReminderEnabled") === "on",
       updated_by: user.id,
     },
-    {
-      key: "fallback_to_email_when_line_fails",
-      value: formData.get("fallbackWhenLineFails") === "on",
-      updated_by: user.id,
-    },
-    {
-      key: "fallback_to_email_when_quota_exceeded",
-      value: formData.get("fallbackWhenQuotaExceeded") === "on",
-      updated_by: user.id,
-    },
+    { key: "line_admin_person_ids", value: adminIds, updated_by: user.id },
   ];
   const { error } = await supabase.from("settings").upsert(rows, { onConflict: "key" });
   if (error) done(error.message);
 
   revalidatePath("/settings");
-  done();
+  done(undefined, "บันทึกการตั้งค่าการแจ้งเตือนแล้ว");
+}
+
+/**
+ * Create the bot's rich menu (the button panel under the chat) and make it
+ * the default for everyone. Safe to press again: old menus are removed.
+ */
+export async function setupLineRichMenu() {
+  await blockWritesInDemoMode();
+  await requireAdmin();
+  if (!isLineMessagingConfigured()) done("ยังไม่ได้ตั้งค่า LINE Messaging API บน Vercel");
+
+  let error: string | undefined;
+  try {
+    const old = await listRichMenuIds();
+    const created = await createRichMenu(richMenuDefinition());
+    if (!created.ok || !created.id) throw new Error(created.error ?? "สร้างเมนูไม่สำเร็จ");
+    const img = await fetch(new URL(RICH_MENU_IMAGE_PATH, env.appBaseUrl));
+    if (!img.ok) throw new Error(`โหลดรูปเมนูไม่สำเร็จ (${img.status})`);
+    const up = await uploadRichMenuImage(created.id, await img.arrayBuffer());
+    if (!up.ok) throw new Error(up.error);
+    const def = await setDefaultRichMenu(created.id);
+    if (!def.ok) throw new Error(def.error);
+    for (const id of old) await deleteRichMenu(id);
+  } catch (err) {
+    error = err instanceof Error ? err.message : "ตั้งค่าเมนู LINE ไม่สำเร็จ";
+  }
+  done(error, error ? undefined : "ตั้งค่าเมนูใต้แชท LINE แล้ว (อาจใช้เวลาสักครู่กว่าจะขึ้นในมือถือ)");
 }
 
 export async function createAccount(formData: FormData) {

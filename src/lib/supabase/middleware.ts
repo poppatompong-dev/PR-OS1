@@ -19,6 +19,11 @@ const PUBLIC_PREFIXES = [
   "/api/monitor",
   "/api/notifications/process",
   "/api/health",
+  // LINE calls the webhook with no session; it checks x-line-signature itself.
+  "/api/line/webhook",
+  // LINE Login: /login (sign in with LINE) and /callback must work before
+  // there is a session. /start checks for a session itself.
+  "/api/auth/line",
 ];
 
 function isPublicPath(pathname: string): boolean {
@@ -54,6 +59,12 @@ export async function updateSession(request: NextRequest) {
   if (!user && !isPublicPath(request.nextUrl.pathname)) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
+    // Come back here after signing in (e.g. a LINE "ดูรายละเอียด" button
+    // opened in LINE's own browser, which has no session yet).
+    loginUrl.search = "";
+    if (request.nextUrl.pathname !== "/") {
+      loginUrl.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
+    }
     return NextResponse.redirect(loginUrl);
   }
 

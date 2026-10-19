@@ -1451,6 +1451,56 @@ textarea:focus-visible {
   font-size: 14px;
 }
 
+.login-card .login-or {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  margin: -4px 0;
+}
+
+/* LINE brand green is what people look for; text stays white for contrast */
+.login-card .button.line-login {
+  background: #06c755;
+  border-color: #06c755;
+  color: #fff;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.login-card .login-hint {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+  margin: -6px 0 0;
+}
+
+.status-unavailable {
+  color: var(--red);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.unavailable-form {
+  margin-top: 10px;
+}
+
+.unavailable-form summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 14px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.unavailable-form form {
+  display: grid;
+  gap: 10px;
+  margin-top: 6px;
+}
+
 .sidebar-user {
   margin-top: auto;
   display: flex;
@@ -1826,6 +1876,39 @@ textarea:focus-visible {
   align-items: center;
   gap: 8px;
   padding-bottom: 10px;
+}
+
+.admin-recipients {
+  flex-basis: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 14px 4px;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+
+.admin-recipients legend {
+  font-size: 14px;
+  color: var(--muted);
+  padding: 0 6px;
+}
+
+.line-facts {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+}
+
+.line-facts dt {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.line-facts dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 760px) {

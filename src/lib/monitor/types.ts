@@ -8,6 +8,8 @@ export type MonitorAssignee = {
   name: string;
   role: string;
   ack: boolean;
+  /** Pressed "ไม่สะดวก" — still on the job until an admin swaps them out. */
+  unavailable: boolean;
 };
 
 export type MonitorEvent = {

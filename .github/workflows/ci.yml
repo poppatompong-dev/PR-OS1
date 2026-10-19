@@ -27,6 +27,12 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Lint
+        run: npm run lint
+
+      - name: LINE bot unit tests
+        run: npx -y tsx@4.19.2 --test tests/line-bot.unit.test.ts
+
       - name: Build Next.js
         run: npm run build
 

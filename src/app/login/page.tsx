@@ -1,27 +1,29 @@
 import { redirect } from "next/navigation";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isLineLoginConfigured, isSupabaseConfigured } from "@/lib/env";
+import { safeNextPath } from "@/lib/auth/next-path";
 import { createClient } from "@/lib/supabase/server";
 import { signIn } from "@/lib/auth/actions";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   // In mock mode there is no auth layer — send users straight to the app.
   if (!isSupabaseConfigured()) {
     redirect("/");
   }
 
+  const { error, next: rawNext } = await searchParams;
+  const next = safeNextPath(rawNext);
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (user) {
-    redirect("/");
+    redirect(next);
   }
-
-  const { error } = await searchParams;
 
   return (
     <div className="login-wrap">
@@ -30,6 +32,7 @@ export default async function LoginPage({
         <p className="login-sub">เข้าสู่ระบบบริหารงานประชาสัมพันธ์เทศบาล</p>
 
         {error ? <div className="login-error">{error}</div> : null}
+        <input type="hidden" name="next" value={next} />
 
         <label className="form-field">
           ชื่อผู้ใช้
@@ -55,6 +58,15 @@ export default async function LoginPage({
         <button className="button" type="submit">
           เข้าสู่ระบบ
         </button>
+        {isLineLoginConfigured() ? (
+          <>
+            <p className="login-or">หรือ</p>
+            <a className="button line-login" href={`/api/auth/line/login?next=${encodeURIComponent(next)}`}>
+              เข้าสู่ระบบด้วย LINE
+            </a>
+            <p className="login-hint">ใช้ได้หลังจากผูกบัญชี LINE ในหน้า “งานของฉัน” แล้ว</p>
+          </>
+        ) : null}
       </form>
     </div>
   );

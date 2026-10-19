@@ -9,7 +9,15 @@ export const env = {
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
   supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
-  appBaseUrl: process.env.APP_BASE_URL ?? "http://localhost:3000",
+  // Links inside LINE messages and the LINE Login callback are built from this.
+  // On Vercel, fall back to the project's production domain (a system
+  // variable Vercel always sets) so a missing APP_BASE_URL cannot send people
+  // to localhost.
+  appBaseUrl:
+    process.env.APP_BASE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : "http://localhost:3000"),
   // LINE Login: OAuth channel used only to let a staff member link their own
   // LINE account (captures line_user_id). Separate from the Messaging API
   // channel below, which is used to actually push notification text.
@@ -18,6 +26,9 @@ export const env = {
   // LINE Messaging API: long-lived channel access token used to push
   // notification messages to a linked line_user_id.
   lineMessagingChannelAccessToken: process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN ?? "",
+  // Messaging API channel secret: verifies the x-line-signature header on
+  // every webhook call, so only LINE itself can drive the bot.
+  lineMessagingChannelSecret: process.env.LINE_MESSAGING_CHANNEL_SECRET ?? "",
   // Email fallback via Resend.
   resendApiKey: process.env.RESEND_API_KEY ?? "",
   resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "PR-OS <onboarding@resend.dev>",
@@ -45,6 +56,10 @@ export function isLineLoginConfigured(): boolean {
 
 export function isLineMessagingConfigured(): boolean {
   return env.lineMessagingChannelAccessToken.length > 0;
+}
+
+export function isLineWebhookConfigured(): boolean {
+  return isLineMessagingConfigured() && env.lineMessagingChannelSecret.length > 0;
 }
 
 export function isEmailConfigured(): boolean {

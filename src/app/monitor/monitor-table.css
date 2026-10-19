@@ -319,6 +319,22 @@
   font-weight: 700;
 }
 
+/* ไม่สะดวก — คำกำกับเสมอ ไม่ใช้สีอย่างเดียว (เหตุผลเดียวกับ .tv-ack) */
+.tv-person .tv-unavailable {
+  color: var(--tv-danger);
+  font-weight: 700;
+}
+
+.tv-ack.tv-ack-unavailable {
+  border-color: var(--tv-danger);
+  color: var(--tv-danger);
+  background: rgba(240, 122, 90, 0.12);
+}
+
+.tv-ack.tv-ack-unavailable::before {
+  content: "×";
+}
+
 .tv-empty {
   font-size: calc(24 * var(--u));
   color: var(--tv-dim);

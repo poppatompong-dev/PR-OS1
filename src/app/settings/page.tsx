@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser, ROLE_LABELS_TH, type AppRole } from "@/lib/auth/roles";
-import { isEmailConfigured, isLineMessagingConfigured, isSupabaseConfigured } from "@/lib/env";
+import { env, isLineLoginConfigured, isLineMessagingConfigured, isLineWebhookConfigured, isSupabaseConfigured } from "@/lib/env";
 import {
   getAccounts,
   getAllPeople,
@@ -16,6 +16,7 @@ import {
   createAccount,
   processNotificationQueue,
   setMasterActive,
+  setupLineRichMenu,
   setPersonActive,
   updateAccount,
   updateNotificationSettings,
@@ -25,9 +26,13 @@ import { BellRing, Mail, Plus, Power, RotateCcw, Send, UserPlus, Users } from "l
 
 const NOTIF_TYPE_TH: Record<string, string> = {
   assignment: "มอบหมาย",
-  reminder: "เตือนล่วงหน้า",
+  reminder: "เตือน 1.5 ชม.",
   change: "เปลี่ยนแปลง",
   cancellation: "ยกเลิก",
+  daily_summary: "สรุป 07:00",
+  admin_report: "รายงาน 17:00",
+  unavailable: "แจ้งไม่สะดวก",
+  quota_warning: "เตือนโควต้า",
 };
 const NOTIF_STATUS_TH: Record<string, string> = {
   queued: "รอส่ง",
@@ -360,58 +365,91 @@ export default async function SettingsPage({
           </div>
         </div>
 
-        {isLineMessagingConfigured() || isEmailConfigured() ? (
+        {isLineWebhookConfigured() && isLineLoginConfigured() ? (
           <div
             className="login-error"
             style={{ background: "rgba(24,120,74,.1)", borderColor: "rgba(24,120,74,.35)", color: "var(--green)" }}
           >
-            ✓ เชื่อมต่อ{isLineMessagingConfigured() ? " LINE" : ""}
-            {isLineMessagingConfigured() && isEmailConfigured() ? " และ" : ""}
-            {isEmailConfigured() ? " Email" : ""} แล้ว — ปุ่ม “ประมวลผลคิว” จะส่งข้อความจริง
+            ✓ เชื่อมต่อ LINE ครบแล้ว (ส่งข้อความ + รับคำสั่งแชท + ล็อกอินด้วย LINE)
           </div>
         ) : (
           <div className="login-error" style={{ background: "rgba(164,95,8,.1)", borderColor: "rgba(164,95,8,.35)", color: "var(--amber)" }}>
-            ℹ️ การส่งจริงผ่าน LINE/Email ยังไม่เปิดใช้งาน (ยังไม่ตั้งค่า provider) — ปุ่ม “ประมวลผลคิว” จะทำงานในโหมดจำลอง
+            ℹ️ LINE ยังตั้งค่าไม่ครบ — ส่งข้อความ {isLineMessagingConfigured() ? "✓" : "✗"} · รับคำสั่งแชท{" "}
+            {isLineWebhookConfigured() ? "✓" : "✗"} · ล็อกอินด้วย LINE {isLineLoginConfigured() ? "✓" : "✗"} — ระหว่างนี้คิวจะถูกข้าม
+            (โหมดจำลอง) ดูวิธีตั้งค่าใน docs/15 ข้อ 4
           </div>
         )}
 
+        <dl className="line-facts">
+          <div>
+            <dt>Webhook URL (วางใน LINE Developers → Messaging API)</dt>
+            <dd>
+              <code>{new URL("/api/line/webhook", env.appBaseUrl).toString()}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>ใช้โควต้าเดือนนี้ (ตามที่ระบบส่ง)</dt>
+            <dd>
+              {notifSettings.quotaUsedThisMonth} / {notifSettings.lineMonthlyQuota} ข้อความ
+            </dd>
+          </div>
+          <div>
+            <dt>ยังไม่ผูก LINE</dt>
+            <dd>
+              {activePeople.filter((p) => !p.lineLinked).length === 0
+                ? "ผูกครบทุกคนแล้ว"
+                : activePeople
+                    .filter((p) => !p.lineLinked)
+                    .map((p) => p.displayName)
+                    .join(", ")}
+            </dd>
+          </div>
+        </dl>
+
         <form action={updateNotificationSettings} className="notif-settings">
           <label className="notif-check">
-            <input type="checkbox" name="lineEnabled" defaultChecked={notifSettings.lineEnabled} /> เปิด LINE
-          </label>
-          <label className="notif-check">
-            <input type="checkbox" name="emailEnabled" defaultChecked={notifSettings.emailEnabled} /> เปิด Email (fallback)
+            <input type="checkbox" name="lineEnabled" defaultChecked={notifSettings.lineEnabled} /> เปิดส่ง LINE
           </label>
           <label className="notif-check">
             <input type="checkbox" name="sameDayReminderEnabled" defaultChecked={notifSettings.sameDayReminderEnabled} />
-            เตือนซ้ำ 1 ชม. ก่อนงานในวันเดียวกัน
-          </label>
-          <label className="notif-check">
-            <input type="checkbox" name="fallbackWhenLineFails" defaultChecked={notifSettings.fallbackWhenLineFails} />
-            ส่ง Email แทนถ้า LINE ล้มเหลว
-          </label>
-          <label className="notif-check">
-            <input type="checkbox" name="fallbackWhenQuotaExceeded" defaultChecked={notifSettings.fallbackWhenQuotaExceeded} />
-            ส่ง Email แทนถ้าโควต้า LINE เต็ม
+            เตือน 1.5 ชม. ก่อนงาน (เฉพาะคนที่ยังไม่รับทราบ)
           </label>
           <label className="form-field">
             โควต้า LINE/เดือน
             <input className="input" type="number" name="lineMonthlyQuota" defaultValue={notifSettings.lineMonthlyQuota} />
           </label>
-          <label className="form-field">
-            แจ้งล่วงหน้า (ชม.)
-            <input className="input" type="number" name="defaultReminderHours" defaultValue={notifSettings.defaultReminderHours} />
-          </label>
+          <fieldset className="admin-recipients">
+            <legend>ผู้รับแจ้งเตือนฝั่งแอดมิน (แจ้งไม่สะดวก · รายงาน 17:00 · เตือนโควต้า)</legend>
+            {activePeople.map((p) => (
+              <label className="notif-check" key={p.id}>
+                <input
+                  type="checkbox"
+                  name="adminPersonIds"
+                  value={p.id}
+                  defaultChecked={notifSettings.adminPersonIds.includes(p.id)}
+                />
+                {p.displayName}
+                {p.lineLinked ? "" : " (ยังไม่ผูก LINE)"}
+              </label>
+            ))}
+          </fieldset>
           <button className="button secondary" type="submit">บันทึกการตั้งค่า</button>
         </form>
 
-        <div className="form-actions" style={{ justifyContent: "flex-start", marginTop: 12 }}>
+        <div className="form-actions" style={{ justifyContent: "flex-start", marginTop: 12, flexWrap: "wrap" }}>
           <form action={processNotificationQueue}>
             <button className="button" type="submit">
               <Send size={16} aria-hidden="true" />
               ประมวลผลคิว
             </button>
           </form>
+          {isLineMessagingConfigured() ? (
+            <form action={setupLineRichMenu}>
+              <button className="button secondary" type="submit">
+                ตั้งค่าเมนูใต้แชท LINE
+              </button>
+            </form>
+          ) : null}
         </div>
 
         <h3 style={{ marginTop: 18 }}>คิว/ประวัติล่าสุด</h3>

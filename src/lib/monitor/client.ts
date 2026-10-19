@@ -45,6 +45,7 @@ export async function fetchMonitorEvents(): Promise<MonitorEvent[]> {
           name: a.person.displayName,
           role: a.role.name,
           ack: a.ackStatus === "acknowledged",
+          unavailable: Boolean(a.unavailableReason) && a.ackStatus !== "acknowledged",
         })),
         allAck:
           e.assignments.length > 0 &&
@@ -76,6 +77,7 @@ export async function fetchMonitorEvents(): Promise<MonitorEvent[]> {
       name: String(p?.name ?? ""),
       role: String(p?.role ?? ""),
       ack: Boolean(p?.ack),
+      unavailable: Boolean(p?.unavailable),
     })),
     allAck: r.total_assignments > 0 && r.acknowledged_assignments >= r.total_assignments,
     hasChanges: Boolean(r.has_changes),

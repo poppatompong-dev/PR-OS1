@@ -93,6 +93,13 @@ export async function createEvent(formData: FormData) {
     },
   });
 
+  // Created and published in one go from the 4-step form: tell the assignee
+  // now, like publishEvent does. (Before 19 Oct 2026 this path sent nothing.)
+  if (publish && personId && roleId) {
+    await supabase.rpc("enqueue_event_notifications", { p_event_id: created.id, p_type: "assignment" });
+    await supabase.rpc("enqueue_event_reminders", { p_event_id: created.id });
+  }
+
   revalidatePath("/schedule");
   redirect("/schedule");
 }
@@ -206,6 +213,9 @@ export async function editEvent(formData: FormData) {
       p_event_id: eventId,
       p_type: "change",
     });
+    // The 1.5-hour reminder was timed off the old start: drop it, queue the new one.
+    await supabase.rpc("cancel_event_reminders", { p_event_id: eventId });
+    await supabase.rpc("enqueue_event_reminders", { p_event_id: eventId });
   }
 
   await writeAudit(

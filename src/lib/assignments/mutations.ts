@@ -4,7 +4,9 @@ import { blockWritesInDemoMode } from "@/lib/demo-guard";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { recordUnavailable } from "@/lib/line/data";
+import { alertAdminsUnavailable } from "@/lib/line/alerts";
 import { can, getSessionUser } from "@/lib/auth/roles";
 import { isSupabaseConfigured } from "@/lib/env";
 
@@ -150,4 +152,46 @@ export async function removeAssignment(formData: FormData) {
 
   revalidatePath(`/events/${eventId}`);
   redirect(`/events/${eventId}`);
+}
+
+/**
+ * "ไม่สะดวก" from the web (the LINE button does the same through the
+ * webhook). The person stays on the job with a red flag; admins are told on
+ * LINE and pick a replacement themselves (owner decision 19 Oct 2026).
+ */
+export async function markUnavailable(formData: FormData) {
+  await blockWritesInDemoMode();
+  const assignmentId = String(formData.get("assignmentId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+
+  const supabase = await createClient();
+  const user = await getSessionUser(supabase);
+  if (!user) redirect("/login");
+  if (!user.personId) {
+    redirect(`/mobile/my-tasks?error=${encodeURIComponent("บัญชีนี้ยังไม่ได้ผูกกับรายชื่อบุคลากร")}`);
+  }
+  if (!reason) {
+    redirect(`/mobile/my-tasks?error=${encodeURIComponent("กรุณาใส่เหตุผลสั้น ๆ ว่าทำไมไม่สะดวก")}`);
+  }
+
+  const admin = createAdminClient();
+  const { outcome, task } = await recordUnavailable(admin, {
+    assignmentId,
+    personId: user.personId,
+    reason,
+    changedBy: user.id,
+  });
+  if (outcome !== "ok" || !task) {
+    const msg =
+      outcome === "not_yours"
+        ? "งานนี้ไม่ได้มอบหมายให้คุณ"
+        : outcome === "closed"
+          ? "งานนี้ถูกยกเลิกหรือปิดไปแล้ว"
+          : "ไม่พบงานนี้แล้ว";
+    redirect(`/mobile/my-tasks?error=${encodeURIComponent(msg)}`);
+  }
+
+  await alertAdminsUnavailable(admin, task);
+  revalidatePath("/mobile/my-tasks");
+  redirect("/mobile/my-tasks?unavailable=1");
 }

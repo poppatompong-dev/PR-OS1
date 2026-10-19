@@ -17,6 +17,7 @@ export type StaffPerson = {
   position: string;
   email?: string;
   isActive: boolean;
+  lineLinked: boolean;
 };
 
 export type Account = {
@@ -36,6 +37,7 @@ export async function getAllPeople(): Promise<StaffPerson[]> {
       position: person.position,
       email: person.email,
       isActive: person.isActive,
+      lineLinked: false,
     }));
   }
 
@@ -43,7 +45,7 @@ export async function getAllPeople(): Promise<StaffPerson[]> {
   const { data, error } = await supabase
     .from("people")
     // "position" is reserved; alias to a safe key.
-    .select("id, display_name, position_title:position, email, is_active")
+    .select("id, display_name, position_title:position, email, is_active, line_user_id")
     .order("display_name");
   if (error) throw new Error(`getAllPeople: ${error.message}`);
 
@@ -53,6 +55,7 @@ export async function getAllPeople(): Promise<StaffPerson[]> {
     position: (p.position_title as string) ?? "",
     email: (p.email as string) ?? undefined,
     isActive: p.is_active as boolean,
+    lineLinked: Boolean(p.line_user_id),
   }));
 }
 
@@ -194,54 +197,42 @@ export async function getNotificationFeed(): Promise<NotificationRow[]> {
 
 export type NotificationSettings = {
   lineEnabled: boolean;
-  emailEnabled: boolean;
   lineMonthlyQuota: number;
-  defaultReminderHours: number;
   sameDayReminderEnabled: boolean;
-  fallbackWhenLineFails: boolean;
-  fallbackWhenQuotaExceeded: boolean;
+  adminPersonIds: string[];
+  quotaUsedThisMonth: number;
 };
 
 export async function getNotificationSettings(): Promise<NotificationSettings> {
   if (!isSupabaseConfigured()) {
-    return {
-      lineEnabled: true,
-      emailEnabled: true,
-      lineMonthlyQuota: 500,
-      defaultReminderHours: 24,
-      sameDayReminderEnabled: true,
-      fallbackWhenLineFails: true,
-      fallbackWhenQuotaExceeded: true,
-    };
+    return { lineEnabled: true, lineMonthlyQuota: 300, sameDayReminderEnabled: true, adminPersonIds: [], quotaUsedThisMonth: 0 };
   }
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("settings")
-    .select("key, value")
-    .in("key", [
-      "line_enabled",
-      "email_enabled",
-      "line_monthly_quota",
-      "default_reminder_hours",
-      "same_day_reminder_enabled",
-      "fallback_to_email_when_line_fails",
-      "fallback_to_email_when_quota_exceeded",
-    ]);
+  const month = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit" }).format(new Date());
+  const [{ data }, { count }] = await Promise.all([
+    supabase
+      .from("settings")
+      .select("key, value")
+      .in("key", ["line_enabled", "line_monthly_quota", "same_day_reminder_enabled", "line_admin_person_ids"]),
+    supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("channel", "line")
+      .eq("status", "sent")
+      .eq("quota_month", month),
+  ]);
 
   const map = new Map((data ?? []).map((r) => [r.key as string, r.value]));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const asBool = (v: any, fallback = false) => (v === undefined ? fallback : v === true || v === "true");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const asNum = (v: any) => (typeof v === "number" ? v : Number(v));
+  const asBool = (v: any, fallback: boolean) => (v === undefined ? fallback : v === true || v === "true");
+  const admins = map.get("line_admin_person_ids");
 
   return {
-    lineEnabled: asBool(map.get("line_enabled")),
-    emailEnabled: asBool(map.get("email_enabled")),
-    lineMonthlyQuota: asNum(map.get("line_monthly_quota")) || 300,
-    defaultReminderHours: asNum(map.get("default_reminder_hours")) || 24,
-    sameDayReminderEnabled: asBool(map.get("same_day_reminder_enabled"), false),
-    fallbackWhenLineFails: asBool(map.get("fallback_to_email_when_line_fails"), true),
-    fallbackWhenQuotaExceeded: asBool(map.get("fallback_to_email_when_quota_exceeded"), true),
+    lineEnabled: asBool(map.get("line_enabled"), true),
+    lineMonthlyQuota: Number(map.get("line_monthly_quota")) || 300,
+    sameDayReminderEnabled: asBool(map.get("same_day_reminder_enabled"), true),
+    adminPersonIds: Array.isArray(admins) ? admins.map(String) : [],
+    quotaUsedThisMonth: count ?? 0,
   };
 }

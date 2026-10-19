@@ -33,7 +33,7 @@ const EVENT_SELECT = `
   owner_department:departments(id, name, short_name),
   event_type:event_types(id, name, color),
   assignments(
-    id, assignment_version, assignment_status, note,
+    id, assignment_version, assignment_status, note, unavailable_at, unavailable_reason,
     person:people(id, display_name, position, is_active),
     role:roles(id, code, name, color),
     acknowledgements(assignment_version, acknowledged_at)
@@ -233,6 +233,7 @@ function mapEvent(row: any): PrEvent {
         },
         ackStatus,
         acknowledgedAt: matched?.acknowledged_at ?? undefined,
+        unavailableReason: a.unavailable_at ? (a.unavailable_reason ?? "ไม่ระบุเหตุผล") : undefined,
         note: a.note ?? undefined,
       };
     });

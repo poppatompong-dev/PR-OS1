@@ -122,7 +122,11 @@ export default async function EventDetailPage({
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%" }}>
                     <div className="assignment-main">
                       <strong>{assignment.role.name}</strong>: {assignment.person.displayName}{" "}
-                      <span className="ack-tag">— {ackStatusLabel(assignment.ackStatus)}</span>
+                      {assignment.unavailableReason && assignment.ackStatus !== "acknowledged" ? (
+                        <span className="ack-tag status-unavailable">— ⛔ ไม่สะดวก: {assignment.unavailableReason}</span>
+                      ) : (
+                        <span className="ack-tag">— {ackStatusLabel(assignment.ackStatus)}</span>
+                      )}
                     </div>
                     {canManageAssignments ? (
                       <form action={removeAssignment}>

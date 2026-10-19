@@ -1,20 +1,20 @@
 import { AppShell } from "@/components/AppShell";
 import { StatusPill } from "@/components/StatusPill";
 import { getMyAssignments } from "@/lib/assignments/queries";
-import { acknowledgeAssignment, acknowledgeAssignmentQuietly } from "@/lib/assignments/mutations";
+import { acknowledgeAssignment, acknowledgeAssignmentQuietly, markUnavailable } from "@/lib/assignments/mutations";
 import { AckButton } from "@/components/AckButton";
 import { eventStatusLabel, formatThaiDate } from "@/lib/format";
 import { isLineLoginConfigured } from "@/lib/env";
-import { CheckCircle2, Clock3, MapPin, MessageCircle } from "lucide-react";
+import { Ban, CheckCircle2, Clock3, MapPin, MessageCircle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function MyTasksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; line?: string }>;
+  searchParams: Promise<{ error?: string; line?: string; unavailable?: string }>;
 }) {
-  const { error, line } = await searchParams;
+  const { error, line, unavailable } = await searchParams;
   const { displayName, personLinked, lineLinked, tasks } = await getMyAssignments();
 
   return (
@@ -33,6 +33,12 @@ export default async function MyTasksPage({
           style={{ background: "rgba(24,120,74,.1)", borderColor: "rgba(24,120,74,.35)", color: "var(--green)" }}
         >
           เชื่อมต่อบัญชี LINE สำเร็จ — พร้อมรับแจ้งเตือนงานทาง LINE แล้ว
+        </div>
+      ) : null}
+
+      {unavailable ? (
+        <div className="login-error">
+          แจ้งไม่สะดวกแล้ว — ระบบแจ้งแอดมินให้หาคนแทน ถ้าเปลี่ยนใจไปได้ กดรับทราบงานนั้นได้ตามเดิม
         </div>
       ) : null}
 
@@ -87,13 +93,41 @@ export default async function MyTasksPage({
                 <CheckCircle2 size={18} aria-hidden="true" /> รับทราบแล้ว
               </p>
             ) : (
-              <AckButton
-                assignmentId={task.assignmentId}
-                assignmentVersion={task.assignmentVersion}
-                eventTitle={task.event.title}
-                action={acknowledgeAssignment}
-                flushAction={acknowledgeAssignmentQuietly}
-              />
+              <>
+                {task.unavailableReason ? (
+                  <p className="status-unavailable">
+                    <Ban size={18} aria-hidden="true" /> แจ้งไม่สะดวกแล้ว: {task.unavailableReason}
+                  </p>
+                ) : null}
+                <AckButton
+                  assignmentId={task.assignmentId}
+                  assignmentVersion={task.assignmentVersion}
+                  eventTitle={task.event.title}
+                  action={acknowledgeAssignment}
+                  flushAction={acknowledgeAssignmentQuietly}
+                />
+                {!task.unavailableReason && task.event.status === "published" ? (
+                  <details className="unavailable-form">
+                    <summary>ไม่สะดวกไปงานนี้</summary>
+                    <form action={markUnavailable}>
+                      <input type="hidden" name="assignmentId" value={task.assignmentId} />
+                      <label className="form-field">
+                        เหตุผลสั้น ๆ (แอดมินจะเห็น)
+                        <input
+                          className="input"
+                          name="reason"
+                          maxLength={200}
+                          required
+                          placeholder="เช่น ติดภารกิจอื่น / ลา"
+                        />
+                      </label>
+                      <button className="button secondary" type="submit">
+                        แจ้งไม่สะดวก
+                      </button>
+                    </form>
+                  </details>
+                ) : null}
+              </>
             )}
           </article>
         ))
