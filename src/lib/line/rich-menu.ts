@@ -3,7 +3,8 @@
 // regenerate it with scripts/render-rich-menu.mjs if the labels change, so
 // the picture and the tap areas stay in step.
 
-import { COMMANDS, appUrl } from "@/lib/line/messages";
+import { COMMANDS } from "@/lib/line/messages";
+import { LIFF_ADD_EVENT_URL } from "@/lib/liff/config";
 
 export const RICH_MENU_IMAGE_PATH = "/line/rich-menu.png";
 
@@ -12,7 +13,10 @@ export const RICH_MENU_BUTTONS: Array<{ label: string; action: Record<string, st
   { label: COMMANDS.today, action: { type: "message", text: COMMANDS.today } },
   { label: COMMANDS.tomorrow, action: { type: "message", text: COMMANDS.tomorrow } },
   { label: COMMANDS.pending, action: { type: "message", text: COMMANDS.pending } },
-  { label: "เปิดระบบ PR-OS", action: { type: "uri", uri: "" } },
+  // Opens the LINE "add job" form (LIFF). Replaced "เปิดระบบ PR-OS" on 20 Oct
+  // 2026: staff registered from the group have no web login, so that button
+  // led nowhere for them; admins open the web from a bookmark.
+  { label: "เพิ่มงาน", action: { type: "uri", uri: LIFF_ADD_EVENT_URL } },
   { label: COMMANDS.help, action: { type: "message", text: COMMANDS.help } },
 ];
 
@@ -30,7 +34,7 @@ export function richMenuDefinition(): Record<string, unknown> {
     areas: RICH_MENU_BUTTONS.map((b, i) => {
       const col = i % cols;
       const r = Math.floor(i / cols);
-      const action = b.action.type === "uri" ? { type: "uri", label: b.label, uri: appUrl("/") } : { ...b.action, label: b.label };
+      const action = { ...b.action, label: b.label };
       return {
         bounds: {
           x: col * cellW,

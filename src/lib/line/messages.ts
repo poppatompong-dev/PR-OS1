@@ -293,8 +293,9 @@ export function helpMessage(): LineMessage {
       `• "${COMMANDS.mine}" — งานที่คุณได้รับมอบหมาย 7 วันข้างหน้า พร้อมปุ่มรับทราบ`,
       `• "${COMMANDS.today}" / "${COMMANDS.tomorrow}" — ใครไปงานไหน`,
       `• "${COMMANDS.pending}" — งานที่ยังไม่ได้กดรับทราบ`,
+      `• ปุ่ม "เพิ่มงาน" ในเมนูด้านล่าง — กรอกงานใหม่ในไลน์ได้เลย`,
       "",
-      "กรอกหรือแก้ไขงาน แนบรูป และดูรายงาน ทำในเว็บ PR-OS",
+      "แก้ไขงาน แนบรูป และดูรายงาน ทำในเว็บ PR-OS",
     ].join("\n"),
     quickReply: commandQuickReply(),
   };

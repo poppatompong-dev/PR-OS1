@@ -20,6 +20,9 @@ const PUBLIC_PREFIXES = [
   "/tv",
   "/api/monitor",
   "/api/notifications/process",
+  // LINE "add job" form (LIFF): no web session; the API checks the LINE ID token.
+  "/liff",
+  "/api/liff",
   "/api/health",
   // LINE calls the webhook with no session; it checks x-line-signature itself.
   "/api/line/webhook",
