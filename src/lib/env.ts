@@ -21,14 +21,14 @@ export const env = {
   // LINE Login: OAuth channel used only to let a staff member link their own
   // LINE account (captures line_user_id). Separate from the Messaging API
   // channel below, which is used to actually push notification text.
-  lineLoginChannelId: process.env.LINE_LOGIN_CHANNEL_ID ?? "",
-  lineLoginChannelSecret: process.env.LINE_LOGIN_CHANNEL_SECRET ?? "",
+  lineLoginChannelId: (process.env.LINE_LOGIN_CHANNEL_ID ?? "").trim(),
+  lineLoginChannelSecret: (process.env.LINE_LOGIN_CHANNEL_SECRET ?? "").trim(),
   // LINE Messaging API: long-lived channel access token used to push
   // notification messages to a linked line_user_id.
-  lineMessagingChannelAccessToken: process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN ?? "",
+  lineMessagingChannelAccessToken: (process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN ?? "").trim(),
   // Messaging API channel secret: verifies the x-line-signature header on
   // every webhook call, so only LINE itself can drive the bot.
-  lineMessagingChannelSecret: process.env.LINE_MESSAGING_CHANNEL_SECRET ?? "",
+  lineMessagingChannelSecret: (process.env.LINE_MESSAGING_CHANNEL_SECRET ?? "").trim(),
   // Email fallback via Resend.
   resendApiKey: process.env.RESEND_API_KEY ?? "",
   resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "PR-OS <onboarding@resend.dev>",

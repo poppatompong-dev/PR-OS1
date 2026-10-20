@@ -38,7 +38,15 @@ export async function exchangeLineLoginCode(
     }),
   });
   if (!tokenRes.ok) {
-    throw new Error(`แลก LINE token ไม่สำเร็จ (${tokenRes.status})`);
+    // LINE answers {"error": "...", "error_description": "..."}; the code tells
+    // a wrong channel secret (invalid_client) from a stale or reused code (invalid_grant).
+    const detail = await tokenRes
+      .json()
+      .then((j: { error?: string; error_description?: string }) => [j.error, j.error_description].filter(Boolean).join(": "))
+      .catch(() => "");
+    console.error("LINE Login token exchange failed", tokenRes.status, detail);
+    const hint = detail.startsWith("invalid_client") ? " — ตรวจ LINE_LOGIN_CHANNEL_SECRET ว่าเป็นของช่อง LINE Login" : "";
+    throw new Error(`แลก LINE token ไม่สำเร็จ (${tokenRes.status}${detail ? ` ${detail}` : ""})${hint}`);
   }
   const tokenJson = (await tokenRes.json()) as { access_token: string };
 
