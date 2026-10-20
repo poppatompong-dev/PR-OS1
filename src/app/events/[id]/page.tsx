@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Avatar } from "@/components/Avatar";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { StatusPill } from "@/components/StatusPill";
@@ -121,6 +122,7 @@ export default async function EventDetailPage({
                 <div className="assignment-row" key={assignment.id} style={{ flexDirection: "column", alignItems: "stretch" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%" }}>
                     <div className="assignment-main">
+                      <Avatar personId={assignment.person.id} name={assignment.person.displayName} size={30} />{" "}
                       <strong>{assignment.role.name}</strong>: {assignment.person.displayName}{" "}
                       {assignment.unavailableReason && assignment.ackStatus !== "acknowledged" ? (
                         <span className="ack-tag status-unavailable">— ⛔ ไม่สะดวก: {assignment.unavailableReason}</span>

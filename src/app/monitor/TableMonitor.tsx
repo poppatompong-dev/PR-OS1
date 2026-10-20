@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { fetchMonitorEvents } from "@/lib/monitor/client";
+import { fetchMonitorEvents, fetchMonitorTeam } from "@/lib/monitor/client";
 import type { MonitorEvent } from "@/lib/monitor/types";
+import { Avatar } from "@/components/Avatar";
+import { MascotSide, type SideAck, type SideNext } from "./MascotSide";
 import "./monitor-table.css";
 
 /**
@@ -107,8 +109,28 @@ type Alert = {
   why: string;
 };
 
-export function TableMonitor() {
+export function TableMonitor({
+  variant = "default",
+  staticMode = false,
+}: {
+  /** "3d" = แบบ B: the same screen plus the mascot column (/monitor?v=3d). */
+  variant?: "default" | "3d";
+  /** ?static=1 — draw the mascot once and never animate. */
+  staticMode?: boolean;
+} = {}) {
   const [events, setEvents] = useState<MonitorEvent[]>([]);
+  // name → people.id, so the TV can put each assignee's cartoon next to them.
+  // The monitor feed carries names only; the public team list carries ids.
+  const [teamIds, setTeamIds] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const loadTeam = () =>
+      fetchMonitorTeam()
+        .then((team) => setTeamIds(Object.fromEntries(team.map((p) => [p.displayName, p.id]))))
+        .catch(() => undefined);
+    loadTeam();
+    const id = window.setInterval(loadTeam, 10 * 60_000);
+    return () => window.clearInterval(id);
+  }, []);
   const [clock, setClock] = useState<ReturnType<typeof bangkokNow> | null>(null);
 
   // The clock is the only thing that moves on this screen. It also drives
@@ -206,6 +228,36 @@ export function TableMonitor() {
     (e) => minutesOf(e.endTime || e.startTime) >= nowMinutes,
   );
 
+  // ---- the mascot column (variant "3d" only) -----------------------------
+  const sideNext = useMemo<SideNext>(() => {
+    if (todayEvents.length === 0) return { kind: "none" };
+    const upcoming = todayEvents.find((e) => minutesOf(e.startTime) >= nowMinutes);
+    if (upcoming) {
+      return {
+        kind: "upcoming",
+        minutes: minutesOf(upcoming.startTime) - nowMinutes,
+        title: upcoming.title,
+        place: upcoming.locationName,
+        start: upcoming.startTime,
+      };
+    }
+    const running = todayEvents.find((e) => e.endTime && minutesOf(e.endTime) >= nowMinutes);
+    if (running) {
+      return { kind: "now", title: running.title, place: running.locationName, end: running.endTime };
+    }
+    return { kind: "done" };
+  }, [todayEvents, nowMinutes]);
+
+  const sideAck = useMemo<SideAck>(() => {
+    const people = todayEvents.flatMap((e) => e.assigneeDetail);
+    return {
+      total: people.length,
+      done: people.filter((p) => p.ack).length,
+      pending: people.filter((p) => !p.ack && !p.unavailable).length,
+      unavailable: people.filter((p) => p.unavailable).length,
+    };
+  }, [todayEvents]);
+
   /* ---- how many rows actually fit -------------------------------------
      Every row is always rendered, and the ones whose bottom edge falls past
      the container are hidden with visibility rather than removed. That keeps
@@ -251,7 +303,7 @@ export function TableMonitor() {
 
 
   return (
-    <div className="tv">
+    <div className={variant === "3d" ? "tv tv--3d" : "tv"}>
       <header className="tv-head">
         <div className="tv-head-l">
           <span className="tv-seal">
@@ -289,6 +341,7 @@ export function TableMonitor() {
         <div />
       )}
 
+      <div className="tv-mid">
       <section className="tv-today">
         <div className="tv-sec">
           <h2>งานวันนี้</h2>
@@ -323,6 +376,13 @@ export function TableMonitor() {
                     <div className="tv-people">
                       {e.assigneeDetail.map((p, k) => (
                         <i className="tv-person" key={`${e.id}-${k}`}>
+                          <Avatar
+                            personId={teamIds[p.name]}
+                            name={p.name}
+                            size={38}
+                            eager
+                            className={`tv-avatar ${p.ack ? "is-ack" : p.unavailable ? "is-unavailable" : "is-pending"}`}
+                          />
                           <b>{p.name}</b> <small>({p.role})</small>
                           {p.unavailable ? <small className="tv-unavailable"> ไม่สะดวก</small> : null}
                         </i>
@@ -341,6 +401,8 @@ export function TableMonitor() {
           )}
         </div>
       </section>
+      {variant === "3d" ? <MascotSide next={sideNext} ack={sideAck} staticMode={staticMode} /> : null}
+      </div>
 
       <section>
         <div className="tv-sec">

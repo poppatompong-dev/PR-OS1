@@ -153,6 +153,9 @@ export default async function SettingsPage({
           </div>
         </div>
         <p className="tv-link">{tvAddress}</p>
+        <p className="tv-link-alt">
+          ทดลองแบบมาสคอต 3D (ยังไม่เป็นค่าเริ่มต้น): <b>{tvAddress}?v=3d</b> — ถ้าทีวีกระตุก จอจะหยุดเป็นภาพนิ่งเอง
+        </p>
       </section>
 
       {/* ---- Notifications ---- */}

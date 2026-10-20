@@ -5,6 +5,7 @@
 // plain form; the only client code is ConfirmSubmit's confirm().
 
 import Link from "next/link";
+import { Avatar } from "@/components/Avatar";
 import { BellRing, UserPlus } from "lucide-react";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { StatusPill } from "@/components/StatusPill";
@@ -330,7 +331,7 @@ export function TeamPanel({
                 <tr className={m.suspended ? "is-suspended" : undefined} key={m.key}>
                   <td data-label="ชื่อ">
                     <div className="team-name">
-                      <span className="staff-avatar" aria-hidden="true">{initial(m.displayName)}</span>
+                      <Avatar personId={m.personId} name={m.displayName} size={36} />
                       <span>
                         <strong>{m.displayName}</strong>
                         {m.position ? <small>{m.position}</small> : null}

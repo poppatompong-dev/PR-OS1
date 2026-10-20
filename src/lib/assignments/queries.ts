@@ -29,6 +29,8 @@ export type MyTask = {
 
 export type MyAssignments = {
   displayName: string | null;
+  /** people.id of the signed-in user, for their avatar; null when not linked. */
+  personId: string | null;
   personLinked: boolean;
   lineLinked: boolean;
   tasks: MyTask[];
@@ -90,7 +92,7 @@ function mockAssignments(): MyAssignments {
       ),
     );
 
-  return { displayName: `${me.displayName} (โหมดตัวอย่าง)`, personLinked: true, lineLinked: false, tasks };
+  return { displayName: `${me.displayName} (โหมดตัวอย่าง)`, personId: me.id, personLinked: true, lineLinked: false, tasks };
 }
 
 export async function getMyAssignments(): Promise<MyAssignments> {
@@ -101,9 +103,9 @@ export async function getMyAssignments(): Promise<MyAssignments> {
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
 
-  if (!user) return { displayName: null, personLinked: false, lineLinked: false, tasks: [] };
+  if (!user) return { displayName: null, personId: null, personLinked: false, lineLinked: false, tasks: [] };
   if (!user.personId) {
-    return { displayName: user.displayName, personLinked: false, lineLinked: false, tasks: [] };
+    return { displayName: user.displayName, personId: null, personLinked: false, lineLinked: false, tasks: [] };
   }
 
   const { data: personRow } = await supabase
@@ -167,7 +169,7 @@ export async function getMyAssignments(): Promise<MyAssignments> {
       ),
     );
 
-  return { displayName: user.displayName, personLinked: true, lineLinked, tasks };
+  return { displayName: user.displayName, personId: user.personId, personLinked: true, lineLinked, tasks };
 }
 
 export type AssignmentConflict = {

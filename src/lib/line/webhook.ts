@@ -146,12 +146,13 @@ async function runCommand(ctx: Ctx, cmd: Command, person: LinePerson | null, inG
       return [taskCarousel(tasks, `งานของคุณ ${tasks.length} งาน`)];
     }
     case "pending": {
-      const admins = await getAdminRecipientIds(ctx.admin);
-      const isAdmin = admins.includes(person.id);
-      const tasks = (
-        await loadTasks(ctx.admin, { from: today, to: addDays(today, 7), personId: isAdmin ? undefined : person.id })
-      ).filter((t) => !t.acknowledged);
-      return [pendingListMessage(tasks, isAdmin || inGroup ? "team" : "mine")];
+      // Owner decision (20 Oct 2026): everyone on the team sees the whole
+      // team's outstanding acknowledgements, in the group and in 1:1 chat alike
+      // — the same picture the office TV already shows.
+      const tasks = (await loadTasks(ctx.admin, { from: today, to: addDays(today, 7) })).filter(
+        (t) => !t.acknowledged,
+      );
+      return [pendingListMessage(tasks, "team")];
     }
   }
 }

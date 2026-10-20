@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { Avatar } from "@/components/Avatar";
 import { StatusPill } from "@/components/StatusPill";
 import { getMyAssignments } from "@/lib/assignments/queries";
 import { acknowledgeAssignment, acknowledgeAssignmentQuietly, markUnavailable } from "@/lib/assignments/mutations";
@@ -15,14 +16,17 @@ export default async function MyTasksPage({
   searchParams: Promise<{ error?: string; line?: string; unavailable?: string }>;
 }) {
   const { error, line, unavailable } = await searchParams;
-  const { displayName, personLinked, lineLinked, tasks } = await getMyAssignments();
+  const { displayName, personId, personLinked, lineLinked, tasks } = await getMyAssignments();
 
   return (
     <AppShell>
       <header className="page-header">
-        <div>
-          <h1 className="page-title">งานของฉัน</h1>
-          <p className="page-subtitle">{displayName ?? "ผู้ใช้งาน"}</p>
+        <div className="page-header-person">
+          <Avatar personId={personId} name={displayName ?? "ผู้ใช้งาน"} size={52} eager />
+          <div>
+            <h1 className="page-title">งานของฉัน</h1>
+            <p className="page-subtitle">{displayName ?? "ผู้ใช้งาน"}</p>
+          </div>
         </div>
       </header>
 

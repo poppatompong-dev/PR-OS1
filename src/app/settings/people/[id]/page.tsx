@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Avatar } from "@/components/Avatar";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
@@ -57,7 +58,10 @@ export default async function PersonPage({
           <p style={{ margin: 0 }}>
             <Link href="/settings">← กลับไปหน้าตั้งค่า</Link>
           </p>
-          <h1 className="page-title">{person.displayName}</h1>
+          <div className="page-header-person">
+            <Avatar personId={person.id} name={person.displayName} size={56} eager />
+            <h1 className="page-title">{person.displayName}</h1>
+          </div>
           <p className="page-subtitle">
             {person.position || "เจ้าหน้าที่"}
             {person.email ? ` · ${person.email}` : ""}

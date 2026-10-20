@@ -1856,6 +1856,13 @@ textarea:focus-visible {
   word-break: break-all;
 }
 
+.tv-link-alt {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
 .person-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -3813,3 +3820,21 @@ textarea:focus-visible {
   min-height: 48px;
   font-size: 16px;
 }
+
+/* Round cartoon avatar (src/components/Avatar.tsx) */
+.avatar {
+  display: inline-block;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #efe6f7;
+  vertical-align: middle;
+}
+
+.page-header-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.assignment-main .avatar { margin-right: 6px; }
