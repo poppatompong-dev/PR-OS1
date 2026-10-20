@@ -132,3 +132,10 @@ test("pending list: one entry per LINE account, newest first, capped", () => {
   assert.deepEqual(parsePendingRegistrations([{ nope: 1 }, "x"]), []);
   assert.equal(parsePendingRegistrations([{ lineUserId: "U9" }])[0].displayName, "ผู้ใช้ LINE");
 });
+
+test("suggestPerson: a short username never matches inside a longer word", () => {
+  const team: MatchCandidate[] = [{ id: "pat", displayName: "นางวิภัสรา แสงรอด", usernames: ["pat"] }];
+  assert.equal(suggestPerson("Pop😄Patompong", team), null);
+  assert.equal(suggestPerson("Pat ✨", team), "pat");
+  assert.equal(suggestPerson("patt", team), "pat");
+});

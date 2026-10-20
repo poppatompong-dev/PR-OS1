@@ -154,6 +154,12 @@ function firstName(displayName: string): string {
 export function suggestPerson(lineName: string, people: MatchCandidate[]): string | null {
   const name = normalizeName(lineName);
   if (name.length < 2) return null;
+  // Words of the LINE name ("Pop😄Patompong" → pop, patompong). Partial matches
+  // are judged per word, and only when the key covers most of that word, so a
+  // short username ("pat") never matches inside a longer word ("patompong").
+  let stripped = lineName.trim().toLowerCase();
+  for (let i = 0; i < 3 && TITLES.test(stripped); i++) stripped = stripped.replace(TITLES, "");
+  const words = stripped.split(/[^\p{L}\p{M}\p{N}]+/u).filter((w) => w.length >= 2);
   let best = 0;
   let bestIds: string[] = [];
   for (const p of people) {
@@ -163,7 +169,17 @@ export function suggestPerson(lineName: string, people: MatchCandidate[]): strin
     let score = 0;
     for (const k of keys) {
       if (k === name) score = Math.max(score, 3);
-      else if (k.length >= 3 && name.length >= 3 && (name.includes(k) || k.includes(name))) score = Math.max(score, 2);
+      for (const w of words) {
+        if (k === w) score = Math.max(score, 3);
+        else if (
+          k.length >= 3 &&
+          w.length >= 3 &&
+          (w.startsWith(k) || k.startsWith(w)) &&
+          Math.min(k.length, w.length) / Math.max(k.length, w.length) >= 0.6
+        ) {
+          score = Math.max(score, 2);
+        }
+      }
     }
     if (score > best) {
       best = score;
