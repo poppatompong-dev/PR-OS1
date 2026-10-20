@@ -1,6 +1,7 @@
 "use server";
 
 import { blockWritesInDemoMode } from "@/lib/demo-guard";
+import { kickNotifications } from "@/lib/notifications/kick";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -118,6 +119,7 @@ export async function addAssignment(formData: FormData) {
   await supabase.rpc("enqueue_event_reminders", {
     p_event_id: eventId,
   });
+  kickNotifications();
 
   revalidatePath(`/events/${eventId}`);
   redirect(`/events/${eventId}`);

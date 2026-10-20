@@ -1,6 +1,7 @@
 "use server";
 
 import { blockWritesInDemoMode } from "@/lib/demo-guard";
+import { kickNotifications } from "@/lib/notifications/kick";
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -98,6 +99,7 @@ export async function createEvent(formData: FormData) {
   if (publish && personId && roleId) {
     await supabase.rpc("enqueue_event_notifications", { p_event_id: created.id, p_type: "assignment" });
     await supabase.rpc("enqueue_event_reminders", { p_event_id: created.id });
+    kickNotifications();
   }
 
   revalidatePath("/schedule");
@@ -216,6 +218,7 @@ export async function editEvent(formData: FormData) {
     // The 1.5-hour reminder was timed off the old start: drop it, queue the new one.
     await supabase.rpc("cancel_event_reminders", { p_event_id: eventId });
     await supabase.rpc("enqueue_event_reminders", { p_event_id: eventId });
+    kickNotifications();
   }
 
   await writeAudit(
@@ -267,6 +270,7 @@ export async function publishEvent(formData: FormData) {
   await supabase.rpc("enqueue_event_reminders", {
     p_event_id: eventId,
   });
+  kickNotifications();
   revalidatePath("/schedule");
   revalidatePath(`/events/${eventId}`);
   redirect(`/events/${eventId}`);
@@ -326,6 +330,7 @@ export async function cancelEvent(formData: FormData) {
   await supabase.rpc("cancel_event_reminders", {
     p_event_id: eventId,
   });
+  kickNotifications();
   revalidatePath("/schedule");
   revalidatePath(`/events/${eventId}`);
   redirect(`/events/${eventId}`);

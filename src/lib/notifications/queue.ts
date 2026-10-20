@@ -1,4 +1,6 @@
-// Notification sender. Called every 15 minutes, 06:00–20:00 Bangkok, by
+// Notification sender. Called every 5 minutes, 06:00–20:55 Bangkok, by Supabase
+// pg_cron (migration 0015), right after a job is published / changed /
+// cancelled (kick.ts), as a backup by
 // .github/workflows/notifications.yml (POST /api/notifications/process) and by
 // the admin "ประมวลผลคิว" button in /settings.
 //
