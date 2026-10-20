@@ -7,13 +7,20 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type AppRole = "admin" | "supervisor" | "staff" | "assignee" | "display";
 
+// The team works with three levels (owner, 20 Oct 2026): the admin, staff who
+// can all do the same work, and the office TV. "supervisor" is the role that
+// carries full working rights, so it is the one labelled เจ้าหน้าที่; the other
+// two enum values stay for old accounts only and are labelled as such.
 export const ROLE_LABELS_TH: Record<AppRole, string> = {
   admin: "ผู้ดูแลระบบ",
-  supervisor: "หัวหน้างาน",
-  staff: "เจ้าหน้าที่",
-  assignee: "ผู้รับมอบหมาย",
-  display: "จอมอนิเตอร์",
+  supervisor: "เจ้าหน้าที่",
+  staff: "เจ้าหน้าที่ (สิทธิ์จำกัด)",
+  assignee: "ผู้รับมอบหมาย (แบบเดิม)",
+  display: "จอทีวี",
 };
+
+/** The roles offered when creating or changing an account. */
+export const UI_ROLES: AppRole[] = ["admin", "supervisor", "display"];
 
 const BACKEND_ROLES: AppRole[] = ["admin", "supervisor", "staff"];
 

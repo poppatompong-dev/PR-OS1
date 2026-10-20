@@ -29,6 +29,9 @@ export const env = {
   // Messaging API channel secret: verifies the x-line-signature header on
   // every webhook call, so only LINE itself can drive the bot.
   lineMessagingChannelSecret: (process.env.LINE_MESSAGING_CHANNEL_SECRET ?? "").trim(),
+  // Optional: the bot's LINE ID (e.g. @749bsqwt) for "เพิ่มเพื่อน" links. When
+  // empty it is read once from LINE's /v2/bot/info.
+  lineBotBasicId: (process.env.LINE_BOT_BASIC_ID ?? "").trim(),
   // Email fallback via Resend.
   resendApiKey: process.env.RESEND_API_KEY ?? "",
   resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "PR-OS <onboarding@resend.dev>",

@@ -35,6 +35,7 @@ export const postback = {
   ack: (t: TaskItem) => `a=ack&id=${t.assignmentId}&v=${t.assignmentVersion}`,
   unavailable: (t: TaskItem) => `a=unav&id=${t.assignmentId}`,
   reason: (assignmentId: string, i: number) => `a=reason&id=${assignmentId}&r=${i}`,
+  register: "a=reg",
 };
 
 export function parsePostback(data: string): Record<string, string> {
@@ -311,11 +312,12 @@ export function linkPromptMessage(): LineMessage {
         contents: [
           { type: "text", text: "ยังไม่ได้ผูกบัญชีกับ PR-OS", weight: "bold", wrap: true },
           { type: "text", text: "กดปุ่มด้านล่าง เข้าสู่ระบบด้วยชื่อผู้ใช้ของคุณครั้งเดียว แล้วระบบจะส่งแจ้งเตือนงานมาที่ LINE นี้", size: "sm", color: MUTED, wrap: true },
+          { type: "text", text: "หรือกด \"ลงทะเบียนรับแจ้งงาน\" ในกลุ่มไลน์งาน แล้วรอแอดมินยืนยันชื่อ", size: "sm", color: MUTED, wrap: true },
         ],
       },
       footer: {
         type: "box", layout: "vertical",
-        contents: [button({ type: "uri", label: "ผูกบัญชี", uri: appUrl("/api/auth/line/start") }, "primary", PURPLE)],
+        contents: [button({ type: "uri", label: "ผูกบัญชี", uri: appUrl("/link-line") }, "primary", PURPLE)],
       },
     },
   };
@@ -342,4 +344,59 @@ export function unavailableReasonPrompt(assignmentId: string, title: string): Li
 
 export function text(t: string, withCommands = false): LineMessage {
   return withCommands ? { type: "text", text: t, quickReply: commandQuickReply() } : { type: "text", text: t };
+}
+
+// ---- registration from the team group (owner, 20 Oct 2026) ------------------
+
+/** Posted in the team group: each person taps once, no password needed. */
+export function registerCardMessage(): LineMessage {
+  return {
+    type: "flex",
+    altText: "รับแจ้งงานที่ได้รับมอบหมาย — กดปุ่มลงทะเบียน 1 ครั้งต่อคน",
+    contents: {
+      type: "bubble",
+      size: "kilo",
+      body: {
+        type: "box", layout: "vertical", spacing: "md",
+        contents: [
+          { type: "text", text: "รับแจ้งงานที่ได้รับมอบหมาย", weight: "bold", color: PURPLE, wrap: true },
+          { type: "text", text: "กดปุ่มนี้ 1 ครั้งต่อคน แอดมินจะยืนยันชื่อให้ แล้วงานของคุณจะส่งเข้าแชทส่วนตัวกับบอท", size: "sm", color: MUTED, wrap: true },
+        ],
+      },
+      footer: {
+        type: "box", layout: "vertical",
+        contents: [
+          button(
+            // displayText is posted in the group as the person; it must not be a command itself.
+            { type: "postback", label: "ลงทะเบียนรับแจ้งงาน", data: postback.register, displayText: "✋ ขอรับแจ้งงานส่วนตัว" },
+            "primary",
+            PURPLE,
+          ),
+        ],
+      },
+    },
+  };
+}
+
+/** Answer to a tap on the card: next step is adding the bot as a friend. */
+export function registerReceivedMessage(displayName: string, addFriendUri: string | null): LineMessage {
+  const body = `รับทราบครับ คุณ${displayName} แอดมินจะยืนยันชื่อให้ จากนั้นกดเพิ่มเพื่อนผมเพื่อรับแจ้งงานส่วนตัว (LINE ส่งข้อความส่วนตัวได้เฉพาะคนที่เป็นเพื่อน)`;
+  if (!addFriendUri) return { type: "text", text: body };
+  return {
+    type: "flex",
+    altText: body.slice(0, 400),
+    contents: {
+      type: "bubble",
+      size: "kilo",
+      body: { type: "box", layout: "vertical", contents: [{ type: "text", text: body, size: "sm", wrap: true }] },
+      footer: {
+        type: "box", layout: "vertical",
+        contents: [button({ type: "uri", label: "เพิ่มเพื่อน", uri: addFriendUri }, "primary", PURPLE)],
+      },
+    },
+  };
+}
+
+export function pendingApprovalMessage(): LineMessage {
+  return { type: "text", text: "รอแอดมินยืนยันชื่ออยู่ครับ ยืนยันแล้วจะได้รับแจ้งงานที่นี่" };
 }

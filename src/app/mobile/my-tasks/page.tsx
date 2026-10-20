@@ -46,7 +46,7 @@ export default async function MyTasksPage({
         <div className="task-card">
           <h2>รับแจ้งเตือนงานทาง LINE</h2>
           <p>เชื่อมต่อบัญชี LINE ของคุณเพื่อรับแจ้งเตือนงานที่ได้รับมอบหมายโดยตรง</p>
-          <a className="button coral" href="/api/auth/line/start">
+          <a className="button coral" href="/link-line">
             <MessageCircle size={18} aria-hidden="true" />
             เชื่อมต่อ LINE
           </a>

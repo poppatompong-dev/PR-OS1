@@ -3381,3 +3381,435 @@ textarea:focus-visible {
   font-weight: 600;
   font-size: 13.5px;
 }
+
+/* ---- ทีมงาน (one table for people + sign-ins, /settings) ---- */
+/* The ⋯ menus open past the panel's edge; .panel would clip them. */
+.panel.team-panel {
+  position: relative;
+  z-index: 5;
+  overflow: visible;
+}
+
+.team-panel .panel-heading p {
+  max-width: 62ch;
+}
+
+.team-added {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(24, 120, 74, 0.35);
+  border-radius: var(--radius);
+  background: rgba(24, 120, 74, 0.08);
+  color: var(--ink, inherit);
+}
+
+.team-added b {
+  font-size: 1.08em;
+  color: var(--green);
+}
+
+/* LINE accounts that registered from the team group, waiting for the admin */
+.team-pending {
+  margin: 10px 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(164, 95, 8, 0.4);
+  border-radius: var(--radius);
+  background: rgba(164, 95, 8, 0.07);
+}
+
+.team-pending h3 {
+  margin: 0 0 2px;
+  font-size: 16px;
+}
+
+.team-pending > p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.team-pending ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.team-pending-item {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(220px, 1.5fr) auto;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface, #fff);
+}
+
+.team-pending-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.team-pending-who > span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.team-pending-who small {
+  color: var(--muted);
+}
+
+.team-pending .status-pill {
+  max-width: 100%;
+  white-space: normal;
+  height: auto;
+  line-height: 1.35;
+  justify-self: start;
+}
+
+.team-pending-pic {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+}
+
+.team-pending-form {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.team-pending-form .select {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .team-pending-item {
+    grid-template-columns: 1fr;
+  }
+  .team-pending-dismiss {
+    justify-self: start;
+  }
+}
+
+.team-add {
+  margin: 6px 0 14px;
+}
+
+.team-add > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.team-add > summary::-webkit-details-marker {
+  display: none;
+}
+
+.team-add-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+}
+
+.team-add-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.team-add-form > .button {
+  justify-self: start;
+}
+
+/* No overflow clipping here: the ⋯ menus open over the rows below. */
+.team-table-wrap {
+  width: 100%;
+}
+
+.team-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.team-table th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.team-table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.team-table tr.is-suspended td {
+  opacity: 0.6;
+}
+
+.team-table tr.is-suspended td.team-actions-cell {
+  opacity: 1;
+}
+
+.team-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.team-name > span:last-child {
+  display: grid;
+  gap: 1px;
+}
+
+.team-name small,
+.team-muted {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.team-watcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: fit-content;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--blue) 12%, transparent);
+  color: var(--blue);
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.team-actions-cell {
+  width: 44px;
+  text-align: right;
+}
+
+.team-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.team-menu > summary {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 20px;
+  line-height: 1;
+  list-style: none;
+  cursor: pointer;
+}
+
+.team-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.team-menu[open] > summary {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.team-menu-body {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  gap: 10px;
+  width: min(330px, 86vw);
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  text-align: left;
+}
+
+.team-menu-account {
+  display: grid;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--line);
+}
+
+.team-menu-form {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.team-menu-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.team-menu-form small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.team-menu-form .button {
+  justify-self: start;
+}
+
+.team-menu-sub > summary {
+  color: var(--blue);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.team-menu-sub .team-menu-form {
+  margin-top: 8px;
+}
+
+.team-menu-link {
+  color: var(--blue);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+/* Phones and an upright iPad: each person becomes a card. */
+@media (max-width: 760px) {
+  .team-table thead {
+    display: none;
+  }
+
+  .team-table,
+  .team-table tbody,
+  .team-table tr,
+  .team-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .team-table tr {
+    position: relative;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-soft);
+  }
+
+  .team-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 4px 0;
+    border: 0;
+  }
+
+  .team-table td[data-label]::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+
+  .team-table td[data-label="ชื่อ"]::before {
+    display: none;
+  }
+
+  /* On a phone the ⋯ menu opens inside the card, under the details. */
+  .team-table td.team-actions-cell {
+    display: block;
+    width: 100%;
+    padding-top: 6px;
+    text-align: right;
+  }
+
+  .team-menu {
+    display: block;
+  }
+
+  .team-menu > summary {
+    margin-left: auto;
+  }
+
+  .team-menu-body {
+    position: static;
+    width: auto;
+    margin-top: 8px;
+    box-shadow: none;
+  }
+}
+
+/* ---- /link-line: confirm whose record LINE is being linked to ---- */
+.link-line-card {
+  display: grid;
+  gap: 12px;
+  text-align: center;
+}
+
+.link-line-card h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.link-line-lead {
+  margin: 0;
+  color: var(--muted);
+}
+
+.link-line-who {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--blue);
+}
+
+.link-line-who small {
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.link-line-warn {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: rgba(164, 95, 8, 0.1);
+  color: var(--amber);
+  font-size: 14px;
+}
+
+.link-line-yes,
+.link-line-no {
+  width: 100%;
+  justify-content: center;
+  min-height: 48px;
+  font-size: 16px;
+}

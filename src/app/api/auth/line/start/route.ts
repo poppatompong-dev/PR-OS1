@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/roles";
 import { env, isLineLoginConfigured } from "@/lib/env";
@@ -14,11 +14,15 @@ function redirectWithError(message: string) {
 // Starts the LINE Login flow so the logged-in assignee can link their own
 // LINE account. Requires a session (middleware already gates this route),
 // and requires the session's profile to already be linked to a people row.
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Every link goes through /link-line first, which shows whose record this
+  // LINE account will be attached to (cards sent before it existed point here).
+  if (request.nextUrl.searchParams.get("confirmed") !== "1") {
+    return NextResponse.redirect(new URL("/link-line", env.appBaseUrl));
+  }
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
-  // Opened from the bot's "ผูกบัญชี" button inside LINE's browser: sign in first, then come straight back here.
-  if (!user) return NextResponse.redirect(new URL("/login?next=%2Fapi%2Fauth%2Fline%2Fstart", env.appBaseUrl));
+  if (!user) return NextResponse.redirect(new URL("/login?next=%2Flink-line", env.appBaseUrl));
   if (!user.personId) {
     return redirectWithError("บัญชีนี้ยังไม่ผูกกับรายชื่อบุคลากร ให้ผู้ดูแลระบบผูกในหน้าตั้งค่าก่อน");
   }

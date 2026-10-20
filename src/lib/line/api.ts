@@ -140,3 +140,70 @@ export async function deleteRichMenu(richMenuId: string): Promise<void> {
     // best effort: an old menu left behind is harmless
   }
 }
+
+// ---- Profiles (registration from the team group) ---------------------------
+
+export type LineProfile = { displayName: string; pictureUrl: string | null };
+
+/**
+ * Display name and picture of someone in a group or room the bot is in. Works
+ * whether or not that person has added the bot as a friend.
+ */
+export async function getGroupMemberProfile(
+  source: { groupId?: string; roomId?: string },
+  userId: string,
+): Promise<LineProfile | null> {
+  const path = source.groupId
+    ? `group/${encodeURIComponent(source.groupId)}/member/${encodeURIComponent(userId)}`
+    : source.roomId
+      ? `room/${encodeURIComponent(source.roomId)}/member/${encodeURIComponent(userId)}`
+      : null;
+  if (!path) return null;
+  try {
+    const res = await fetch(`${API}/${path}`, { headers: authHeaders() });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { displayName?: string; pictureUrl?: string };
+    return { displayName: json.displayName ?? "", pictureUrl: json.pictureUrl ?? null };
+  } catch {
+    return null;
+  }
+}
+
+export type FriendStatus = "friend" | "not_friend" | "unknown";
+
+/**
+ * Has this person added the bot as a friend? LINE answers the profile call
+ * only for friends (404 otherwise), and only friends can get push messages.
+ */
+export async function getFriendStatus(userId: string): Promise<FriendStatus> {
+  try {
+    const res = await fetch(`${API}/profile/${encodeURIComponent(userId)}`, { headers: authHeaders() });
+    if (res.ok) return "friend";
+    if (res.status === 404) return "not_friend";
+    return "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+let cachedBasicId: string | null | undefined;
+
+/** The bot's LINE ID such as "@749bsqwt" (env first, then /v2/bot/info once). */
+export async function getBotBasicId(): Promise<string | null> {
+  if (env.lineBotBasicId) return env.lineBotBasicId.startsWith("@") ? env.lineBotBasicId : `@${env.lineBotBasicId}`;
+  if (cachedBasicId !== undefined) return cachedBasicId;
+  try {
+    const res = await fetch(`${API}/info`, { headers: authHeaders() });
+    if (!res.ok) return null; // not cached: try again on the next event
+    const json = (await res.json()) as { basicId?: string };
+    cachedBasicId = json.basicId ? (json.basicId.startsWith("@") ? json.basicId : `@${json.basicId}`) : null;
+    return cachedBasicId;
+  } catch {
+    return null;
+  }
+}
+
+/** Opens the bot's "add friend" screen in LINE. */
+export function addFriendUrl(basicId: string): string {
+  return `https://line.me/R/ti/p/${encodeURIComponent(basicId.startsWith("@") ? basicId : `@${basicId}`)}`;
+}

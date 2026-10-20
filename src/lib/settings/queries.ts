@@ -1,7 +1,10 @@
 // Settings/master-data reads for the admin settings page.
 
 import { createAdminClient, createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isLineMessagingConfigured, isSupabaseConfigured } from "@/lib/env";
+import { getFriendStatus, type FriendStatus } from "@/lib/line/api";
+import { getPendingRegistrations } from "@/lib/line/data";
+import type { PendingRegistration } from "@/lib/line/registrations";
 import type { AppRole } from "@/lib/auth/roles";
 import {
   departments as mockDepartments,
@@ -316,4 +319,29 @@ export async function getNotificationSettings(): Promise<NotificationSettings> {
     adminPersonIds: Array.isArray(admins) ? admins.map(String) : [],
     quotaUsedThisMonth: count ?? 0,
   };
+}
+
+export type PendingLineView = PendingRegistration & { friend: FriendStatus };
+
+/**
+ * LINE accounts that tapped "ลงทะเบียนรับแจ้งงาน" in the team group, waiting
+ * for an admin to say who they are, each with whether they have added the bot
+ * as a friend yet (LINE pushes only to friends).
+ */
+export async function getPendingLineRegistrations(): Promise<PendingLineView[]> {
+  if (!isSupabaseConfigured()) {
+    const now = Date.now();
+    return [
+      { lineUserId: "Udemo1", displayName: "Somjai ✿", pictureUrl: null, groupId: null, at: new Date(now - 6e5).toISOString(), friend: "friend" },
+      { lineUserId: "Udemo2", displayName: "นก", pictureUrl: null, groupId: null, at: new Date(now - 36e5).toISOString(), friend: "not_friend" },
+    ];
+  }
+  try {
+    const list = await getPendingRegistrations(createAdminClient());
+    if (!isLineMessagingConfigured()) return list.map((r) => ({ ...r, friend: "unknown" as const }));
+    const friends = await Promise.all(list.map((r) => getFriendStatus(r.lineUserId)));
+    return list.map((r, i) => ({ ...r, friend: friends[i] }));
+  } catch {
+    return [];
+  }
 }

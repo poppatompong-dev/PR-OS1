@@ -10,7 +10,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, todayInBangkok } from "@/lib/date";
-import { replyMessages, type LineMessage } from "@/lib/line/api";
+import { addFriendUrl, getBotBasicId, getGroupMemberProfile, replyMessages, type LineMessage } from "@/lib/line/api";
 import { alertAdminsUnavailable } from "@/lib/line/alerts";
 import {
   claimRun,
@@ -19,6 +19,8 @@ import {
   allowGroup,
   getAdminRecipientIds,
   getAllowedGroupIds,
+  addPendingRegistration,
+  isPendingRegistration,
   loadTask,
   loadTasks,
   recordAck,
@@ -34,7 +36,10 @@ import {
   linkPromptMessage,
   myTasksTextMessage,
   parsePostback,
+  pendingApprovalMessage,
   pendingListMessage,
+  registerCardMessage,
+  registerReceivedMessage,
   taskCarousel,
   taskMessage,
   teamDayMessage,
@@ -72,7 +77,48 @@ export function matchCommand(raw: string): Command | null {
   return null;
 }
 
+const REGISTER_WORDS = new Set(["ลงทะเบียน", "ลงทะเบียนรับแจ้งงาน", "ลงทะเบียนรับแจ้งเตือน"]);
+
+/** "ลงทะเบียน" typed in the group: re-post the registration card. Exact words only. */
+export function matchRegister(raw: string): boolean {
+  return REGISTER_WORDS.has(raw.replace(/\s+/g, "").replace(/[?？!]+$/u, ""));
+}
+
 type Ctx = { admin: SupabaseClient };
+
+/** For someone whose LINE is not linked to anyone yet (1:1 chat). */
+async function notLinkedReply(ctx: Ctx, userId: string | undefined): Promise<LineMessage[]> {
+  if (userId && (await isPendingRegistration(ctx.admin, userId))) return [pendingApprovalMessage()];
+  return [linkPromptMessage()];
+}
+
+/**
+ * A tap on "ลงทะเบียนรับแจ้งงาน" in the team group. Records the LINE account for
+ * an admin to confirm on the ทีมงาน page; the person never signs in.
+ */
+async function handleRegister(ctx: Ctx, ev: LineEvent, person: LinePerson | null): Promise<LineMessage[]> {
+  const src = ev.source;
+  if (src.type === "user") return person ? [text(`คุณ${person.displayName} ลงทะเบียนไว้แล้วครับ`, true)] : notLinkedReply(ctx, src.userId);
+  const groupId = src.groupId ?? src.roomId ?? "";
+  // Only in a group an admin allowed: a stranger's group cannot add entries.
+  if (!groupId || !(await getAllowedGroupIds(ctx.admin)).includes(groupId)) return [];
+  if (!src.userId) {
+    return [text("ลงทะเบียนไม่สำเร็จ เพราะ LINE ไม่ส่งรหัสผู้ใช้มาให้ กรุณาอัปเดตแอป LINE แล้วกดใหม่")];
+  }
+  if (person) return [text(`คุณ${person.displayName} ลงทะเบียนไว้แล้วครับ`)];
+
+  const profile = await getGroupMemberProfile(src, src.userId);
+  const displayName = profile?.displayName || "ผู้ใช้ LINE";
+  await addPendingRegistration(ctx.admin, {
+    lineUserId: src.userId,
+    displayName,
+    pictureUrl: profile?.pictureUrl ?? null,
+    groupId,
+    at: new Date().toISOString(),
+  });
+  const basicId = await getBotBasicId();
+  return [registerReceivedMessage(displayName, basicId ? addFriendUrl(basicId) : null)];
+}
 
 async function reply(ev: LineEvent, messages: LineMessage[]) {
   if (!ev.replyToken || messages.length === 0) return;
@@ -125,7 +171,8 @@ async function finishUnavailable(ctx: Ctx, person: LinePerson, assignmentId: str
 
 async function handlePostback(ctx: Ctx, ev: LineEvent, person: LinePerson | null): Promise<LineMessage[]> {
   const p = parsePostback(ev.postback?.data ?? "");
-  if (!person) return [linkPromptMessage()];
+  if (p.a === "reg") return handleRegister(ctx, ev, person);
+  if (!person) return ev.source.type === "user" ? notLinkedReply(ctx, ev.source.userId) : [];
   const userId = ev.source.userId!;
 
   switch (p.a) {
@@ -177,7 +224,14 @@ async function handleText(ctx: Ctx, ev: LineEvent, person: LinePerson | null): P
       const admins = await getAdminRecipientIds(ctx.admin);
       if (!admins.includes(person.id)) return [text("เฉพาะแอดมินของระบบที่อนุญาตกลุ่มได้ครับ")];
       await allowGroup(ctx.admin, groupId, null);
-      return [text(`อนุญาตกลุ่มนี้แล้วครับ พิมพ์ "${COMMANDS.today}" "${COMMANDS.tomorrow}" "${COMMANDS.pending}" ถามได้เลย`)];
+      return [
+        text(`อนุญาตกลุ่มนี้แล้วครับ พิมพ์ "${COMMANDS.today}" "${COMMANDS.tomorrow}" "${COMMANDS.pending}" ถามได้เลย`),
+        registerCardMessage(),
+      ];
+    }
+    if (matchRegister(raw)) {
+      if (!(await getAllowedGroupIds(ctx.admin)).includes(groupId)) return [];
+      return [registerCardMessage()];
     }
     // Owner rule: in the group, speak only when spoken to — and only in a
     // group an admin has allowed, so the schedule cannot be read from a group
@@ -192,8 +246,10 @@ async function handleText(ctx: Ctx, ev: LineEvent, person: LinePerson | null): P
     const pendingAssignment = await takePendingReason(ctx.admin, userId);
     if (pendingAssignment) return finishUnavailable(ctx, person, pendingAssignment, raw);
   }
+  if (cmd === "help") return [helpMessage()];
+  if (!person) return notLinkedReply(ctx, userId);
   if (cmd) return runCommand(ctx, cmd, person, false);
-  return person ? [helpMessage()] : [linkPromptMessage()];
+  return [helpMessage()];
 }
 
 /**
@@ -212,9 +268,13 @@ export async function handleLineEvent(ctx: Ctx, ev: LineEvent): Promise<void> {
 
   switch (ev.type) {
     case "follow":
-      await reply(ev, person
-        ? [text(`สวัสดีครับ คุณ${person.displayName} บัญชีนี้ผูกกับ PR-OS แล้ว จะได้รับแจ้งเตือนงานที่นี่`, true)]
-        : [text("สวัสดีครับ ผู้ช่วยงาน ปชส. จะส่งแจ้งเตือนงานที่คุณได้รับมอบหมายมาที่นี่"), linkPromptMessage()]);
+      if (person) {
+        await reply(ev, [text(`สวัสดีครับ คุณ${person.displayName} บัญชีนี้ผูกกับ PR-OS แล้ว จะได้รับแจ้งเตือนงานที่นี่`, true)]);
+      } else if (userId && (await isPendingRegistration(ctx.admin, userId))) {
+        await reply(ev, [pendingApprovalMessage()]);
+      } else {
+        await reply(ev, [text("สวัสดีครับ ผู้ช่วยงาน ปชส. จะส่งแจ้งเตือนงานที่คุณได้รับมอบหมายมาที่นี่"), linkPromptMessage()]);
+      }
       return;
     case "join":
       await reply(ev, [

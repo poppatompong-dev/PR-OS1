@@ -5,6 +5,12 @@
 // relying on RLS.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  PENDING_REGISTRATIONS_KEY,
+  mergePendingRegistration,
+  parsePendingRegistrations,
+  type PendingRegistration,
+} from "@/lib/line/registrations";
 
 const one = (v: any) => (Array.isArray(v) ? v[0] : v);
 
@@ -302,4 +308,34 @@ export async function logPush(
     error_message: row.ok ? null : (row.error ?? "ส่งไม่สำเร็จ"),
     quota_month: row.quotaMonth,
   });
+}
+
+// ---- registration from the team group -----------------------------------------
+
+export async function getPendingRegistrations(admin: SupabaseClient): Promise<PendingRegistration[]> {
+  const { data } = await admin.from("settings").select("value").eq("key", PENDING_REGISTRATIONS_KEY).maybeSingle();
+  return parsePendingRegistrations(data?.value);
+}
+
+export async function savePendingRegistrations(admin: SupabaseClient, list: PendingRegistration[], by: string | null = null) {
+  const { error } = await admin.from("settings").upsert(
+    {
+      key: PENDING_REGISTRATIONS_KEY,
+      value: list,
+      description: "LINE ที่กดลงทะเบียนในกลุ่มงาน รอแอดมินยืนยันว่าเป็นใคร",
+      updated_by: by,
+    },
+    { onConflict: "key" },
+  );
+  if (error) throw new Error(`savePendingRegistrations: ${error.message}`);
+}
+
+/** Read-modify-write; fine for a ~10-person team tapping one at a time. */
+export async function addPendingRegistration(admin: SupabaseClient, entry: PendingRegistration) {
+  const list = await getPendingRegistrations(admin);
+  await savePendingRegistrations(admin, mergePendingRegistration(list, entry));
+}
+
+export async function isPendingRegistration(admin: SupabaseClient, lineUserId: string): Promise<boolean> {
+  return (await getPendingRegistrations(admin)).some((r) => r.lineUserId === lineUserId);
 }

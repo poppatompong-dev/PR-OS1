@@ -1,14 +1,13 @@
-import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { ConfirmSubmit } from "@/components/ConfirmSubmit";
-import { StatusPill } from "@/components/StatusPill";
-import { formatThaiDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import { getSessionUser, ROLE_LABELS_TH, type AppRole } from "@/lib/auth/roles";
+import { getSessionUser } from "@/lib/auth/roles";
+import { buildTeam } from "@/lib/settings/team";
+import { TeamPanel } from "./TeamPanel";
 import { env, isLineLoginConfigured, isLineMessagingConfigured, isLineWebhookConfigured, isSupabaseConfigured } from "@/lib/env";
 import {
   getAccounts,
   getAllPeople,
+  getPendingLineRegistrations,
   getMasterLists,
   getNotificationFeed,
   getNotificationSettings,
@@ -16,24 +15,15 @@ import {
 } from "@/lib/settings/queries";
 import {
   addMasterItem,
-  addPerson,
-  createAccount,
   processNotificationQueue,
   setMasterActive,
   setupLineRichMenu,
-  setAccountSuspended,
-  setPersonActive,
-  unlinkPersonLine,
-  updateAccount,
   updateNotificationSettings,
-  updatePerson,
 } from "@/lib/settings/mutations";
 import { NOTIF_STATUS_TH, NOTIF_TYPE_TH } from "@/lib/notifications/labels";
-import { BellRing, Mail, Plus, Power, RotateCcw, Send, UserPlus, Users } from "lucide-react";
+import { BellRing, Plus, Power, RotateCcw, Send } from "lucide-react";
 
 export const dynamic = "force-dynamic";
-
-const ROLES: AppRole[] = ["admin", "supervisor", "staff", "assignee", "display"];
 
 function MasterListPanel({
   title,
@@ -83,9 +73,9 @@ function MasterListPanel({
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; notice?: string }>;
+  searchParams: Promise<{ error?: string; notice?: string; added?: string }>;
 }) {
-  const { error, notice } = await searchParams;
+  const { error, notice, added } = await searchParams;
 
   const live = isSupabaseConfigured();
 
@@ -101,7 +91,7 @@ export default async function SettingsPage({
         <header className="page-header">
           <div>
             <h1 className="page-title">ตั้งค่าระบบ</h1>
-            <p className="page-subtitle">จัดการบุคลากร บัญชีผู้ใช้ และข้อมูลหลัก</p>
+            <p className="page-subtitle">ทีมงาน การแจ้งเตือน และข้อมูลหลัก</p>
           </div>
         </header>
         <div className="panel">
@@ -111,14 +101,15 @@ export default async function SettingsPage({
     );
   }
 
-  const [people, accounts, master, notifFeed, notifSettings] = await Promise.all([
+  const [people, accounts, master, notifFeed, notifSettings, pendingLine] = await Promise.all([
     getAllPeople(),
     getAccounts(),
     getMasterLists(),
     getNotificationFeed(),
     getNotificationSettings(),
+    getPendingLineRegistrations(),
   ]);
-  const activeCount = people.filter((p) => p.isActive).length;
+  const team = buildTeam(people, accounts, notifSettings.adminPersonIds);
   const tvAddress = `${new URL(env.appBaseUrl).host}/tv`;
   const activePeople = people.filter((p) => p.isActive);
 
@@ -129,8 +120,8 @@ export default async function SettingsPage({
           <h1 className="page-title">ตั้งค่าระบบ</h1>
           <p className="page-subtitle">
             {live
-              ? "จัดการบุคลากร บัญชีผู้ใช้ และบทบาท (ข้อมูลจริง)"
-              : "จัดการบุคลากร บัญชีผู้ใช้ และบทบาท"}
+              ? "ทีมงาน การแจ้งเตือน และข้อมูลหลัก"
+              : "ทีมงาน การแจ้งเตือน และข้อมูลหลัก (โหมดตัวอย่าง)"}
           </p>
         </div>
       </header>
@@ -151,251 +142,7 @@ export default async function SettingsPage({
         </div>
       ) : null}
 
-      {/* ---- People management ---- */}
-      <section className="staff-panel panel">
-        <div className="panel-heading">
-          <div>
-            <h2>บุคลากรงานประชาสัมพันธ์</h2>
-            <p>
-              ใช้งานอยู่ {activeCount} คน / ทั้งหมด {people.length} คน
-            </p>
-          </div>
-          <span className="staff-count">
-            <Users size={18} aria-hidden="true" />
-            {activeCount}
-          </span>
-        </div>
-
-        <div className="staff-manager">
-          <div className="staff-list" aria-label="รายชื่อบุคลากร">
-            {people.map((person) => (
-              <article
-                className={`staff-row ${person.isActive ? "" : "is-inactive"}`}
-                key={person.id}
-              >
-                <div className="staff-avatar" aria-hidden="true">
-                  {person.displayName.replace(/^(นางสาว|นาง|นาย)/, "").trim().charAt(0)}
-                </div>
-                <div className="staff-main">
-                  <strong>{person.displayName}</strong>
-                  <span>{person.position}</span>
-                  {person.email ? (
-                    <small>
-                      <Mail size={14} aria-hidden="true" />
-                      {person.email}
-                    </small>
-                  ) : null}
-                  <details className="staff-edit">
-                    <summary>แก้ไขข้อมูล</summary>
-                    <form action={updatePerson} className="staff-form">
-                      <input type="hidden" name="personId" value={person.id} />
-                      <input className="input" name="displayName" aria-label="ชื่อ-สกุล" defaultValue={person.displayName} placeholder="ชื่อ-สกุล" />
-                      <input className="input" name="position" aria-label="ตำแหน่ง" defaultValue={person.position} placeholder="ตำแหน่ง" />
-                      <input className="input" name="email" type="email" aria-label="อีเมล" defaultValue={person.email ?? ""} placeholder="อีเมล" />
-                      <button className="button secondary" type="submit">บันทึก</button>
-                    </form>
-                  </details>
-                </div>
-                <div className="staff-actions">
-                  <form action={setPersonActive}>
-                    <input type="hidden" name="personId" value={person.id} />
-                    <input type="hidden" name="active" value={(!person.isActive).toString()} />
-                    <button
-                      className="icon-button"
-                      type="submit"
-                      title={person.isActive ? "ปิดใช้งาน" : "เปิดใช้งาน"}
-                    >
-                      {person.isActive ? (
-                        <Power size={18} aria-hidden="true" />
-                      ) : (
-                        <RotateCcw size={18} aria-hidden="true" />
-                      )}
-                    </button>
-                  </form>
-                </div>
-              </article>
-            ))}
-          </div>
-
-          <form action={addPerson} className="staff-form">
-            <h3>เพิ่มเจ้าหน้าที่</h3>
-            <label className="form-field">
-              ชื่อ-สกุล
-              <input className="input" name="displayName" required />
-            </label>
-            <label className="form-field">
-              ตำแหน่ง
-              <input className="input" name="position" />
-            </label>
-            <label className="form-field">
-              อีเมล
-              <input className="input" name="email" type="email" />
-            </label>
-            <button className="button coral" type="submit">
-              <UserPlus size={18} aria-hidden="true" />
-              เพิ่มรายชื่อ
-            </button>
-          </form>
-        </div>
-      </section>
-
-      {/* ---- Account / role management ---- */}
-      <section className="panel">
-        <div className="panel-heading">
-          <div>
-            <h2>บัญชีผู้ใช้และบทบาท</h2>
-            <p>กำหนดบทบาท, ตั้งรหัสผ่าน และผูกบัญชีเข้ากับรายชื่อบุคลากร (ผูกแล้วจึงจะเห็นงานในหน้ามือถือ)</p>
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "20px", marginTop: "16px" }}>
-          {/* Create New Account Form */}
-          <form action={createAccount} className="panel" style={{ background: "var(--surface-soft)", border: "1px solid var(--line)" }}>
-            <h3 style={{ marginTop: 0, fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-              <UserPlus size={18} color="var(--blue)" />
-              สร้างบัญชีผู้ใช้ใหม่
-            </h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              <label className="form-field">
-                ชื่อผู้ใช้ (Username สำหรับล็อกอิน)
-                <input className="input" name="username" placeholder="เช่น thananthon, nat, pracharak" required />
-              </label>
-              <label className="form-field">
-                รหัสผ่านเริ่มต้น (อย่างน้อย 6 ตัวอักษร)
-                <input className="input" type="password" name="password" placeholder="••••••••" required />
-              </label>
-              <label className="form-field">
-                บทบาท (Role)
-                <select className="select" name="role" defaultValue="staff">
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {ROLE_LABELS_TH[r]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="form-field">
-                ผูกกับเจ้าหน้าที่เทศบาล
-                <select className="select" name="personId">
-                  <option value="">— ไม่ผูก —</option>
-                  {activePeople.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.displayName} ({p.position ?? "เจ้าหน้าที่"})
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button className="button coral" type="submit" style={{ marginTop: "4px" }}>
-                <UserPlus size={16} />
-                สร้างบัญชีผู้ใช้
-              </button>
-            </div>
-          </form>
-
-          {/* Existing Accounts List */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <h3 style={{ marginTop: 0, fontSize: "16px" }}>บัญชีในระบบ ({accounts.length} บัญชี)</h3>
-            <div className="account-list" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {accounts.map((account) => (
-                <div className="account-row panel" style={{ background: "var(--surface)", border: "1px solid var(--line)", padding: "14px" }} key={account.id}>
-                <form action={updateAccount}>
-                  <input type="hidden" name="accountId" value={account.id} />
-                  <div className="account-email" style={{ marginBottom: "8px", fontWeight: "700", color: "var(--blue)" }}>
-                    {account.username ? `@${account.username}` : account.email}
-                    {account.username && <small style={{ color: "var(--muted)", fontWeight: "normal" }}> ({account.email})</small>}
-                  </div>
-                  <div className="account-chips">
-                    {account.suspended ? <StatusPill label="ระงับอยู่" tone="red" /> : null}
-                    {account.personId ? (
-                      account.lineLinked ? (
-                        <StatusPill
-                          label={`ผูก LINE แล้ว${account.lineLinkedAt ? ` · ${formatThaiDateTime(account.lineLinkedAt)}` : ""}`}
-                          tone="green"
-                        />
-                      ) : (
-                        <StatusPill label="ยังไม่ผูก LINE" tone="amber" />
-                      )
-                    ) : (
-                      <StatusPill label="ยังไม่ผูกกับบุคลากร" tone="gray" />
-                    )}
-                    <StatusPill
-                      label={account.lastSignInAt ? `เข้าใช้ล่าสุด ${formatThaiDateTime(account.lastSignInAt)}` : "ยังไม่เคยเข้าใช้"}
-                      tone={account.lastSignInAt ? "blue" : "gray"}
-                    />
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}>
-                    <label className="form-field">
-                      ชื่อผู้ใช้ (login)
-                      <input className="input" name="username" defaultValue={account.username ?? ""} placeholder="เช่น somchai" />
-                    </label>
-                    <label className="form-field">
-                      บทบาท
-                      <select className="select" name="role" defaultValue={account.role}>
-                        {ROLES.map((r) => (
-                          <option key={r} value={r}>
-                            {ROLE_LABELS_TH[r]}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="form-field">
-                      ผูกกับบุคลากร
-                      <select className="select" name="personId" defaultValue={account.personId ?? ""}>
-                        <option value="">— ไม่ผูก —</option>
-                        {activePeople.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.displayName}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="form-field">
-                      เปลี่ยนรหัสผ่านใหม่
-                      <input className="input" type="password" name="newPassword" placeholder="เว้นว่างถ้าไม่เปลี่ยน" />
-                    </label>
-                  </div>
-                  <div style={{ marginTop: "10px", display: "flex", justifyContent: "flex-end" }}>
-                    <button className="button" type="submit">บันทึกการแก้ไข</button>
-                  </div>
-                </form>
-                <div className="account-actions">
-                  {account.personId ? (
-                    <Link className="button secondary" href={`/settings/people/${account.personId}`}>
-                      ดูรายละเอียด
-                    </Link>
-                  ) : null}
-                  {account.personId && account.lineLinked ? (
-                    <form action={unlinkPersonLine}>
-                      <input type="hidden" name="personId" value={account.personId} />
-                      <ConfirmSubmit message={`ยกเลิกผูก LINE ของ ${account.displayName ?? account.username ?? "บัญชีนี้"}? เจ้าตัวจะไม่ได้รับแจ้งเตือนจนกว่าจะกดผูกบัญชีใหม่`}>
-                        ยกเลิกผูก LINE
-                      </ConfirmSubmit>
-                    </form>
-                  ) : null}
-                  {account.id !== user?.id ? (
-                    <form action={setAccountSuspended}>
-                      <input type="hidden" name="accountId" value={account.id} />
-                      <input type="hidden" name="suspend" value={(!account.suspended).toString()} />
-                      {account.suspended ? (
-                        <button className="button secondary" type="submit">เปิดใช้บัญชี</button>
-                      ) : (
-                        <ConfirmSubmit
-                          className="button secondary danger"
-                          message={`ระงับบัญชี ${account.username ? `@${account.username}` : account.email}? จะเข้าระบบไม่ได้จนกว่าจะเปิดใช้อีกครั้ง`}
-                        >
-                          ระงับบัญชี
-                        </ConfirmSubmit>
-                      )}
-                    </form>
-                  ) : null}
-                </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+      <TeamPanel team={team} currentUserId={user?.id ?? null} added={added ?? null} pending={pendingLine} />
 
       {/* ---- TV short link ---- */}
       <section className="panel tv-link-panel">
@@ -448,6 +195,17 @@ export default async function SettingsPage({
             </dd>
           </div>
           <div>
+            <dt>ผู้รับแจ้งเตือนฝั่งแอดมิน (ตั้งที่ตารางทีมงาน ⋯ → รับแจ้งเตือนฝั่งแอดมิน)</dt>
+            <dd>
+              {team.filter((m) => m.watcher).length === 0
+                ? "ยังไม่ได้เลือก — ระบบส่งถึงบัญชีผู้ดูแลระบบแทน"
+                : team
+                    .filter((m) => m.watcher)
+                    .map((m) => m.displayName + (m.lineLinked ? "" : " (ยังไม่ผูก LINE)"))
+                    .join(", ")}
+            </dd>
+          </div>
+          <div>
             <dt>ยังไม่ผูก LINE</dt>
             <dd>
               {activePeople.filter((p) => !p.lineLinked).length === 0
@@ -472,21 +230,6 @@ export default async function SettingsPage({
             โควต้า LINE/เดือน
             <input className="input" type="number" name="lineMonthlyQuota" defaultValue={notifSettings.lineMonthlyQuota} />
           </label>
-          <fieldset className="admin-recipients">
-            <legend>ผู้รับแจ้งเตือนฝั่งแอดมิน (แจ้งไม่สะดวก · รายงาน 17:00 · เตือนโควต้า)</legend>
-            {activePeople.map((p) => (
-              <label className="notif-check" key={p.id}>
-                <input
-                  type="checkbox"
-                  name="adminPersonIds"
-                  value={p.id}
-                  defaultChecked={notifSettings.adminPersonIds.includes(p.id)}
-                />
-                {p.displayName}
-                {p.lineLinked ? "" : " (ยังไม่ผูก LINE)"}
-              </label>
-            ))}
-          </fieldset>
           <button className="button secondary" type="submit">บันทึกการตั้งค่า</button>
         </form>
 

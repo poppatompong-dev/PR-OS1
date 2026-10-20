@@ -38,3 +38,10 @@ export async function signOut() {
   await supabase.auth.signOut();
   redirect("/login");
 }
+
+/** "ไม่ใช่ฉัน" on /link-line: sign out, then sign in as yourself and come back to link. */
+export async function signOutToRelink() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/login?next=%2Flink-line");
+}
