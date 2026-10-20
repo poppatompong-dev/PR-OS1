@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { can, getSessionUser, UI_ROLES, type AppRole } from "@/lib/auth/roles";
 import { initialPassword, normalizeUsername } from "@/lib/settings/team";
-import { processDueNotifications, runTestDelivery, type TestDeliveryKind } from "@/lib/notifications/queue";
+import { processDueNotifications } from "@/lib/notifications/queue";
 import { env, isLineMessagingConfigured } from "@/lib/env";
 import {
   createRichMenu,
@@ -233,28 +233,6 @@ export async function processNotificationQueue() {
       (summary.quotaRemaining !== null ? ` · โควต้าเหลือ ${summary.quotaRemaining}` : "");
   } catch (err) {
     error = err instanceof Error ? err.message : "ประมวลผลคิวไม่สำเร็จ";
-  }
-  revalidatePath("/settings");
-  done(error, notice);
-}
-
-// TEMPORARY test buttons (20 Oct 2026 end-to-end test) — remove with runTestDelivery.
-export async function runTestDeliveryAction(formData: FormData) {
-  await blockWritesInDemoMode();
-  await requireAdmin();
-  const kind = String(formData.get("kind") ?? "") as TestDeliveryKind;
-  const labels: Record<TestDeliveryKind, string> = { reminder: "เตือน 1.5 ชม.", daily: "สรุป 07:00", admin: "รายงาน 17:00" };
-  let notice: string | undefined;
-  let error: string | undefined;
-  if (!(kind in labels)) {
-    error = "ไม่รู้จักการทดสอบนี้";
-  } else {
-    try {
-      const r = await runTestDelivery(kind);
-      notice = `(ทดสอบ) ${labels[kind]} — ส่งแล้ว ${r.sent} ข้อความ · โควต้าเหลือ ${r.quotaRemaining}`;
-    } catch (err) {
-      error = err instanceof Error ? err.message : "ทดสอบไม่สำเร็จ";
-    }
   }
   revalidatePath("/settings");
   done(error, notice);

@@ -16,7 +16,6 @@ import {
 import {
   addMasterItem,
   processNotificationQueue,
-  runTestDeliveryAction,
   setMasterActive,
   setupLineRichMenu,
   updateNotificationSettings,
@@ -251,25 +250,6 @@ export default async function SettingsPage({
               </button>
             </form>
           ) : null}
-        </div>
-
-        {/* TEMPORARY: end-to-end test tools (20 Oct 2026). Remove after the test. */}
-        <div className="form-actions" style={{ justifyContent: "flex-start", marginTop: 12, flexWrap: "wrap", gap: 8 }}>
-          <span style={{ fontWeight: 600 }}>เครื่องมือทดสอบ (ส่งจริง ใช้โควตา):</span>
-          {(
-            [
-              ["reminder", "ส่งเตือน 1.5 ชม. ตอนนี้"],
-              ["daily", "ส่งสรุป 07:00 ตอนนี้"],
-              ["admin", "ส่งรายงาน 17:00 ตอนนี้"],
-            ] as const
-          ).map(([kind, label]) => (
-            <form key={kind} action={runTestDeliveryAction}>
-              <input type="hidden" name="kind" value={kind} />
-              <button className="button secondary" type="submit">
-                {label}
-              </button>
-            </form>
-          ))}
         </div>
 
         <h3 style={{ marginTop: 18 }}>คิว/ประวัติล่าสุด</h3>
