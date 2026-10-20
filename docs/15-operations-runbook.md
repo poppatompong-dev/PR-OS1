@@ -239,6 +239,15 @@ where key in ('line_admin_person_ids', 'same_day_reminder_enabled', 'line_monthl
 
 select has_function_privilege('anon', 'public.get_monitor_events()', 'execute');
 -- ต้องได้ true (จอทีวียังดึงข้อมูลได้)
+
+-- ช่องโหว่สิทธิ์ปิดแล้ว: คนที่ไม่ได้ล็อกอินต้องเรียกฟังก์ชันคิว/เตือน/เช็กเวลาชนไม่ได้
+select
+  has_function_privilege('anon', 'public.process_notification_queue()', 'execute') as q,
+  has_function_privilege('anon', 'public.enqueue_event_notifications(uuid, notification_type)', 'execute') as n,
+  has_function_privilege('anon', 'public.enqueue_event_reminders(uuid)', 'execute') as r,
+  has_function_privilege('anon', 'public.cancel_event_reminders(uuid)', 'execute') as c,
+  has_function_privilege('anon', 'public.check_staff_conflict(uuid, date, time, time, uuid)', 'execute') as s;
+-- ต้องได้ false ทั้ง 5 ช่อง
 ```
 
 **ขั้น 5 — push โค้ด** `git push` ใน `D:\PR-OS1` แล้วรอ Vercel deploy เสร็จ จากนั้นเปิด `/monitor` และ `/schedule` ดูว่าปกติ

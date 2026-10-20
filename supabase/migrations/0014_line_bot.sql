@@ -15,6 +15,12 @@
 --   8. จอทีวีรู้ว่าใครกด "ไม่สะดวก"
 --   9. settings ใหม่: รายชื่อแอดมินที่รับแจ้งเตือนฝั่งแอดมิน, กลุ่มไลน์ที่อนุญาต
 --      และเปิดเตือน 1.5 ชม. (owner ตัดสินใจ 19 ต.ค. — ค่า false เดิมเป็นแค่ค่าตั้งต้นของ 0009)
+--  10. ปิดช่องโหว่สิทธิ์ที่มีอยู่บน production (พบโดย review ใน PR #2 วันที่ 13 ต.ค. ยืนยันซ้ำ 20 ต.ค.)
+--      Supabase ให้ EXECUTE แก่ anon บนฟังก์ชันใหม่ใน public อัตโนมัติ และเช็ก
+--      `current_app_role() not in (...)` ปล่อยผ่านเมื่อ role เป็น NULL (NULL not in … = NULL = ไม่ raise)
+--      คนที่ไม่ได้ล็อกอินจึงเรียก process_notification_queue() (ล้างคิวทั้งหมด), cancel_event_reminders(),
+--      enqueue_event_notifications(), enqueue_event_reminders() และ check_staff_conflict() ได้
+--      แก้: ใช้ coalesce ทุกจุด + ถอน EXECUTE ของ anon จากฟังก์ชันที่ไม่ได้ตั้งใจเปิดสาธารณะ
 --
 -- ไม่ลบตาราง ไม่ลบคอลัมน์ ไม่แก้ RLS ของตารางเดิม ไม่ลบข้อมูล
 
@@ -97,7 +103,7 @@ declare
   v_count int := 0;
   v_month text := to_char(now() at time zone 'Asia/Bangkok', 'YYYY-MM');
 begin
-  if public.current_app_role() not in ('admin', 'supervisor', 'staff') then
+  if coalesce(public.current_app_role()::text, '') not in ('admin', 'supervisor', 'staff') then
     raise exception 'insufficient role to enqueue notifications';
   end if;
 
@@ -147,7 +153,7 @@ declare
   v_remind_at timestamptz;
   v_month text := to_char(now() at time zone 'Asia/Bangkok', 'YYYY-MM');
 begin
-  if public.current_app_role() not in ('admin', 'supervisor', 'staff') then
+  if coalesce(public.current_app_role()::text, '') not in ('admin', 'supervisor', 'staff') then
     raise exception 'insufficient role to enqueue reminders';
   end if;
 
@@ -273,5 +279,146 @@ on conflict (key) do nothing;
 -- ไม่ใช้อีเมลสำรอง (owner เลือก 19 ต.ค. 2569)
 update public.settings set value = 'false'::jsonb, updated_at = now()
  where key in ('fallback_to_email_when_line_fails', 'fallback_to_email_when_quota_exceeded');
+
+-- 10. ปิดช่องโหว่สิทธิ์ ----------------------------------------------------------
+create or replace function public.cancel_event_reminders(
+  p_event_id uuid
+)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_count int := 0;
+begin
+  if coalesce(public.current_app_role()::text, '') not in ('admin', 'supervisor', 'staff') then
+    raise exception 'insufficient role to cancel reminders';
+  end if;
+
+  update public.notifications
+  set status = 'skipped',
+      error_message = 'งานถูกยกเลิกหรือเปลี่ยนเวลา: ยกเลิกการเตือนรอบเดิม'
+  where event_id = p_event_id
+    and status = 'queued'
+    and notification_type = 'reminder';
+
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+
+-- ตัวจำลองเก่าจาก 0006 (แอปไม่ได้เรียกแล้ว) — เหลือไว้ให้ admin เท่านั้น
+create or replace function public.process_notification_queue()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_count int := 0;
+begin
+  if public.current_app_role() is distinct from 'admin' then
+    raise exception 'admin only';
+  end if;
+
+  update public.notifications
+  set status = 'skipped',
+      sent_at = now(),
+      error_message = 'โหมดจำลอง: ยังไม่ได้เชื่อมต่อ LINE'
+  where status = 'queued'
+    and scheduled_for <= now();
+
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+
+-- ตัวเช็กเวลาชน: เนื้อเดิมจาก 0012 เปลี่ยนแค่บรรทัดตรวจสิทธิ์
+create or replace function public.check_staff_conflict(
+  p_person_id uuid,
+  p_event_date date,
+  p_start_time time,
+  p_end_time time default null,
+  p_exclude_event_id uuid default null
+)
+returns table (
+  conflicting_event_id uuid,
+  conflicting_event_title text,
+  conflicting_start_time time,
+  conflicting_end_time time,
+  conflicting_location_name text,
+  conflicting_role_name text
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if coalesce(public.current_app_role()::text, '') not in ('admin', 'supervisor', 'staff')
+     and (public.current_person_id() is null or public.current_person_id() <> p_person_id) then
+    raise exception 'insufficient role to check staff conflict';
+  end if;
+
+  return query
+  select
+    e.id as conflicting_event_id,
+    e.title as conflicting_event_title,
+    e.start_time as conflicting_start_time,
+    e.end_time as conflicting_end_time,
+    coalesce(l.name, '—') as conflicting_location_name,
+    coalesce(r.name, '—') as conflicting_role_name
+  from public.assignments a
+  join public.events e on e.id = a.event_id
+  left join public.locations l on l.id = e.location_id
+  left join public.roles r on r.id = a.role_id
+  where a.person_id = p_person_id
+    and a.assignment_status = 'assigned'
+    and e.status in ('published', 'draft')
+    and e.deleted_at is null
+    and e.event_date = p_event_date
+    and (p_exclude_event_id is null or e.id <> p_exclude_event_id)
+    and (
+      (p_start_time, coalesce(p_end_time, p_start_time + interval '2 hours'))
+      overlaps
+      (e.start_time, coalesce(e.end_time, e.start_time + interval '2 hours'))
+    );
+end;
+$$;
+
+-- `revoke ... from public` ไม่ถอน grant ที่ Supabase ให้ anon ตรง ๆ ต้องระบุชื่อ role
+-- ที่ตั้งใจเปิดสาธารณะ (คงไว้): get_monitor_events, get_monitor_team, get_login_email
+-- และ current_app_role / current_person_id / attachment_event_id ที่ RLS policy เรียกใช้
+do $$
+declare
+  f text;
+begin
+  -- ผู้ใช้ที่ล็อกอินเรียกได้ (ฟังก์ชันเช็ก role เอง) แต่ anon ห้าม
+  foreach f in array array[
+    'public.enqueue_event_notifications(uuid, notification_type)',
+    'public.enqueue_event_reminders(uuid)',
+    'public.cancel_event_reminders(uuid)',
+    'public.check_staff_conflict(uuid, date, time, time, uuid)',
+    'public.get_accounts()'
+  ] loop
+    if to_regprocedure(f) is not null then
+      execute format('revoke execute on function %s from public, anon', f);
+      execute format('grant execute on function %s to authenticated', f);
+    end if;
+  end loop;
+
+  -- ใช้ภายในเท่านั้น (trigger / ตัวจำลองเก่า): ห้ามทั้ง anon และ authenticated
+  foreach f in array array[
+    'public.process_notification_queue()',
+    'public.clear_unavailable_on_ack()',
+    'public.handle_new_user()'
+  ] loop
+    if to_regprocedure(f) is not null then
+      execute format('revoke execute on function %s from public, anon, authenticated', f);
+    end if;
+  end loop;
+end;
+$$;
 
 commit;
