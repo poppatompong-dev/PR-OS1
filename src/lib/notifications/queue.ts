@@ -288,7 +288,7 @@ async function pushToAdmins(
   return sent;
 }
 
-async function sendDailySummaries(admin: SupabaseClient, quota: QuotaGuard, today: string, month: string) {
+async function sendDailySummaries(admin: SupabaseClient, quota: QuotaGuard, today: string, month: string, claimPrefix = "daily") {
   const tomorrow = addDays(today, 1);
   const tasks = await loadTasks(admin, { from: today, to: tomorrow });
   const byPerson = new Map<string, TaskItem[]>();
@@ -300,7 +300,7 @@ async function sendDailySummaries(admin: SupabaseClient, quota: QuotaGuard, toda
     if (!lineUserId || !quota.canSend()) continue;
     // Claimed per person, right before the push: a run that dies half way
     // leaves the rest for the next run instead of losing the whole morning.
-    if (!(await claimRun(admin, `daily:${today}:${personId}`))) continue;
+    if (!(await claimRun(admin, `${claimPrefix}:${today}:${personId}`))) continue;
     const message = dailySummaryMessage(
       mine[0].personName,
       mine.filter((t) => t.event.eventDate === today),
@@ -323,14 +323,14 @@ async function sendDailySummaries(admin: SupabaseClient, quota: QuotaGuard, toda
   return sent;
 }
 
-async function sendAdminReport(admin: SupabaseClient, quota: QuotaGuard, today: string, month: string) {
+async function sendAdminReport(admin: SupabaseClient, quota: QuotaGuard, today: string, month: string, claimPrefix = "admin17") {
   const tomorrow = addDays(today, 1);
   const tasks = await loadTasks(admin, { from: tomorrow, to: tomorrow });
   const pending = tasks.filter((t) => !t.acknowledged && !t.unavailable);
   const unavailable = tasks.filter((t) => t.unavailable);
   // Owner rule: nothing outstanding = no message.
   if (pending.length === 0 && unavailable.length === 0) return 0;
-  return pushToAdmins(admin, quota, "admin_report", adminReportMessage(tomorrow, pending, unavailable), month, `admin17:${today}`);
+  return pushToAdmins(admin, quota, "admin_report", adminReportMessage(tomorrow, pending, unavailable), month, `${claimPrefix}:${today}`);
 }
 
 export async function processDueNotifications(now = new Date()): Promise<ProcessSummary> {
@@ -423,4 +423,65 @@ async function runLocked(
   }
 
   summary.quotaRemaining = Number.isFinite(quota.remaining) ? quota.remaining : null;
+}
+
+// ---- TEST TOOLS (temporary, for the 20 Oct 2026 end-to-end test) ----------
+// Admin buttons in /settings that run the timed parts now instead of waiting
+// for 07:00 / 17:00 / 1.5 h before a job. Same recipients and messages as the
+// real runs; the claim keys are separate (test-…), so tomorrow's real 07:00
+// and 17:00 still go out. Remove after the test (owner's decision).
+
+export type TestDeliveryKind = "reminder" | "daily" | "admin";
+
+async function sendRemindersNow(admin: SupabaseClient, settings: Settings, quota: QuotaGuard, month: string) {
+  const { data, error } = await admin
+    .from("notifications")
+    .select("id, assignment_id, scheduled_for, person:people(line_user_id)")
+    .eq("status", "queued")
+    .eq("notification_type", "reminder")
+    .gt("scheduled_for", new Date().toISOString())
+    .order("scheduled_for", { ascending: true })
+    .limit(50);
+  if (error) throw new Error(`sendRemindersNow: ${error.message}`);
+  let sent = 0;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const row of (data ?? []) as any[]) {
+    const person = one(row.person);
+    if (!settings.lineEnabled || !person?.line_user_id || !quota.canSend()) continue;
+    const task = row.assignment_id ? await loadTask(admin, row.assignment_id) : null;
+    const { message, skipReason } = messageForRow("reminder", task, undefined, { scheduledFor: row.scheduled_for });
+    if (!message) {
+      await mark(admin, row.id, "skipped", { error_message: `(ทดสอบ) ${skipReason ?? ""}` });
+      continue;
+    }
+    const res = await pushMessages(person.line_user_id, [message]);
+    if (res.ok) {
+      quota.used += 1;
+      sent += 1;
+      await mark(admin, row.id, "sent", { channel: "line", provider_message_id: res.providerMessageId ?? null, quota_month: month });
+    } else {
+      await mark(admin, row.id, "failed", { error_message: res.error ?? "ส่งไม่สำเร็จ" });
+    }
+  }
+  return sent;
+}
+
+export async function runTestDelivery(kind: TestDeliveryKind): Promise<{ sent: number; quotaRemaining: number }> {
+  if (!isLineMessagingConfigured()) throw new Error("ยังไม่ได้เชื่อมต่อ LINE");
+  const admin = createAdminClient();
+  const settings = await loadSettings(admin);
+  if (!settings.lineEnabled) throw new Error("ปิดการส่ง LINE อยู่ในหน้าตั้งค่า");
+  const clock = bangkokClock();
+  if (!(await claimRun(admin, LOCK_KEY))) throw new Error("กำลังส่งคิวรอบอื่นอยู่ ลองใหม่ในอีกสักครู่");
+  try {
+    const quota = await QuotaGuard.load(admin, settings.lineMonthlyQuota, clock.month);
+    const stamp = `test-${Date.now()}`;
+    let sent = 0;
+    if (kind === "reminder") sent = await sendRemindersNow(admin, settings, quota, clock.month);
+    if (kind === "daily") sent = await sendDailySummaries(admin, quota, clock.date, clock.month, `${stamp}-daily`);
+    if (kind === "admin") sent = await sendAdminReport(admin, quota, clock.date, clock.month, `${stamp}-admin17`);
+    return { sent, quotaRemaining: quota.remaining };
+  } finally {
+    await releaseRun(admin, LOCK_KEY);
+  }
 }
