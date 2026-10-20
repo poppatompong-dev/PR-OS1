@@ -16,6 +16,8 @@ import { env } from "@/lib/env";
 const PUBLIC_PREFIXES = [
   "/login",
   "/monitor",
+  // Short TV address; redirects to /monitor.
+  "/tv",
   "/api/monitor",
   "/api/notifications/process",
   "/api/health",

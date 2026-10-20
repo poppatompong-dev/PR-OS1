@@ -16,6 +16,18 @@ export function formatThaiDate(isoDate: string) {
   }).format(new Date(`${isoDate}T00:00:00+07:00`));
 }
 
+/** A timestamp (ISO with zone) as Thai date + time in Bangkok, e.g. "20 ต.ค. 69 13:05". */
+export function formatThaiDateTime(iso: string) {
+  return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+    month: "short",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
 export function eventStatusLabel(status: EventStatus) {
   return {
     draft: "ร่าง",

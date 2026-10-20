@@ -1,6 +1,6 @@
 // Settings/master-data reads for the admin settings page.
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import type { AppRole } from "@/lib/auth/roles";
 import {
@@ -27,7 +27,61 @@ export type Account = {
   role: AppRole;
   personId: string | null;
   displayName: string | null;
+  /** From Supabase Auth; null = never signed in (or unknown in demo mode). */
+  lastSignInAt: string | null;
+  /** Auth ban in force (set by "ระงับบัญชี"). */
+  suspended: boolean;
+  /** The linked person has a LINE account attached. */
+  lineLinked: boolean;
+  /** When the person last linked LINE (latest audit_logs line_link), if known. */
+  lineLinkedAt: string | null;
 };
+
+export type AuthUserInfo = { lastSignInAt: string | null; suspended: boolean };
+
+/**
+ * Sign-in and suspension state from Supabase Auth, keyed by user id. Needs the
+ * service-role key; returns an empty map rather than failing the page.
+ */
+export async function getAuthUserInfo(): Promise<Map<string, AuthUserInfo>> {
+  const out = new Map<string, AuthUserInfo>();
+  try {
+    const { data, error } = await createAdminClient().auth.admin.listUsers({ page: 1, perPage: 200 });
+    if (error) return out;
+    const now = Date.now();
+    for (const u of data.users) {
+      const bannedUntil = (u as { banned_until?: string | null }).banned_until ?? null;
+      out.set(u.id, {
+        lastSignInAt: u.last_sign_in_at ?? null,
+        suspended: Boolean(bannedUntil && new Date(bannedUntil).getTime() > now),
+      });
+    }
+  } catch {
+    // Missing service key or Auth unreachable: show no sign-in data.
+  }
+  return out;
+}
+
+/** Latest line_link time per person id, from audit_logs. */
+export async function getLineLinkTimes(personIds: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (personIds.length === 0) return out;
+  try {
+    const { data } = await createAdminClient()
+      .from("audit_logs")
+      .select("entity_id, changed_at")
+      .eq("entity_type", "person")
+      .eq("action", "line_link")
+      .in("entity_id", personIds)
+      .order("changed_at", { ascending: false });
+    for (const row of data ?? []) {
+      if (!out.has(row.entity_id as string)) out.set(row.entity_id as string, row.changed_at as string);
+    }
+  } catch {
+    // leave empty
+  }
+  return out;
+}
 
 export async function getAllPeople(): Promise<StaffPerson[]> {
   if (!isSupabaseConfigured()) {
@@ -119,6 +173,10 @@ export async function getAccounts(): Promise<Account[]> {
       role: demoRoles[i],
       personId: person.id,
       displayName: person.displayName,
+      lastSignInAt: null,
+      suspended: false,
+      lineLinked: false,
+      lineLinkedAt: null,
     }));
   }
 
@@ -127,14 +185,37 @@ export async function getAccounts(): Promise<Account[]> {
   if (error) throw new Error(`getAccounts: ${error.message}`);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data as any[]) ?? []).map((a) => ({
-    id: a.id,
-    email: a.email,
-    username: a.username ?? null,
-    role: a.role as AppRole,
-    personId: a.person_id ?? null,
-    displayName: a.display_name ?? null,
-  }));
+  const rows = (data as any[]) ?? [];
+  const personIds = [...new Set(rows.map((a) => a.person_id).filter(Boolean) as string[])];
+  const [authInfo, linkTimes, linked] = await Promise.all([
+    getAuthUserInfo(),
+    getLineLinkTimes(personIds),
+    personIds.length
+      ? supabase.from("people").select("id, line_user_id").in("id", personIds)
+      : Promise.resolve({ data: [] as { id: string; line_user_id: string | null }[] }),
+  ]);
+  const lineByPerson = new Map(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((linked.data as any[]) ?? []).map((p) => [p.id as string, Boolean(p.line_user_id)]),
+  );
+
+  return rows.map((a) => {
+    const auth = authInfo.get(a.id);
+    const personId = (a.person_id as string | null) ?? null;
+    const lineLinked = personId ? lineByPerson.get(personId) ?? false : false;
+    return {
+      id: a.id,
+      email: a.email,
+      username: a.username ?? null,
+      role: a.role as AppRole,
+      personId,
+      displayName: a.display_name ?? null,
+      lastSignInAt: auth?.lastSignInAt ?? null,
+      suspended: auth?.suspended ?? false,
+      lineLinked,
+      lineLinkedAt: lineLinked && personId ? linkTimes.get(personId) ?? null : null,
+    };
+  });
 }
 
 export type NotificationRow = {

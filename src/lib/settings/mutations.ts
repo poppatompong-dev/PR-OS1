@@ -33,9 +33,19 @@ async function requireAdmin() {
 }
 
 function done(error?: string, notice?: string): never {
-  if (error) redirect(`/settings?error=${encodeURIComponent(error)}`);
-  if (notice) redirect(`/settings?notice=${encodeURIComponent(notice)}`);
-  redirect("/settings");
+  doneAt("/settings", error, notice);
+}
+
+/** Only pages under /settings may be returned to (the forms post a returnTo). */
+function settingsPath(value: FormDataEntryValue | null): string {
+  const raw = String(value ?? "");
+  return /^\/settings(\/[A-Za-z0-9/_-]*)?$/.test(raw) ? raw : "/settings";
+}
+
+function doneAt(path: string, error?: string, notice?: string): never {
+  if (error) redirect(`${path}?error=${encodeURIComponent(error)}`);
+  if (notice) redirect(`${path}?notice=${encodeURIComponent(notice)}`);
+  redirect(path);
 }
 
 export async function addPerson(formData: FormData) {
@@ -311,4 +321,92 @@ export async function updateAccount(formData: FormData) {
 
   revalidatePath("/settings");
   done(undefined, `อัปเดตบัญชี ${username ? `@${username}` : ""} เรียบร้อยแล้ว${newPassword ? " (เปลี่ยนรหัสผ่านสำเร็จ)" : ""}`);
+}
+
+/**
+ * Suspend or re-enable a sign-in account (Supabase Auth ban). A suspended user
+ * cannot sign in or refresh their session; a session already open lasts until
+ * its access token expires (about an hour at most). LINE messages keep going
+ * to the linked person until LINE is unlinked.
+ */
+export async function setAccountSuspended(formData: FormData) {
+  await blockWritesInDemoMode();
+  const { supabase, user } = await requireAdmin();
+  const back = settingsPath(formData.get("returnTo"));
+  const accountId = String(formData.get("accountId") ?? "");
+  const suspend = String(formData.get("suspend") ?? "") === "true";
+  if (!accountId) doneAt(back, "ไม่พบบัญชี");
+  if (suspend && accountId === user.id) doneAt(back, "ระงับบัญชีของตัวเองไม่ได้");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username, person_id")
+    .eq("id", accountId)
+    .maybeSingle();
+
+  try {
+    const { createAdminClient } = await import("@/lib/supabase/server");
+    const admin = createAdminClient();
+    const { error } = await admin.auth.admin.updateUserById(accountId, {
+      ban_duration: suspend ? "876000h" : "none",
+    });
+    if (error) doneAt(back, `${suspend ? "ระงับ" : "เปิด"}บัญชีไม่สำเร็จ: ${error.message}`);
+
+    if (profile?.person_id) {
+      await admin.from("audit_logs").insert({
+        entity_type: "person",
+        entity_id: profile.person_id,
+        action: suspend ? "account_suspend" : "account_unsuspend",
+        changed_by: user.id,
+        summary: `${suspend ? "ระงับ" : "เปิดใช้"}บัญชี ${profile.username ? `@${profile.username}` : ""}`.trim(),
+        new_values: { account_id: accountId },
+      });
+    }
+  } catch (err) {
+    if (err && typeof err === "object" && "digest" in err) throw err; // redirect()
+    doneAt(back, err instanceof Error ? err.message : "ทำรายการไม่สำเร็จ");
+  }
+
+  revalidatePath("/settings");
+  doneAt(
+    back,
+    undefined,
+    suspend
+      ? `ระงับบัญชี ${profile?.username ? `@${profile.username}` : ""} แล้ว — เข้าระบบใหม่ไม่ได้ และจะหลุดจากระบบภายในไม่เกิน 1 ชั่วโมง (ยังได้รับแจ้งเตือน LINE จนกว่าจะยกเลิกผูก LINE)`
+      : `เปิดใช้บัญชี ${profile?.username ? `@${profile.username}` : ""} แล้ว`,
+  );
+}
+
+/** Detach a person's LINE account (wrong person, new phone, or leaving the team). */
+export async function unlinkPersonLine(formData: FormData) {
+  await blockWritesInDemoMode();
+  const { user } = await requireAdmin();
+  const back = settingsPath(formData.get("returnTo"));
+  const personId = String(formData.get("personId") ?? "");
+  if (!personId) doneAt(back, "ไม่พบบุคคล");
+
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const admin = createAdminClient();
+  const { data: person, error: readError } = await admin
+    .from("people")
+    .select("display_name, line_user_id")
+    .eq("id", personId)
+    .maybeSingle();
+  if (readError) doneAt(back, readError.message);
+  if (!person) doneAt(back, "ไม่พบบุคคล");
+  if (!person.line_user_id) doneAt(back, `${person.display_name} ยังไม่ได้ผูก LINE`);
+
+  const { error } = await admin.from("people").update({ line_user_id: null }).eq("id", personId);
+  if (error) doneAt(back, error.message);
+  await admin.from("line_chat_state").delete().eq("line_user_id", person.line_user_id);
+  await admin.from("audit_logs").insert({
+    entity_type: "person",
+    entity_id: personId,
+    action: "line_unlink",
+    changed_by: user.id,
+    summary: "ยกเลิกการผูกบัญชี LINE (โดยผู้ดูแลระบบ)",
+  });
+
+  revalidatePath("/settings");
+  doneAt(back, undefined, `ยกเลิกผูก LINE ของ ${person.display_name} แล้ว — เจ้าตัวกด "ผูกบัญชี" ในแชทบอทใหม่ได้`);
 }

@@ -1,4 +1,8 @@
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
+import { ConfirmSubmit } from "@/components/ConfirmSubmit";
+import { StatusPill } from "@/components/StatusPill";
+import { formatThaiDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser, ROLE_LABELS_TH, type AppRole } from "@/lib/auth/roles";
 import { env, isLineLoginConfigured, isLineMessagingConfigured, isLineWebhookConfigured, isSupabaseConfigured } from "@/lib/env";
@@ -17,29 +21,15 @@ import {
   processNotificationQueue,
   setMasterActive,
   setupLineRichMenu,
+  setAccountSuspended,
   setPersonActive,
+  unlinkPersonLine,
   updateAccount,
   updateNotificationSettings,
   updatePerson,
 } from "@/lib/settings/mutations";
+import { NOTIF_STATUS_TH, NOTIF_TYPE_TH } from "@/lib/notifications/labels";
 import { BellRing, Mail, Plus, Power, RotateCcw, Send, UserPlus, Users } from "lucide-react";
-
-const NOTIF_TYPE_TH: Record<string, string> = {
-  assignment: "มอบหมาย",
-  reminder: "เตือน 1.5 ชม.",
-  change: "เปลี่ยนแปลง",
-  cancellation: "ยกเลิก",
-  daily_summary: "สรุป 07:00",
-  admin_report: "รายงาน 17:00",
-  unavailable: "แจ้งไม่สะดวก",
-  quota_warning: "เตือนโควต้า",
-};
-const NOTIF_STATUS_TH: Record<string, string> = {
-  queued: "รอส่ง",
-  sent: "ส่งแล้ว",
-  failed: "ล้มเหลว",
-  skipped: "ข้าม",
-};
 
 export const dynamic = "force-dynamic";
 
@@ -129,6 +119,7 @@ export default async function SettingsPage({
     getNotificationSettings(),
   ]);
   const activeCount = people.filter((p) => p.isActive).length;
+  const tvAddress = `${new URL(env.appBaseUrl).host}/tv`;
   const activePeople = people.filter((p) => p.isActive);
 
   return (
@@ -306,11 +297,31 @@ export default async function SettingsPage({
             <h3 style={{ marginTop: 0, fontSize: "16px" }}>บัญชีในระบบ ({accounts.length} บัญชี)</h3>
             <div className="account-list" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {accounts.map((account) => (
-                <form action={updateAccount} className="account-row panel" style={{ background: "var(--surface)", border: "1px solid var(--line)", padding: "14px" }} key={account.id}>
+                <div className="account-row panel" style={{ background: "var(--surface)", border: "1px solid var(--line)", padding: "14px" }} key={account.id}>
+                <form action={updateAccount}>
                   <input type="hidden" name="accountId" value={account.id} />
                   <div className="account-email" style={{ marginBottom: "8px", fontWeight: "700", color: "var(--blue)" }}>
                     {account.username ? `@${account.username}` : account.email}
                     {account.username && <small style={{ color: "var(--muted)", fontWeight: "normal" }}> ({account.email})</small>}
+                  </div>
+                  <div className="account-chips">
+                    {account.suspended ? <StatusPill label="ระงับอยู่" tone="red" /> : null}
+                    {account.personId ? (
+                      account.lineLinked ? (
+                        <StatusPill
+                          label={`ผูก LINE แล้ว${account.lineLinkedAt ? ` · ${formatThaiDateTime(account.lineLinkedAt)}` : ""}`}
+                          tone="green"
+                        />
+                      ) : (
+                        <StatusPill label="ยังไม่ผูก LINE" tone="amber" />
+                      )
+                    ) : (
+                      <StatusPill label="ยังไม่ผูกกับบุคลากร" tone="gray" />
+                    )}
+                    <StatusPill
+                      label={account.lastSignInAt ? `เข้าใช้ล่าสุด ${formatThaiDateTime(account.lastSignInAt)}` : "ยังไม่เคยเข้าใช้"}
+                      tone={account.lastSignInAt ? "blue" : "gray"}
+                    />
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}>
@@ -348,10 +359,53 @@ export default async function SettingsPage({
                     <button className="button" type="submit">บันทึกการแก้ไข</button>
                   </div>
                 </form>
+                <div className="account-actions">
+                  {account.personId ? (
+                    <Link className="button secondary" href={`/settings/people/${account.personId}`}>
+                      ดูรายละเอียด
+                    </Link>
+                  ) : null}
+                  {account.personId && account.lineLinked ? (
+                    <form action={unlinkPersonLine}>
+                      <input type="hidden" name="personId" value={account.personId} />
+                      <ConfirmSubmit message={`ยกเลิกผูก LINE ของ ${account.displayName ?? account.username ?? "บัญชีนี้"}? เจ้าตัวจะไม่ได้รับแจ้งเตือนจนกว่าจะกดผูกบัญชีใหม่`}>
+                        ยกเลิกผูก LINE
+                      </ConfirmSubmit>
+                    </form>
+                  ) : null}
+                  {account.id !== user?.id ? (
+                    <form action={setAccountSuspended}>
+                      <input type="hidden" name="accountId" value={account.id} />
+                      <input type="hidden" name="suspend" value={(!account.suspended).toString()} />
+                      {account.suspended ? (
+                        <button className="button secondary" type="submit">เปิดใช้บัญชี</button>
+                      ) : (
+                        <ConfirmSubmit
+                          className="button secondary danger"
+                          message={`ระงับบัญชี ${account.username ? `@${account.username}` : account.email}? จะเข้าระบบไม่ได้จนกว่าจะเปิดใช้อีกครั้ง`}
+                        >
+                          ระงับบัญชี
+                        </ConfirmSubmit>
+                      )}
+                    </form>
+                  ) : null}
+                </div>
+                </div>
               ))}
             </div>
           </div>
         </div>
+      </section>
+
+      {/* ---- TV short link ---- */}
+      <section className="panel tv-link-panel">
+        <div className="panel-heading">
+          <div>
+            <h2>เปิดจอมอนิเตอร์บนทีวี</h2>
+            <p>เปิดเบราว์เซอร์ทีวี พิมพ์ที่อยู่นี้ แล้วกดบันทึกเป็นบุ๊กมาร์ก/หน้าแรก ครั้งต่อไปเปิดได้ทันที ไม่ต้องล็อกอิน</p>
+          </div>
+        </div>
+        <p className="tv-link">{tvAddress}</p>
       </section>
 
       {/* ---- Notifications ---- */}
