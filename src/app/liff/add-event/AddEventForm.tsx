@@ -274,9 +274,9 @@ export function AddEventForm({ liffId }: { liffId: string }) {
         </label>
       </section>
 
-      {error ? <p className={styles.err}>{error}</p> : null}
-
       <div className={styles.footer}>
+        {/* In the fixed footer, so the message is on screen right where the button was tapped. */}
+        {error ? <p className={styles.err}>{error}</p> : null}
         <p className={styles.quota}>
           {filled.length > 0
             ? `เผยแพร่ = ส่งการ์ดแจ้งงาน ${filled.length} คน (ใช้โควต้า LINE ${filled.length} ข้อความ) · บันทึกร่าง = ยังไม่แจ้งใคร`
