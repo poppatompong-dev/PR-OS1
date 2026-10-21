@@ -114,7 +114,7 @@ export function TableMonitor({
   staticMode = false,
 }: {
   /** "3d" = the same screen plus the mascot column (/monitor?v=3d): navy
-   *  studio theme with the pre-rendered vinyl mascot (owner, 21 Oct 2026). */
+   *  studio theme with the pre-rendered โพโพ + ฟูฟู loops (owner, 21 Oct 2026). */
   variant?: "default" | "3d";
   /** ?static=1 — draw the mascot once and never animate. */
   staticMode?: boolean;

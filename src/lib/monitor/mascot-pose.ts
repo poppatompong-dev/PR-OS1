@@ -1,7 +1,8 @@
 // Which of the five mascot loops the office TV plays (owner, 21 Oct 2026:
-// layout A + navy "C" background + glossy vinyl mascot, all five poses).
+// layout A + navy "C" background; the mascots are โพโพ, a dragon cub from the
+// Paknampho golden-dragon parade, and his cloud sidekick ฟูฟู, acting together).
 //
-// Each pose is a 2-second loop rendered ahead of time in Blender and played
+// Each pose is a 3.5-second loop rendered ahead of time in Blender and played
 // as a small MP4 (public/monitor/mascot/<pose>.mp4, poster <pose>.jpg): the TV
 // only plays a video, it never draws 3D itself, so it stays smooth on a
 // Smart TV browser. Pure function, covered by tests/monitor-pose.unit.test.ts.
