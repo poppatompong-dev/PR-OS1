@@ -36,7 +36,7 @@ import {
   runAge,
   type TaskItem,
 } from "@/lib/line/data";
-import { diffEvent, type FieldChange, type OldEventValues } from "@/lib/line/change-diff";
+import { loadChangeDiff, type FieldChange } from "@/lib/line/change-diff";
 import {
   adminReportMessage,
   cancellationMessage,
@@ -137,30 +137,6 @@ export class QuotaGuard {
     this.used += 1;
     this.sent[priorityOf(type)] += 1;
   }
-}
-
-/** Old → new per field, from the latest significant-change audit row of the job. */
-async function loadChangeDiff(admin: SupabaseClient, eventId: string, task: TaskItem | null): Promise<FieldChange[]> {
-  if (!task) return [];
-  const { data } = await admin
-    .from("audit_logs")
-    .select("old_values")
-    .eq("entity_type", "event")
-    .eq("entity_id", eventId)
-    .eq("action", "significant_change")
-    .order("changed_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const old = (data?.old_values ?? null) as OldEventValues | null;
-  if (!old) return [];
-  if (old.location_id !== undefined && old.location_name === undefined) {
-    old.location_name = null;
-    if (old.location_id) {
-      const { data: loc } = await admin.from("locations").select("name").eq("id", old.location_id).maybeSingle();
-      old.location_name = loc?.name ?? null;
-    }
-  }
-  return diffEvent(old, task);
 }
 
 export type ProcessSummary = {

@@ -4,6 +4,7 @@
 // web edit writes (events/mutations.ts → old_values); new values are the job
 // as it is now, so a field changed twice still shows the latest value.
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatThaiDate } from "@/lib/format";
 import type { TaskItem } from "@/lib/line/data";
 
@@ -48,4 +49,28 @@ export function ackLabelFor(changes: FieldChange[]): string {
   if (f.has("start") || f.has("end")) return f.has("location") ? "รับทราบงานที่แก้" : "รับทราบเวลาใหม่";
   if (f.has("location")) return "รับทราบสถานที่ใหม่";
   return "รับทราบงานที่แก้";
+}
+
+/** Old → new per field, from the latest significant-change audit row of the job. */
+export async function loadChangeDiff(admin: SupabaseClient, eventId: string, task: TaskItem | null): Promise<FieldChange[]> {
+  if (!task) return [];
+  const { data } = await admin
+    .from("audit_logs")
+    .select("old_values")
+    .eq("entity_type", "event")
+    .eq("entity_id", eventId)
+    .eq("action", "significant_change")
+    .order("changed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const old = (data?.old_values ?? null) as OldEventValues | null;
+  if (!old) return [];
+  if (old.location_id !== undefined && old.location_name === undefined) {
+    old.location_name = null;
+    if (old.location_id) {
+      const { data: loc } = await admin.from("locations").select("name").eq("id", old.location_id).maybeSingle();
+      old.location_name = loc?.name ?? null;
+    }
+  }
+  return diffEvent(old, task);
 }

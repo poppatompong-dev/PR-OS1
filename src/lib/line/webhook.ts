@@ -30,6 +30,7 @@ import {
   withinRateLimit,
   type LinePerson,
 } from "@/lib/line/data";
+import { loadChangeDiff } from "@/lib/line/change-diff";
 import {
   COMMANDS,
   UNAVAILABLE_PRESETS,
@@ -187,7 +188,11 @@ async function handlePostback(ctx: Ctx, ev: LineEvent, person: LinePerson | null
       });
       if (outcome === "ok") return [text(`✅ รับทราบงาน "${task!.event.title}" แล้วครับ`, true)];
       if (outcome === "already") return [text("รับทราบงานนี้ไปแล้วครับ", true)];
-      if (outcome === "stale") return [text("งานนี้มีการแก้ไขหลังจากส่งข้อความนี้ กรุณาดูรายละเอียดใหม่แล้วกดรับทราบอีกครั้ง"), taskMessage(task!, "change")];
+      if (outcome === "stale") {
+        // The newest card again, with the same old → new lines the change push had (found in the 21 Oct loop test).
+        const changes = await loadChangeDiff(ctx.admin, task!.event.id, task!);
+        return [text("งานนี้มีการแก้ไขหลังจากส่งข้อความนี้ ใช้การ์ดด้านล่างแทนแล้วกดรับทราบอีกครั้งครับ"), taskMessage(task!, "change", changes)];
+      }
       if (outcome === "closed") return [text("งานนี้ถูกยกเลิกหรือปิดไปแล้วครับ", true)];
       if (outcome === "not_yours") return [text("งานนี้ไม่ได้มอบหมายให้คุณครับ", true)];
       return [text("ไม่พบงานนี้แล้ว อาจถูกนำชื่อออกหรือลบไปแล้ว", true)];
