@@ -7,6 +7,7 @@ import { getEventAuditLog, getEventById, getEventFormData } from "@/lib/events/q
 import { cancelEvent, completeEvent, deleteEvent, publishEvent } from "@/lib/events/mutations";
 import { addAssignment, removeAssignment } from "@/lib/assignments/mutations";
 import { checkConflictsForEvent } from "@/lib/assignments/queries";
+import { conflictLevel } from "@/lib/assignments/conflict";
 import { getEventAttachments } from "@/lib/attachments/queries";
 import { deleteAttachment, uploadAttachment } from "@/lib/attachments/mutations";
 import { createClient } from "@/lib/supabase/server";
@@ -138,30 +139,42 @@ export default async function EventDetailPage({
                       </form>
                     ) : null}
                   </div>
-                  {personConflicts.length > 0 ? (
-                    <div
-                      style={{
-                        margin: "4px 0 6px 0",
-                        padding: "6px 10px",
-                        borderRadius: "var(--radius)",
-                        background: "rgba(240, 166, 58, 0.12)",
-                        border: "1px solid rgba(240, 166, 58, 0.4)",
-                        color: "var(--amber)",
-                        fontSize: "13px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                      }}
-                    >
-                      <AlertTriangle size={15} aria-hidden="true" />
-                      <span>
-                        <strong>เวลาอาจชนกัน:</strong> มีงานอื่นในวันเดียวกัน —{" "}
-                        {personConflicts
-                          .map((c) => `${c.eventTitle} (${c.startTime}${c.endTime ? `-${c.endTime}` : ""}) ที่ ${c.locationName}`)
-                          .join(", ")}
-                      </span>
-                    </div>
-                  ) : null}
+                  {(() => {
+                    const clashes = personConflicts.filter((c) => conflictLevel(event, c) === "clash");
+                    const others = personConflicts.filter((c) => conflictLevel(event, c) !== "clash");
+                    const label = (c: (typeof personConflicts)[number]) =>
+                      `${c.eventTitle} (${c.startTime}${c.endTime ? `-${c.endTime}` : ""}) ที่ ${c.locationName}`;
+                    return (
+                      <>
+                        {clashes.length > 0 ? (
+                          <div
+                            style={{
+                              margin: "4px 0 6px 0",
+                              padding: "6px 10px",
+                              borderRadius: "var(--radius)",
+                              background: "rgba(240, 166, 58, 0.12)",
+                              border: "1px solid rgba(240, 166, 58, 0.4)",
+                              color: "var(--amber)",
+                              fontSize: "13px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                            }}
+                          >
+                            <AlertTriangle size={15} aria-hidden="true" />
+                            <span>
+                              <strong>เวลาชน:</strong> ทับกันหรือห่างกันไม่ถึง 30 นาที — {clashes.map(label).join(", ")}
+                            </span>
+                          </div>
+                        ) : null}
+                        {others.length > 0 ? (
+                          <div style={{ margin: "2px 0 6px 0", fontSize: "12.5px", color: "var(--muted)" }}>
+                            วันนี้มีงานอื่นด้วย: {others.map(label).join(", ")}
+                          </div>
+                        ) : null}
+                      </>
+                    );
+                  })()}
                 </div>
               );
             })}
