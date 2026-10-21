@@ -113,12 +113,14 @@ export function TableMonitor({
   variant = "default",
   staticMode = false,
 }: {
-  /** "3d" = แบบ B: the same screen plus the mascot column (/monitor?v=3d). */
+  /** "3d" = the same screen plus the mascot column (/monitor?v=3d): navy
+   *  studio theme with the pre-rendered vinyl mascot (owner, 21 Oct 2026). */
   variant?: "default" | "3d";
   /** ?static=1 — draw the mascot once and never animate. */
   staticMode?: boolean;
 } = {}) {
   const [events, setEvents] = useState<MonitorEvent[]>([]);
+  const [loaded, setLoaded] = useState(false);
   // name → people.id, so the TV can put each assignee's cartoon next to them.
   // The monitor feed carries names only; the public team list carries ids.
   const [teamIds, setTeamIds] = useState<Record<string, string>>({});
@@ -144,7 +146,10 @@ export function TableMonitor({
 
   const load = useCallback(() => {
     fetchMonitorEvents()
-      .then(setEvents)
+      .then((list) => {
+        setEvents(list);
+        setLoaded(true);
+      })
       .catch(() => {
         /* Keep whatever is on screen. A blank wall screen reads as "no work
            today", which is a worse lie than slightly stale work. */
@@ -401,7 +406,9 @@ export function TableMonitor({
           )}
         </div>
       </section>
-      {variant === "3d" ? <MascotSide next={sideNext} ack={sideAck} staticMode={staticMode} /> : null}
+      {variant === "3d" ? (
+        <MascotSide next={sideNext} ack={sideAck} staticMode={staticMode} minutes={nowMinutes} todayCount={todayEvents.length} ready={loaded && clock !== null} />
+      ) : null}
       </div>
 
       <section>

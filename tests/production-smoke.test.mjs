@@ -94,3 +94,15 @@ for (const path of ["/line/rich-menu.png", "/avatars/default.png", "/monitor/mas
     assert.match(res.headers.get("content-type") ?? "", /image\/png/);
   });
 }
+
+// The TV mascot loops (/monitor?v=3d): one video + poster per pose.
+for (const pose of ["idle", "wave", "announce", "point", "celebrate"]) {
+  test(`mascot ${pose} video and poster are served`, async () => {
+    const v = await get(`/monitor/mascot/${pose}.mp4`);
+    assert.equal(v.status, 200);
+    assert.match(v.headers.get("content-type") ?? "", /video\/mp4/);
+    const j = await get(`/monitor/mascot/${pose}.jpg`);
+    assert.equal(j.status, 200);
+    assert.match(j.headers.get("content-type") ?? "", /image\/jpeg/);
+  });
+}

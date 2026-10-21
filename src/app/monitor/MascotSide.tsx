@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { MascotHandle } from "@/lib/monitor/mascot-scene";
+import { pickPose, poseVideo, POSE_LABEL, type MascotPose } from "@/lib/monitor/mascot-pose";
 
 export type SideNext =
   | { kind: "upcoming"; minutes: number; title: string; place: string; start: string }
@@ -19,69 +19,81 @@ function untilText(minutes: number): string {
   return m === 0 ? `อีก ${h} ชม.` : `อีก ${h} ชม. ${m} นาที`;
 }
 
-/** WebGL can be missing or blocked on TV browsers; check before loading three.js. */
-function hasWebGL(): boolean {
-  try {
-    const c = document.createElement("canvas");
-    return Boolean(c.getContext("webgl2") || c.getContext("webgl"));
-  } catch {
-    return false;
-  }
-}
+/** How long a reaction (wave / celebrate after a new acknowledgement or job) stays on. */
+const REACTION_MS = 12_000;
 
 /**
  * The side column of /monitor?v=3d: the mascot announces the next job and
  * counts today's acknowledgements. It never takes room from the job list —
  * it lives in its own grid column.
+ *
+ * The mascot is a pre-rendered video loop per pose (lib/monitor/mascot-pose.ts),
+ * not live 3D: a Smart TV browser plays a small MP4 smoothly where WebGL
+ * stutters. ?static=1, or a video that will not play, shows the poster still.
  */
-export function MascotSide({ next, ack, staticMode }: { next: SideNext; ack: SideAck; staticMode: boolean }) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const handleRef = useRef<MascotHandle | null>(null);
-  const [mode, setMode] = useState<"loading" | "3d" | "still">("loading");
-  const [frozen, setFrozen] = useState(false);
+export function MascotSide({
+  next,
+  ack,
+  staticMode,
+  minutes,
+  todayCount,
+  ready,
+}: {
+  next: SideNext;
+  ack: SideAck;
+  staticMode: boolean;
+  /** Minutes since midnight, Bangkok (drives the morning greeting). */
+  minutes: number;
+  /** Number of jobs on today's list (a rise = a new job → wave). */
+  todayCount: number;
+  /** The job list has loaded at least once — before that, counts are 0 and a rise means nothing. */
+  ready: boolean;
+}) {
+  const [reaction, setReaction] = useState<"ack" | "added" | null>(null);
+  const [videoFailed, setVideoFailed] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!hasWebGL()) {
-      setMode("still");
-      return;
-    }
-    import("@/lib/monitor/mascot-scene")
-      .then(({ mountMascot }) => {
-        if (cancelled || !canvasRef.current) return;
-        handleRef.current = mountMascot(canvasRef.current, {
-          animate: !staticMode,
-          onFreeze: () => setFrozen(true),
-        });
-        setMode("3d");
-      })
-      .catch(() => {
-        if (!cancelled) setMode("still");
-      });
-    return () => {
-      cancelled = true;
-      handleRef.current?.dispose();
-      handleRef.current = null;
-    };
-  }, [staticMode]);
-
-  // A wave whenever someone acknowledges while the screen is up (not on the
-  // first load, which would wave at every count).
+  // React to what happens while the screen is up — not on the first load,
+  // which would wave at every count.
   const prevDone = useRef<number | null>(null);
+  const prevCount = useRef<number | null>(null);
   useEffect(() => {
-    if (prevDone.current !== null && ack.done > prevDone.current) handleRef.current?.wave();
+    if (!ready) return;
+    let kind: "ack" | "added" | null = null;
+    if (prevDone.current !== null && ack.done > prevDone.current) kind = "ack";
+    else if (prevCount.current !== null && todayCount > prevCount.current) kind = "added";
     prevDone.current = ack.done;
-  }, [ack.done, mode]);
+    prevCount.current = todayCount;
+    if (!kind) return;
+    setReaction(kind);
+    const id = window.setTimeout(() => setReaction(null), REACTION_MS);
+    return () => window.clearTimeout(id);
+  }, [ack.done, todayCount, ready]);
+
+  const pose: MascotPose = pickPose({
+    next: next.kind === "upcoming" ? { kind: "upcoming", minutes: next.minutes } : { kind: next.kind },
+    ack,
+    minutes,
+    justAcknowledged: reaction === "ack",
+    justAdded: reaction === "added",
+  });
+  const media = poseVideo(pose);
+
+  // A new pose = new sources; some TV browsers need an explicit play().
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.load();
+    v.play().catch(() => {
+      /* autoplay refused: the poster stays, which is fine */
+    });
+  }, [media.mp4]);
 
   const excited = next.kind === "upcoming" && next.minutes <= 30;
-  useEffect(() => {
-    handleRef.current?.setExcited(excited);
-  }, [excited, mode]);
-
   const pct = ack.total > 0 ? Math.round((ack.done / ack.total) * 100) : 0;
 
   return (
-    <aside className="tv-side" data-mascot={mode} data-frozen={frozen || staticMode ? "1" : "0"}>
+    <aside className="tv-side" data-pose={pose}>
       <div className={`tv-bubble${excited ? " is-soon" : ""}`}>
         {next.kind === "upcoming" ? (
           <>
@@ -113,12 +125,26 @@ export function MascotSide({ next, ack, staticMode }: { next: SideNext; ack: Sid
       </div>
 
       <div className="tv-stage">
-        <div className="tv-stage-glow" />
-        {mode === "still" ? (
+        {staticMode || videoFailed ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img className="tv-stage-still" src="/monitor/mascot-2.png" alt="มาสคอตผู้ช่วยงาน ปชส." />
+          <img className="tv-stage-media" src={media.poster} alt={`มาสคอตผู้ช่วยงาน ปชส. — ${POSE_LABEL[pose]}`} />
         ) : (
-          <canvas ref={canvasRef} className="tv-stage-canvas" aria-label="มาสคอตผู้ช่วยงาน ปชส." />
+          <video
+            ref={videoRef}
+            className="tv-stage-media"
+            poster={media.poster}
+            muted
+            autoPlay
+            loop
+            playsInline
+            preload="auto"
+            disablePictureInPicture
+            aria-label={`มาสคอตผู้ช่วยงาน ปชส. — ${POSE_LABEL[pose]}`}
+          >
+            <source src={media.mp4} type="video/mp4" />
+            {/* the last source failing = nothing playable here: show the still */}
+            <source src={media.webm} type="video/webm" onError={() => setVideoFailed(true)} />
+          </video>
         )}
       </div>
 
