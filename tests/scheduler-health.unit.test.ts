@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { isTransientFailure, schedulerHealth } from "@/lib/notifications/health";
 import { adminReportMessage } from "@/lib/line/messages";
+import { WINDOWS } from "@/lib/notifications/queue";
 
 // Bangkok = UTC+7. 10:00 Bangkok = 03:00Z.
 const at = (iso: string) => new Date(iso);
@@ -36,4 +37,9 @@ test("17:00 report mentions failed pushes", () => {
   assert.match(m.text, /ไม่สำเร็จ 2 ข้อความ/);
   const none = adminReportMessage("2026-10-22", [], []) as { text: string };
   assert.doesNotMatch(none.text, /ไม่สำเร็จ/);
+});
+
+test("the 07:00 summary window closes by 07:30 (no late 'good morning' pushes)", () => {
+  assert.equal(WINDOWS.daily.from, 7 * 60);
+  assert.ok(WINDOWS.daily.to <= 7 * 60 + 30);
 });

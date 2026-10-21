@@ -83,7 +83,12 @@ export function bangkokClock(now = new Date()) {
 
 /** Windows for the scheduled messages. A late cron run still sends; a very late one does not. */
 export const WINDOWS = {
-  daily: { from: 7 * 60, to: 12 * 60 }, // 07:00 – 11:59
+  // 07:00 – 07:29 only. It was 07:00 – 11:59 to cover a late GitHub cron, but
+  // with the 5-minute Supabase cron and instant sends that wide window made a
+  // job added at 09:17 trigger a second "good morning" push to someone who had
+  // no work at 07:00 (found in the 21 Oct 2026 test): a wasted message, since
+  // the new job's own card already went out.
+  daily: { from: 7 * 60, to: 7 * 60 + 30 },
   adminReport: { from: 17 * 60, to: 20 * 60 + 30 }, // 17:00 – 20:29
 };
 
