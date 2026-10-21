@@ -10,6 +10,7 @@ import { env } from "@/lib/env";
 import { formatThaiDate } from "@/lib/format";
 import type { LineAction, LineMessage, QuickReply } from "@/lib/line/api";
 import type { TaskItem } from "@/lib/line/data";
+import { ackLabelFor, type FieldChange } from "@/lib/line/change-diff";
 
 const PURPLE = "#5e2f73";
 const MUTED = "#6b6475";
@@ -17,13 +18,19 @@ const GREEN = "#18784a";
 const AMBER = "#a45f08";
 const RED = "#b42318";
 
+// Menu A (owner, 21 Oct 2026): "ของฉัน" vs "ของทีม" in the words themselves,
+// so nobody mistakes the team lists for their own. The old words still work
+// when typed (webhook.ts matchCommand).
 export const COMMANDS = {
   mine: "งานของฉัน",
-  today: "งานวันนี้",
-  tomorrow: "งานพรุ่งนี้",
-  pending: "ยังไม่รับทราบ",
+  today: "ทีมวันนี้",
+  tomorrow: "ทีมพรุ่งนี้",
+  pending: "ใครยังไม่รับทราบ",
   help: "วิธีใช้",
 } as const;
+
+/** Bottom line on every pushed job card: the one place that is always current. */
+export const LATEST_HINT = 'ดูงานล่าสุดทั้งหมดที่ปุ่ม "งานของฉัน"';
 
 export const UNAVAILABLE_PRESETS = ["ติดภารกิจอื่น", "ลา", "เวลาชนกับงานอื่น"] as const;
 
@@ -74,36 +81,80 @@ export type BubbleKind = "assignment" | "change" | "reminder" | "list";
 
 const HEADINGS: Record<BubbleKind, { label: string; color: string }> = {
   assignment: { label: "มอบหมายงานใหม่", color: PURPLE },
-  change: { label: "งานมีการเปลี่ยนแปลง — กรุณารับทราบใหม่", color: AMBER },
+  change: { label: "⚠️ งานเปลี่ยน · ใบนี้แทนใบก่อนหน้า", color: AMBER },
   reminder: { label: "อีกประมาณ 1 ชม. 30 นาที เริ่มงาน", color: RED },
   list: { label: "งานของคุณ", color: PURPLE },
 };
 
-/** One assignment as a card with รับทราบ / ไม่สะดวก / ดูรายละเอียด. */
-export function taskBubble(t: TaskItem, kind: BubbleKind, changeSummary?: string): Record<string, unknown> {
+/** "เวลาเริ่ม: ~~11:05~~ → 11:15" — the old value struck through. */
+function changeLine(c: FieldChange) {
+  return {
+    type: "text",
+    wrap: true,
+    size: "sm",
+    contents: [
+      { type: "span", text: `${c.label}: `, color: MUTED },
+      { type: "span", text: c.from, color: MUTED, decoration: "line-through" },
+      { type: "span", text: "  →  ", color: MUTED },
+      { type: "span", text: c.to, color: AMBER, weight: "bold" },
+    ],
+  };
+}
+
+/**
+ * One assignment as a card with รับทราบ / ไม่สะดวก. Pushed cards (assignment,
+ * change, reminder) end with a pointer to "งานของฉัน", the list that is always
+ * current — a change card also says the older card for this job no longer counts.
+ */
+export function taskBubble(t: TaskItem, kind: BubbleKind, changes: FieldChange[] = []): Record<string, unknown> {
   const head = HEADINGS[kind];
-  const body: unknown[] = [
-    { type: "text", text: t.event.title, weight: "bold", size: "lg", wrap: true },
-    { type: "box", layout: "vertical", spacing: "sm", margin: "md", contents: [
-      row("วันเวลา", when(t)),
-      row("สถานที่", t.event.locationName),
-      row("หน้าที่", t.roleName),
-      ...(t.event.shortNote ? [row("หมายเหตุ", t.event.shortNote)] : []),
-      ...(changeSummary ? [row("เปลี่ยน", changeSummary)] : []),
-    ] },
+  const changed = new Set(kind === "change" ? changes.map((c) => c.field) : []);
+  const details = [
+    // Rows already shown as "old → new" above are not repeated.
+    ...(changed.has("date") || changed.has("start") || changed.has("end") ? [] : [row("วันเวลา", when(t))]),
+    ...(changed.has("date") ? [] : changed.has("start") || changed.has("end") ? [row("วันที่", formatThaiDate(t.event.eventDate))] : []),
+    ...(changed.has("location") ? [] : [row("สถานที่", t.event.locationName)]),
+    row("หน้าที่", t.roleName),
+    ...(t.event.shortNote ? [row("หมายเหตุ", t.event.shortNote)] : []),
   ];
+  if (changed.has("date") && !changed.has("start") && !changed.has("end")) {
+    details.unshift(row("เวลา", t.event.endTime ? `${t.event.startTime}–${t.event.endTime} น.` : `${t.event.startTime} น.`));
+  }
+  const body: unknown[] = [{ type: "text", text: t.event.title, weight: "bold", size: "lg", wrap: true }];
+  if (kind === "change" && changes.length > 0) {
+    body.push({
+      type: "box", layout: "vertical", spacing: "xs", margin: "md", paddingAll: "8px",
+      backgroundColor: "#fff4e5", cornerRadius: "8px",
+      contents: changes.map(changeLine),
+    });
+  }
+  body.push({ type: "box", layout: "vertical", spacing: "sm", margin: "md", contents: details });
   if (kind === "list" || t.acknowledged || t.unavailable) {
     body.push({ type: "box", layout: "vertical", margin: "md", contents: [statusLine(t)] });
   }
 
   const footer: unknown[] = [];
   if (!t.acknowledged) {
-    footer.push(button({ type: "postback", label: "รับทราบ", data: postback.ack(t), displayText: "รับทราบ" }, "primary", PURPLE));
+    const ackLabel = kind === "change" ? ackLabelFor(changes) : "รับทราบ";
+    footer.push(button({ type: "postback", label: ackLabel, data: postback.ack(t), displayText: ackLabel }, "primary", kind === "change" ? AMBER : PURPLE));
     if (!t.unavailable) {
       footer.push(button({ type: "postback", label: "ไม่สะดวก", data: postback.unavailable(t), displayText: "ไม่สะดวก" }));
     }
   }
-  footer.push(button({ type: "uri", label: "ดูรายละเอียด", uri: appUrl("/mobile/my-tasks") }, "link"));
+  if (kind === "list") {
+    footer.push(button({ type: "uri", label: "ดูรายละเอียด", uri: appUrl("/mobile/my-tasks") }, "link"));
+  } else {
+    // A free reply, and works for staff who have no web login.
+    footer.push(button({ type: "message", label: "งานของฉัน (ล่าสุด)", text: COMMANDS.mine }, "link"));
+    footer.push({
+      type: "text",
+      text: kind === "change" ? `ใบเก่าของงานนี้ใช้ไม่ได้แล้ว · ${LATEST_HINT}` : LATEST_HINT,
+      size: "xs",
+      color: MUTED,
+      wrap: true,
+      align: "center",
+    });
+  }
 
   return {
     type: "bubble",
@@ -120,12 +171,13 @@ export function taskBubble(t: TaskItem, kind: BubbleKind, changeSummary?: string
   };
 }
 
-export function taskMessage(t: TaskItem, kind: BubbleKind, changeSummary?: string): LineMessage {
+export function taskMessage(t: TaskItem, kind: BubbleKind, changes: FieldChange[] = []): LineMessage {
   const prefix = HEADINGS[kind].label;
+  const what = kind === "change" && changes.length ? ` (${changes.map((c) => `${c.label} ${c.to}`).join(", ")})` : "";
   return {
     type: "flex",
-    altText: `${prefix}: ${t.event.title} ${formatThaiDate(t.event.eventDate)} ${t.event.startTime} น.`.slice(0, 390),
-    contents: taskBubble(t, kind, changeSummary),
+    altText: `${prefix}: ${t.event.title} ${formatThaiDate(t.event.eventDate)} ${t.event.startTime} น.${what}`.slice(0, 390),
+    contents: taskBubble(t, kind, changes),
   };
 }
 
@@ -293,11 +345,18 @@ export function helpMessage(): LineMessage {
     type: "text",
     text: [
       "ผู้ช่วยงาน ปชส. ตอบได้ตามนี้ครับ",
-      `• "${COMMANDS.mine}" — งานที่คุณได้รับมอบหมาย 7 วันข้างหน้า พร้อมปุ่มรับทราบ`,
-      `• "${COMMANDS.today}" / "${COMMANDS.tomorrow}" — ใครไปงานไหน`,
-      `• "${COMMANDS.pending}" — งานที่ยังไม่ได้กดรับทราบ`,
-      `• ปุ่ม "เพิ่มงาน" ในเมนูด้านล่าง — กรอกงานใหม่ในไลน์ได้เลย`,
+      "เมนูด้านล่างแบ่งเป็น 2 ฝั่ง",
       "",
+      "👤 ของฉัน (ซ้าย สีม่วง)",
+      `• "${COMMANDS.mine}" — งานของคุณ 7 วันข้างหน้า พร้อมปุ่มรับทราบ / ไม่สะดวก`,
+      "   ถ้าการ์ดในแชทเยอะจนงง ให้กดปุ่มนี้ = สถานะล่าสุดเสมอ",
+      `• "เพิ่มงาน" — กรอกงานใหม่ในไลน์ได้เลย`,
+      "",
+      "👥 ของทีม (ขวา)",
+      `• "${COMMANDS.today}" / "${COMMANDS.tomorrow}" — ใครไปงานไหน`,
+      `• "${COMMANDS.pending}" — ทั้งทีม ใครยังไม่กดรับทราบ`,
+      "",
+      "การ์ดสีส้ม \"ใบนี้แทนใบก่อนหน้า\" = งานถูกแก้ ให้ใช้ใบใหม่ ใบเก่ากดไม่ได้แล้ว",
       "แก้ไขงาน แนบรูป และดูรายงาน ทำในเว็บ PR-OS",
     ].join("\n"),
     quickReply: commandQuickReply(),

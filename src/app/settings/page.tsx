@@ -203,6 +203,20 @@ export default async function SettingsPage({
             <dt>ใช้โควต้าเดือนนี้ (ตามที่ระบบส่ง)</dt>
             <dd>
               {notifSettings.quotaUsedThisMonth} / {notifSettings.lineMonthlyQuota} ข้อความ
+              {" "}(การ์ดงาน {notifSettings.budget.sent.critical} · เตือนก่อนงาน {notifSettings.budget.sent.reminder} · สรุปเช้า/รายงานเย็น{" "}
+              {notifSettings.budget.sent.low})
+            </dd>
+          </div>
+          <div>
+            <dt>กันงบอัตโนมัติ (ให้ 300 ข้อความพอทั้งเดือน)</dt>
+            <dd style={{ color: notifSettings.budget.mode === "normal" || notifSettings.budget.mode === "unlimited" ? undefined : "var(--amber, #a45f08)", fontWeight: 600 }}>
+              {notifSettings.budget.mode === "normal" || notifSettings.budget.mode === "unlimited" ? "✅ " : "🛡️ "}
+              {notifSettings.budget.text}
+            </dd>
+            <dd className="muted" style={{ fontSize: 13 }}>
+              การ์ดงานใหม่ / งานเปลี่ยน / ยกเลิก / แจ้งไม่สะดวก ส่งเสมอ · เตือน 1.5 ชม. ส่งเมื่อยังกันโควต้าการ์ดงานได้ ·
+              สรุปเช้า 07:00 และรายงาน 17:00 ส่งได้ถึง {notifSettings.budget.lowAllowedSoFar} ข้อความถึงวันนี้ (ใช้แล้ว{" "}
+              {notifSettings.budget.sent.low}) · คิดจากงานประมาณ 40 งาน/เดือน 1–2 คน/งาน
             </dd>
           </div>
           <div>

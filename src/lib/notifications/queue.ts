@@ -11,7 +11,9 @@
 //                reminder (1.5 h before) → only if still not acknowledged
 //   07:00        one summary per person, only on days they have work
 //   17:00        admins: who has not acknowledged tomorrow's work
-//   quota        admins warned once when ~30 messages are left; at zero we stop
+//   quota        budget.ts paces the month: job cards always, low-priority
+//                messages only while they keep to their share; admins warned
+//                once when ~30 messages are left; at zero we stop
 //
 // Until LINE credentials exist, due rows are marked 'skipped' (simulation),
 // exactly as before, so nothing piles up.
@@ -19,6 +21,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/server";
 import { LAST_RUN_KEY, RETRY_TAG, isTransientFailure } from "@/lib/notifications/health";
+import { budgetAllows, priorityOf, type BudgetState, type Priority } from "@/lib/notifications/budget";
 import { isLineMessagingConfigured } from "@/lib/env";
 import { addDays } from "@/lib/date";
 import { getQuotaStatus, pushMessages, type LineMessage } from "@/lib/line/api";
@@ -33,6 +36,7 @@ import {
   runAge,
   type TaskItem,
 } from "@/lib/line/data";
+import { diffEvent, type FieldChange, type OldEventValues } from "@/lib/line/change-diff";
 import {
   adminReportMessage,
   cancellationMessage,
@@ -93,45 +97,70 @@ export const WINDOWS = {
 };
 
 /**
- * Keeps us under the quota. LINE's own counter wins when we can read it;
- * otherwise our notifications table (everything we pushed this month).
+ * Keeps us under the quota and paces it over the month (budget.ts). LINE's own
+ * counter wins when we can read it; otherwise our notifications table.
  */
-class QuotaGuard {
+export class QuotaGuard {
   constructor(
     public used: number,
     public limit: number,
+    public date: string,
+    public sent: Record<Priority, number> = { critical: 0, reminder: 0, low: 0 },
   ) {}
-  static async load(admin: SupabaseClient, settingsLimit: number, month: string) {
-    const live = await getQuotaStatus();
-    // limit null = LINE says this OA has no cap (a paid plan): do not stop at 300.
-    if (live) return new QuotaGuard(live.used, live.limit ?? Number.POSITIVE_INFINITY);
-    const { count } = await admin
+  static async load(admin: SupabaseClient, settingsLimit: number, month: string, date: string) {
+    const { data } = await admin
       .from("notifications")
-      .select("id", { count: "exact", head: true })
+      .select("notification_type")
       .eq("channel", "line")
       .eq("status", "sent")
-      .eq("quota_month", month);
-    return new QuotaGuard(count ?? 0, settingsLimit);
+      .eq("quota_month", month)
+      .limit(5000);
+    const sent: Record<Priority, number> = { critical: 0, reminder: 0, low: 0 };
+    for (const r of data ?? []) sent[priorityOf(String(r.notification_type))] += 1;
+    const ours = sent.critical + sent.reminder + sent.low;
+    const live = await getQuotaStatus();
+    // limit null = LINE says this OA has no cap (a paid plan): do not stop at 300.
+    if (live) return new QuotaGuard(live.used, live.limit ?? Number.POSITIVE_INFINITY, date, sent);
+    return new QuotaGuard(ours, settingsLimit, date, sent);
   }
   get remaining() {
     return Math.max(0, this.limit - this.used);
   }
-  canSend() {
-    return this.remaining > 0;
+  get state(): BudgetState {
+    return { used: this.used, limit: this.limit, date: this.date, sent: { ...this.sent } };
+  }
+  /** May a message of this type go out now? */
+  allows(type: string) {
+    return budgetAllows(priorityOf(type), this.state);
+  }
+  record(type: string) {
+    this.used += 1;
+    this.sent[priorityOf(type)] += 1;
   }
 }
 
-async function loadChangeSummary(admin: SupabaseClient, eventId: string): Promise<string | undefined> {
+/** Old → new per field, from the latest significant-change audit row of the job. */
+async function loadChangeDiff(admin: SupabaseClient, eventId: string, task: TaskItem | null): Promise<FieldChange[]> {
+  if (!task) return [];
   const { data } = await admin
     .from("audit_logs")
-    .select("summary")
+    .select("old_values")
     .eq("entity_type", "event")
     .eq("entity_id", eventId)
     .eq("action", "significant_change")
     .order("changed_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  return data?.summary ?? undefined;
+  const old = (data?.old_values ?? null) as OldEventValues | null;
+  if (!old) return [];
+  if (old.location_id !== undefined && old.location_name === undefined) {
+    old.location_name = null;
+    if (old.location_id) {
+      const { data: loc } = await admin.from("locations").select("name").eq("id", old.location_id).maybeSingle();
+      old.location_name = loc?.name ?? null;
+    }
+  }
+  return diffEvent(old, task);
 }
 
 export type ProcessSummary = {
@@ -141,6 +170,8 @@ export type ProcessSummary = {
   /** Rows put back in the queue for one more try. */
   retried: number;
   skipped: number;
+  /** Held back by the monthly budget (budget.ts) to keep job cards safe. */
+  budgetHeld: number;
   dailySummaries: number;
   adminReports: number;
   quotaWarning: boolean;
@@ -170,7 +201,7 @@ export function eventStart(task: TaskItem): Date {
 export function messageForRow(
   type: string,
   task: TaskItem | null,
-  changeSummary?: string,
+  changes: FieldChange[] = [],
   opts: { now?: Date; scheduledFor?: string } = {},
 ): { message: LineMessage | null; skipReason?: string } {
   if (!task) return { message: null, skipReason: "นำชื่อออกจากงานแล้ว หรือไม่พบงาน" };
@@ -193,7 +224,7 @@ export function messageForRow(
     if (task.unavailable) return { message: null, skipReason: "แจ้งไม่สะดวกแล้ว" };
     return { message: taskMessage(task, "reminder") };
   }
-  if (type === "change") return { message: taskMessage(task, "change", changeSummary) };
+  if (type === "change") return { message: taskMessage(task, "change", changes) };
   if (type === "assignment") {
     if (task.acknowledged) return { message: null, skipReason: "รับทราบไปแล้ว" };
     return { message: taskMessage(task, "assignment") };
@@ -234,9 +265,9 @@ async function processQueue(
     }
 
     const task = row.assignment_id ? await loadTask(admin, row.assignment_id) : null;
-    const changeSummary =
-      row.notification_type === "change" && row.event_id ? await loadChangeSummary(admin, row.event_id) : undefined;
-    const { message, skipReason } = messageForRow(row.notification_type, task, changeSummary, {
+    const changes =
+      row.notification_type === "change" && row.event_id ? await loadChangeDiff(admin, row.event_id, task) : [];
+    const { message, skipReason } = messageForRow(row.notification_type, task, changes, {
       scheduledFor: row.scheduled_for,
     });
     if (!message) {
@@ -244,15 +275,17 @@ async function processQueue(
       summary.skipped += 1;
       continue;
     }
-    if (!quota.canSend()) {
-      await mark(admin, row.id, "skipped", { error_message: "โควต้า LINE เดือนนี้หมดแล้ว" });
+    const budget = quota.allows(row.notification_type);
+    if (!budget.ok) {
+      await mark(admin, row.id, "skipped", { error_message: budget.reason });
       summary.skipped += 1;
+      summary.budgetHeld += 1;
       continue;
     }
 
     const res = await pushMessages(person.line_user_id, [message], row.id);
     if (res.ok) {
-      quota.used += 1;
+      quota.record(row.notification_type);
       await mark(admin, row.id, "sent", {
         channel: "line",
         provider_message_id: res.providerMessageId ?? null,
@@ -280,6 +313,7 @@ async function processQueue(
 async function pushToAdmins(
   admin: SupabaseClient,
   quota: QuotaGuard,
+  summary: ProcessSummary,
   type: "admin_report" | "quota_warning",
   message: LineMessage,
   month: string,
@@ -288,11 +322,15 @@ async function pushToAdmins(
   const admins = await getPeopleByIds(admin, await getAdminRecipientIds(admin));
   let sent = 0;
   for (const a of admins) {
-    if (!a.lineUserId || !quota.canSend()) continue;
+    if (!a.lineUserId) continue;
+    if (!quota.allows(type).ok) {
+      summary.budgetHeld += 1;
+      continue;
+    }
     if (claimPrefix && !(await claimRun(admin, `${claimPrefix}:${a.id}`))) continue;
     const res = await pushMessages(a.lineUserId, [message]);
     if (res.ok) {
-      quota.used += 1;
+      quota.record(type);
       sent += 1;
     }
     await logPush(admin, {
@@ -307,16 +345,30 @@ async function pushToAdmins(
   return sent;
 }
 
-async function sendDailySummaries(admin: SupabaseClient, quota: QuotaGuard, today: string, month: string) {
+async function sendDailySummaries(
+  admin: SupabaseClient,
+  quota: QuotaGuard,
+  summary: ProcessSummary,
+  today: string,
+  month: string,
+) {
   const tomorrow = addDays(today, 1);
   const tasks = await loadTasks(admin, { from: today, to: tomorrow });
   const byPerson = new Map<string, TaskItem[]>();
   for (const t of tasks) byPerson.set(t.personId, [...(byPerson.get(t.personId) ?? []), t]);
 
+  // When the budget is tight, people with something still to acknowledge come first.
+  const outstanding = (ts: TaskItem[]) => ts.filter((t) => !t.acknowledged && !t.unavailable).length;
+  const ordered = [...byPerson].sort((a, b) => outstanding(b[1]) - outstanding(a[1]));
+
   let sent = 0;
-  for (const [personId, mine] of byPerson) {
+  for (const [personId, mine] of ordered) {
     const lineUserId = mine[0].lineUserId;
-    if (!lineUserId || !quota.canSend()) continue;
+    if (!lineUserId) continue;
+    if (!quota.allows("daily_summary").ok) {
+      summary.budgetHeld += 1;
+      continue;
+    }
     // Claimed per person, right before the push: a run that dies half way
     // leaves the rest for the next run instead of losing the whole morning.
     if (!(await claimRun(admin, `daily:${today}:${personId}`))) continue;
@@ -327,7 +379,7 @@ async function sendDailySummaries(admin: SupabaseClient, quota: QuotaGuard, toda
     );
     const res = await pushMessages(lineUserId, [message]);
     if (res.ok) {
-      quota.used += 1;
+      quota.record("daily_summary");
       sent += 1;
     }
     await logPush(admin, {
@@ -342,7 +394,13 @@ async function sendDailySummaries(admin: SupabaseClient, quota: QuotaGuard, toda
   return sent;
 }
 
-async function sendAdminReport(admin: SupabaseClient, quota: QuotaGuard, today: string, month: string) {
+async function sendAdminReport(
+  admin: SupabaseClient,
+  quota: QuotaGuard,
+  summary: ProcessSummary,
+  today: string,
+  month: string,
+) {
   const tomorrow = addDays(today, 1);
   const tasks = await loadTasks(admin, { from: tomorrow, to: tomorrow });
   const pending = tasks.filter((t) => !t.acknowledged && !t.unavailable);
@@ -358,6 +416,7 @@ async function sendAdminReport(admin: SupabaseClient, quota: QuotaGuard, today: 
   return pushToAdmins(
     admin,
     quota,
+    summary,
     "admin_report",
     adminReportMessage(tomorrow, pending, unavailable, failedToday ?? 0),
     month,
@@ -375,6 +434,7 @@ export async function processDueNotifications(now = new Date()): Promise<Process
     failed: 0,
     retried: 0,
     skipped: 0,
+    budgetHeld: 0,
     dailySummaries: 0,
     adminReports: 0,
     quotaWarning: false,
@@ -435,6 +495,7 @@ async function stampLastRun(admin: SupabaseClient, summary: ProcessSummary) {
         sent: summary.sent,
         failed: summary.failed,
         retried: summary.retried,
+        budgetHeld: summary.budgetHeld,
       },
       description: "รอบส่งคิวแจ้งเตือนล่าสุด (ระบบเขียนเอง)",
     });
@@ -449,21 +510,21 @@ async function runLocked(
   clock: ReturnType<typeof bangkokClock>,
   summary: ProcessSummary,
 ) {
-  const quota = await QuotaGuard.load(admin, settings.lineMonthlyQuota, clock.month);
+  const quota = await QuotaGuard.load(admin, settings.lineMonthlyQuota, clock.month, clock.date);
 
   await processQueue(admin, settings, quota, summary, clock.month);
 
   if (settings.lineEnabled) {
     if (clock.minutes >= WINDOWS.daily.from && clock.minutes < WINDOWS.daily.to) {
-      summary.dailySummaries = await sendDailySummaries(admin, quota, clock.date, clock.month);
+      summary.dailySummaries = await sendDailySummaries(admin, quota, summary, clock.date, clock.month);
     }
     if (clock.minutes >= WINDOWS.adminReport.from && clock.minutes < WINDOWS.adminReport.to) {
-      summary.adminReports = await sendAdminReport(admin, quota, clock.date, clock.month);
+      summary.adminReports = await sendAdminReport(admin, quota, summary, clock.date, clock.month);
     }
     if (quota.remaining <= QUOTA_WARNING_REMAINING && quota.remaining > 0) {
       if (await claimRun(admin, `quota:${clock.month}`, { used: quota.used, limit: quota.limit })) {
         summary.quotaWarning =
-          (await pushToAdmins(admin, quota, "quota_warning", quotaWarningMessage(quota.used, quota.limit), clock.month)) > 0;
+          (await pushToAdmins(admin, quota, summary, "quota_warning", quotaWarningMessage(quota.used, quota.limit), clock.month)) > 0;
       }
     }
   }

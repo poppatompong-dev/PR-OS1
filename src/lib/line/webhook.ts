@@ -69,8 +69,8 @@ export function matchCommand(raw: string): Command | null {
   const t = raw.replace(/\s+/g, "").replace(/[?？!]+$/u, "");
   const table: Array<[Command, string[]]> = [
     ["mine", ["งานของฉัน", "งานฉัน", "งานของผม", "งานของหนู", "งานผม"]],
-    ["today", ["งานวันนี้", "วันนี้"]],
-    ["tomorrow", ["งานพรุ่งนี้", "พรุ่งนี้"]],
+    ["today", ["ทีมวันนี้", "งานวันนี้", "วันนี้", "งานทีมวันนี้"]],
+    ["tomorrow", ["ทีมพรุ่งนี้", "งานพรุ่งนี้", "พรุ่งนี้", "งานทีมพรุ่งนี้"]],
     ["pending", ["ยังไม่รับทราบ", "ใครยังไม่รับทราบ", "ค้างรับทราบ"]],
     ["help", ["วิธีใช้", "ช่วยด้วย", "help", "เมนู"]],
   ];
@@ -134,10 +134,10 @@ async function runCommand(ctx: Ctx, cmd: Command, person: LinePerson | null, inG
   if (!person) return inGroup ? [] : [linkPromptMessage()];
   switch (cmd) {
     case "today":
-      return [teamDayMessage("งานวันนี้", today, await loadTasks(ctx.admin, { from: today, to: today }))];
+      return [teamDayMessage("งานของทีมวันนี้", today, await loadTasks(ctx.admin, { from: today, to: today }))];
     case "tomorrow": {
       const d = addDays(today, 1);
-      return [teamDayMessage("งานพรุ่งนี้", d, await loadTasks(ctx.admin, { from: d, to: d }))];
+      return [teamDayMessage("งานของทีมพรุ่งนี้", d, await loadTasks(ctx.admin, { from: d, to: d }))];
     }
     case "mine": {
       const tasks = await loadTasks(ctx.admin, { from: today, to: addDays(today, 7), personId: person.id });

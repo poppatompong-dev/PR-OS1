@@ -78,6 +78,9 @@ test("webhook signature: accepts LINE's HMAC, rejects anything else", () => {
 
 test("commands: tolerant of spacing and a question mark, nothing else matches", () => {
   assert.equal(matchCommand("งานของฉัน"), "mine");
+  assert.equal(matchCommand("ทีมวันนี้"), "today");
+  assert.equal(matchCommand("ทีมพรุ่งนี้"), "tomorrow");
+  assert.equal(matchCommand("ยังไม่รับทราบ"), "pending");
   assert.equal(matchCommand(" งาน วันนี้ "), "today");
   assert.equal(matchCommand("งานพรุ่งนี้?"), "tomorrow");
   assert.equal(matchCommand("ใครยังไม่รับทราบ"), "pending");
@@ -89,9 +92,11 @@ test("commands: tolerant of spacing and a question mark, nothing else matches", 
 
 test("task card: buttons follow the person's state", () => {
   const labels = (t: TaskItem) => actions(taskBubble(t, "assignment")).map((a) => a.label);
-  assert.deepEqual(labels(task()), ["รับทราบ", "ไม่สะดวก", "ดูรายละเอียด"]);
-  assert.deepEqual(labels(task({ unavailable: true, unavailableReason: "ลา" })), ["รับทราบ", "ดูรายละเอียด"]);
-  assert.deepEqual(labels(task({ acknowledged: true })), ["ดูรายละเอียด"]);
+  assert.deepEqual(labels(task()), ["รับทราบ", "ไม่สะดวก", "งานของฉัน (ล่าสุด)"]);
+  assert.deepEqual(labels(task({ unavailable: true, unavailableReason: "ลา" })), ["รับทราบ", "งานของฉัน (ล่าสุด)"]);
+  assert.deepEqual(labels(task({ acknowledged: true })), ["งานของฉัน (ล่าสุด)"]);
+  // the list from "งานของฉัน" itself keeps the web link instead
+  assert.deepEqual(actions(taskBubble(task(), "list")).map((a) => a.label), ["รับทราบ", "ไม่สะดวก", "ดูรายละเอียด"]);
 });
 
 test("postback data round-trips and carries the version being acknowledged", () => {
@@ -103,7 +108,7 @@ test("postback data round-trips and carries the version being acknowledged", () 
 
 test("LINE limits: altText ≤ 400, labels ≤ 20, carousel ≤ 12, text ≤ 5000", () => {
   const long = task({}, { title: "ก".repeat(600) });
-  const m = taskMessage(long, "change", "เปลี่ยนเวลาจาก 09:00 เป็น 10:00");
+  const m = taskMessage(long, "change", [{ field: "start", label: "เวลาเริ่ม", from: "09:00", to: "10:00" }]);
   assert.equal(m.type, "flex");
   assert.ok(m.type === "flex" && m.altText.length <= 400);
 
@@ -113,6 +118,10 @@ test("LINE limits: altText ≤ 400, labels ≤ 20, carousel ≤ 12, text ≤ 500
   assert.ok(c.type === "flex" && c.altText.length <= 400);
 
   for (const a of actions(taskBubble(task(), "reminder"))) assert.ok(a.label.length <= 20, a.label);
+  for (const f of ["title", "date", "start", "end", "location"] as const) {
+    const c = [{ field: f, label: "x", from: "a", to: "b" }];
+    for (const a of actions(taskBubble(task(), "change", c))) assert.ok(a.label.length <= 20, a.label);
+  }
   const prompt = unavailableReasonPrompt("a1", "งาน");
   for (const item of prompt.quickReply!.items) assert.ok(item.action.label.length <= 20, item.action.label);
 

@@ -42,9 +42,11 @@ test("1.5-hour reminder only when still ahead", () => {
   assert.equal(sameDayReminderAt("2026-10-21", "09:00", now), null);
 });
 
-test("rich menu's 5th button opens the LIFF form", () => {
-  const def = richMenuDefinition() as { areas: Array<{ action: { type: string; uri?: string; label: string } }> };
-  assert.equal(def.areas[4].action.type, "uri");
-  assert.equal(def.areas[4].action.uri, LIFF_ADD_EVENT_URL);
-  assert.equal(def.areas[4].action.label, "เพิ่มงาน");
+test("rich menu: เพิ่มงาน (left column, bottom) opens the LIFF form", () => {
+  const def = richMenuDefinition() as { areas: Array<{ bounds: { x: number }; action: { type: string; uri?: string; label: string } }> };
+  const add = def.areas[3];
+  assert.equal(add.bounds.x, 0);
+  assert.equal(add.action.type, "uri");
+  assert.equal(add.action.uri, LIFF_ADD_EVENT_URL);
+  assert.equal(add.action.label, "เพิ่มงาน");
 });

@@ -2,6 +2,7 @@
 
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { LAST_RUN_KEY, schedulerHealth, type LastRun, type SchedulerHealth } from "@/lib/notifications/health";
+import { budgetLabel, budgetPlan, priorityOf, type BudgetState, type Priority } from "@/lib/notifications/budget";
 import { isLineMessagingConfigured, isSupabaseConfigured } from "@/lib/env";
 import { getFriendStatus, type FriendStatus } from "@/lib/line/api";
 import { getPendingRegistrations } from "@/lib/line/data";
@@ -290,7 +291,31 @@ export type NotificationSettings = {
   scheduler: SchedulerHealth;
   /** LINE pushes that failed for good in the last 24 hours. */
   failedLast24h: number;
+  /** Monthly pacing (lib/notifications/budget.ts), from our own count. */
+  budget: {
+    mode: "normal" | "saving" | "critical-only" | "unlimited";
+    text: string;
+    sent: Record<Priority, number>;
+    criticalReserve: number;
+    lowAllowedSoFar: number;
+    plannedCritical: number;
+  };
 };
+
+function budgetView(state: BudgetState): NotificationSettings["budget"] {
+  const plan = budgetPlan(state);
+  const label = budgetLabel(state);
+  return {
+    mode: label.mode,
+    text: label.text,
+    sent: state.sent,
+    criticalReserve: plan.criticalReserve,
+    lowAllowedSoFar: plan.lowAllowedSoFar,
+    plannedCritical: plan.plan.critical,
+  };
+}
+
+const bangkokDate = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date());
 
 export async function getNotificationSettings(): Promise<NotificationSettings> {
   if (!isSupabaseConfigured()) {
@@ -302,22 +327,24 @@ export async function getNotificationSettings(): Promise<NotificationSettings> {
       quotaUsedThisMonth: 0,
       scheduler: schedulerHealth(null),
       failedLast24h: 0,
+      budget: budgetView({ used: 0, limit: 300, date: bangkokDate(), sent: { critical: 0, reminder: 0, low: 0 } }),
     };
   }
 
   const supabase = await createClient();
   const month = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit" }).format(new Date());
-  const [{ data }, { count }, { count: failed }] = await Promise.all([
+  const [{ data }, { data: sentRows }, { count: failed }] = await Promise.all([
     supabase
       .from("settings")
       .select("key, value")
       .in("key", ["line_enabled", "line_monthly_quota", "same_day_reminder_enabled", "line_admin_person_ids", LAST_RUN_KEY]),
     supabase
       .from("notifications")
-      .select("id", { count: "exact", head: true })
+      .select("notification_type")
       .eq("channel", "line")
       .eq("status", "sent")
-      .eq("quota_month", month),
+      .eq("quota_month", month)
+      .limit(5000),
     supabase
       .from("notifications")
       .select("id", { count: "exact", head: true })
@@ -329,15 +356,20 @@ export async function getNotificationSettings(): Promise<NotificationSettings> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const asBool = (v: any, fallback: boolean) => (v === undefined ? fallback : v === true || v === "true");
   const admins = map.get("line_admin_person_ids");
+  const sent: Record<Priority, number> = { critical: 0, reminder: 0, low: 0 };
+  for (const r of sentRows ?? []) sent[priorityOf(String(r.notification_type))] += 1;
+  const used = sent.critical + sent.reminder + sent.low;
+  const limit = Number(map.get("line_monthly_quota")) || 300;
 
   return {
     lineEnabled: asBool(map.get("line_enabled"), true),
     lineMonthlyQuota: Number(map.get("line_monthly_quota")) || 300,
     sameDayReminderEnabled: asBool(map.get("same_day_reminder_enabled"), true),
     adminPersonIds: Array.isArray(admins) ? admins.map(String) : [],
-    quotaUsedThisMonth: count ?? 0,
+    quotaUsedThisMonth: used,
     scheduler: schedulerHealth((map.get(LAST_RUN_KEY) as LastRun | undefined) ?? null),
     failedLast24h: failed ?? 0,
+    budget: budgetView({ used, limit, date: bangkokDate(), sent }),
   };
 }
 
