@@ -27,6 +27,7 @@ import {
   recordUnavailable,
   setPendingReason,
   takePendingReason,
+  withinRateLimit,
   type LinePerson,
 } from "@/lib/line/data";
 import {
@@ -265,6 +266,7 @@ export async function handleLineEvent(ctx: Ctx, ev: LineEvent): Promise<void> {
   }
 
   const userId = ev.source.userId;
+  if (userId && (ev.type === "message" || ev.type === "postback") && !(await withinRateLimit(ctx.admin, userId))) return;
   const person = userId ? await findPersonByLineUserId(ctx.admin, userId) : null;
 
   switch (ev.type) {

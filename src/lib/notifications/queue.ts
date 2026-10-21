@@ -18,6 +18,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/server";
+import { LAST_RUN_KEY, RETRY_TAG, isTransientFailure } from "@/lib/notifications/health";
 import { isLineMessagingConfigured } from "@/lib/env";
 import { addDays } from "@/lib/date";
 import { getQuotaStatus, pushMessages, type LineMessage } from "@/lib/line/api";
@@ -132,6 +133,8 @@ export type ProcessSummary = {
   processed: number;
   sent: number;
   failed: number;
+  /** Rows put back in the queue for one more try. */
+  retried: number;
   skipped: number;
   dailySummaries: number;
   adminReports: number;
@@ -202,7 +205,7 @@ async function processQueue(
 ) {
   const { data, error } = await admin
     .from("notifications")
-    .select("id, event_id, assignment_id, notification_type, scheduled_for, person:people(display_name, line_user_id)")
+    .select("id, event_id, assignment_id, notification_type, scheduled_for, error_message, person:people(display_name, line_user_id)")
     .eq("status", "queued")
     .lte("scheduled_for", new Date().toISOString())
     .order("scheduled_for", { ascending: true })
@@ -242,7 +245,7 @@ async function processQueue(
       continue;
     }
 
-    const res = await pushMessages(person.line_user_id, [message]);
+    const res = await pushMessages(person.line_user_id, [message], row.id);
     if (res.ok) {
       quota.used += 1;
       await mark(admin, row.id, "sent", {
@@ -251,6 +254,17 @@ async function processQueue(
         quota_month: month,
       });
       summary.sent += 1;
+    } else if (isTransientFailure(res.status) && !String(row.error_message ?? "").startsWith(RETRY_TAG)) {
+      // One more try on the next run (5 minutes) for a LINE hiccup; a second
+      // failure is final and shows in the 17:00 admin report.
+      await admin
+        .from("notifications")
+        .update({
+          scheduled_for: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+          error_message: `${RETRY_TAG} ${res.error ?? `HTTP ${res.status ?? "?"}`}`,
+        })
+        .eq("id", row.id);
+      summary.retried += 1;
     } else {
       await mark(admin, row.id, "failed", { error_message: res.error ?? "ส่งไม่สำเร็จ" });
       summary.failed += 1;
@@ -328,9 +342,22 @@ async function sendAdminReport(admin: SupabaseClient, quota: QuotaGuard, today: 
   const tasks = await loadTasks(admin, { from: tomorrow, to: tomorrow });
   const pending = tasks.filter((t) => !t.acknowledged && !t.unavailable);
   const unavailable = tasks.filter((t) => t.unavailable);
+  // LINE pushes that failed today (after their one retry): nobody else would notice them.
+  const { count: failedToday } = await admin
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "failed")
+    .gte("created_at", new Date(`${today}T00:00:00+07:00`).toISOString());
   // Owner rule: nothing outstanding = no message.
-  if (pending.length === 0 && unavailable.length === 0) return 0;
-  return pushToAdmins(admin, quota, "admin_report", adminReportMessage(tomorrow, pending, unavailable), month, `admin17:${today}`);
+  if (pending.length === 0 && unavailable.length === 0 && !failedToday) return 0;
+  return pushToAdmins(
+    admin,
+    quota,
+    "admin_report",
+    adminReportMessage(tomorrow, pending, unavailable, failedToday ?? 0),
+    month,
+    `admin17:${today}`,
+  );
 }
 
 export async function processDueNotifications(now = new Date()): Promise<ProcessSummary> {
@@ -341,6 +368,7 @@ export async function processDueNotifications(now = new Date()): Promise<Process
     processed: 0,
     sent: 0,
     failed: 0,
+    retried: 0,
     skipped: 0,
     dailySummaries: 0,
     adminReports: 0,
@@ -384,11 +412,31 @@ export async function processDueNotifications(now = new Date()): Promise<Process
     await runLocked(admin, settings, clock, summary);
   } finally {
     await releaseRun(admin, LOCK_KEY);
+    await stampLastRun(admin, summary);
   }
   return summary;
 }
 
 const LOCK_KEY = "lock:processor";
+
+/** Heartbeat for /settings and /api/health (lib/notifications/health.ts). Best effort. */
+async function stampLastRun(admin: SupabaseClient, summary: ProcessSummary) {
+  try {
+    await admin.from("settings").upsert({
+      key: LAST_RUN_KEY,
+      value: {
+        at: new Date().toISOString(),
+        processed: summary.processed,
+        sent: summary.sent,
+        failed: summary.failed,
+        retried: summary.retried,
+      },
+      description: "รอบส่งคิวแจ้งเตือนล่าสุด (ระบบเขียนเอง)",
+    });
+  } catch {
+    // a missed stamp only makes the indicator look older; never fail the run for it
+  }
+}
 
 async function runLocked(
   admin: SupabaseClient,
@@ -418,6 +466,11 @@ async function runLocked(
   // Old claim keys are only bookkeeping: webhook de-dup matters for LINE's
   // short retry window, daily/admin claims only for their own day.
   const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+  await admin
+    .from("notification_runs")
+    .delete()
+    .like("run_key", "rl:%")
+    .lt("created_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString());
   for (const prefix of ["webhook:%", "daily:%", "admin17:%"]) {
     await admin.from("notification_runs").delete().like("run_key", prefix).lt("created_at", weekAgo);
   }

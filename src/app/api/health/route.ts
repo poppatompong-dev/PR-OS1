@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { LAST_RUN_KEY, schedulerHealth, type LastRun } from "@/lib/notifications/health";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -35,12 +36,22 @@ export async function GET() {
       );
     }
 
+    // Scheduler heartbeat (no secrets: just when the queue was last processed).
+    let scheduler = schedulerHealth(null);
+    try {
+      const { data: row } = await createAdminClient().from("settings").select("value").eq("key", LAST_RUN_KEY).maybeSingle();
+      scheduler = schedulerHealth((row?.value as LastRun | undefined) ?? null);
+    } catch {
+      // leave as "never"
+    }
+
     return NextResponse.json({
-      status: "healthy",
+      status: scheduler.state === "stale" ? "degraded" : "healthy",
       mode: "live",
       timestamp,
       database: "connected",
       settingsCount: count ?? 0,
+      scheduler: { state: scheduler.state, ageMinutes: scheduler.ageMinutes, lastRunAt: scheduler.lastRunAt },
     });
   } catch (err) {
     return NextResponse.json(

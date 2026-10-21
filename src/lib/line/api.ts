@@ -33,9 +33,13 @@ function authHeaders(): Record<string, string> {
   };
 }
 
-async function post(url: string, body: unknown): Promise<SendResult> {
+async function post(url: string, body: unknown, extraHeaders: Record<string, string> = {}): Promise<SendResult> {
   try {
-    const res = await fetch(url, { method: "POST", headers: authHeaders(), body: JSON.stringify(body) });
+    const res = await fetch(url, { method: "POST", headers: { ...authHeaders(), ...extraHeaders }, body: JSON.stringify(body) });
+    // 409 with a retry key = LINE already accepted this exact push earlier: it was delivered.
+    if (res.status === 409 && extraHeaders["X-Line-Retry-Key"]) {
+      return { ok: true, providerMessageId: res.headers.get("x-line-accepted-request-id") ?? undefined };
+    }
     if (!res.ok) {
       const text = await res.text();
       return { ok: false, status: res.status, error: `LINE ${res.status}: ${text.slice(0, 300)}` };
@@ -46,9 +50,13 @@ async function post(url: string, body: unknown): Promise<SendResult> {
   }
 }
 
-/** Counts against the monthly quota. Max 5 messages per call. */
-export function pushMessages(to: string, messages: LineMessage[]): Promise<SendResult> {
-  return post(`${API}/message/push`, { to, messages: messages.slice(0, 5) });
+/**
+ * Counts against the monthly quota. Max 5 messages per call.
+ * `retryKey` (a UUID, e.g. the queue row id) makes a retry safe: if the first
+ * attempt actually reached LINE, the retry is answered 409 and not sent twice.
+ */
+export function pushMessages(to: string, messages: LineMessage[], retryKey?: string): Promise<SendResult> {
+  return post(`${API}/message/push`, { to, messages: messages.slice(0, 5) }, retryKey ? { "X-Line-Retry-Key": retryKey } : {});
 }
 
 /** Free. The reply token is single-use and expires about a minute after the event. */

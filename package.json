@@ -8,7 +8,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:unit": "npx -y tsx@4.19.2 --test tests/*.unit.test.ts",
+    "test:prod": "node --test tests/production-smoke.test.mjs",
+    "verify": "npm run typecheck && npm run test:unit && npm run test:prod"
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.3.0",

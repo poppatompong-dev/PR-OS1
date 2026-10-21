@@ -192,6 +192,14 @@ export default async function SettingsPage({
             </dd>
           </div>
           <div>
+            <dt>ตัวตั้งเวลาส่งคิว (Supabase ทุก 5 นาที)</dt>
+            <dd style={{ color: notifSettings.scheduler.state === "stale" || notifSettings.scheduler.state === "never" ? "var(--red)" : undefined, fontWeight: 600 }}>
+              {notifSettings.scheduler.state === "ok" ? "✅ " : notifSettings.scheduler.state === "sleeping" ? "🌙 " : "⚠️ "}
+              {notifSettings.scheduler.label}
+              {notifSettings.failedLast24h > 0 ? ` · ส่งไม่สำเร็จ 24 ชม. ล่าสุด ${notifSettings.failedLast24h} ข้อความ` : ""}
+            </dd>
+          </div>
+          <div>
             <dt>ใช้โควต้าเดือนนี้ (ตามที่ระบบส่ง)</dt>
             <dd>
               {notifSettings.quotaUsedThisMonth} / {notifSettings.lineMonthlyQuota} ข้อความ

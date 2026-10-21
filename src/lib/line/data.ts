@@ -280,6 +280,32 @@ export async function claimRun(admin: SupabaseClient, runKey: string, detail: Re
   throw new Error(`claimRun: ${error.message}`);
 }
 
+/**
+ * Per-user flood guard for the webhook (loop-engineering: backpressure on a hook).
+ * Replies are free, but every event still costs a function run and database
+ * reads; a stuck phone or a spammer tapping a button 100 times should not.
+ * Allows `limit` events per user per minute; the rest are dropped silently.
+ */
+export const WEBHOOK_EVENTS_PER_MINUTE = 20;
+
+export async function withinRateLimit(
+  admin: SupabaseClient,
+  lineUserId: string,
+  now = new Date(),
+  limit = WEBHOOK_EVENTS_PER_MINUTE,
+): Promise<boolean> {
+  const bucket = now.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM (UTC)
+  const prefix = `rl:${lineUserId}:${bucket}:`;
+  const { count, error } = await admin
+    .from("notification_runs")
+    .select("run_key", { count: "exact", head: true })
+    .like("run_key", `${prefix}%`);
+  if (error) return true; // never block real people because the guard itself failed
+  if ((count ?? 0) >= limit) return false;
+  await admin.from("notification_runs").insert({ run_key: `${prefix}${crypto.randomUUID()}`, detail: {} });
+  return true;
+}
+
 /** Log a push that was not driven by a queue row, so the quota count sees it. */
 export async function logPush(
   admin: SupabaseClient,

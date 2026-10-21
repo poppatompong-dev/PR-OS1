@@ -1,6 +1,7 @@
 // Settings/master-data reads for the admin settings page.
 
 import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { LAST_RUN_KEY, schedulerHealth, type LastRun, type SchedulerHealth } from "@/lib/notifications/health";
 import { isLineMessagingConfigured, isSupabaseConfigured } from "@/lib/env";
 import { getFriendStatus, type FriendStatus } from "@/lib/line/api";
 import { getPendingRegistrations } from "@/lib/line/data";
@@ -285,26 +286,43 @@ export type NotificationSettings = {
   sameDayReminderEnabled: boolean;
   adminPersonIds: string[];
   quotaUsedThisMonth: number;
+  /** Is the 5-minute scheduler alive? (lib/notifications/health.ts) */
+  scheduler: SchedulerHealth;
+  /** LINE pushes that failed for good in the last 24 hours. */
+  failedLast24h: number;
 };
 
 export async function getNotificationSettings(): Promise<NotificationSettings> {
   if (!isSupabaseConfigured()) {
-    return { lineEnabled: true, lineMonthlyQuota: 300, sameDayReminderEnabled: true, adminPersonIds: [], quotaUsedThisMonth: 0 };
+    return {
+      lineEnabled: true,
+      lineMonthlyQuota: 300,
+      sameDayReminderEnabled: true,
+      adminPersonIds: [],
+      quotaUsedThisMonth: 0,
+      scheduler: schedulerHealth(null),
+      failedLast24h: 0,
+    };
   }
 
   const supabase = await createClient();
   const month = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit" }).format(new Date());
-  const [{ data }, { count }] = await Promise.all([
+  const [{ data }, { count }, { count: failed }] = await Promise.all([
     supabase
       .from("settings")
       .select("key, value")
-      .in("key", ["line_enabled", "line_monthly_quota", "same_day_reminder_enabled", "line_admin_person_ids"]),
+      .in("key", ["line_enabled", "line_monthly_quota", "same_day_reminder_enabled", "line_admin_person_ids", LAST_RUN_KEY]),
     supabase
       .from("notifications")
       .select("id", { count: "exact", head: true })
       .eq("channel", "line")
       .eq("status", "sent")
       .eq("quota_month", month),
+    supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "failed")
+      .gte("created_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString()),
   ]);
 
   const map = new Map((data ?? []).map((r) => [r.key as string, r.value]));
@@ -318,6 +336,8 @@ export async function getNotificationSettings(): Promise<NotificationSettings> {
     sameDayReminderEnabled: asBool(map.get("same_day_reminder_enabled"), true),
     adminPersonIds: Array.isArray(admins) ? admins.map(String) : [],
     quotaUsedThisMonth: count ?? 0,
+    scheduler: schedulerHealth((map.get(LAST_RUN_KEY) as LastRun | undefined) ?? null),
+    failedLast24h: failed ?? 0,
   };
 }
 

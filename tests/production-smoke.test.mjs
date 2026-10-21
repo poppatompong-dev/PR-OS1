@@ -46,3 +46,51 @@ for (const path of ["/", "/login", "/schedule", "/events/new", "/reports", "/mob
     assert.match(res.headers.get("location") ?? "", path === "/login" ? /\/$|\/\?/ : /\/login/);
   });
 }
+
+// ---- Flow guards added 21 Oct 2026 (loop-engineering review) ---------------
+// Public, secret-free checks that the pieces the LINE workflow depends on are
+// wired: a "done" that a script can check instead of someone's say-so.
+
+test("the scheduler is alive (health reports it, never stale)", async () => {
+  const body = await (await get("/api/health")).json();
+  if (body.mode !== "live") return;
+  assert.ok(body.scheduler, `no scheduler block: ${JSON.stringify(body)}`);
+  assert.notEqual(body.scheduler.state, "stale", `scheduler stale: ${JSON.stringify(body.scheduler)}`);
+  assert.notEqual(body.scheduler.state, "never", `scheduler never ran: ${JSON.stringify(body.scheduler)}`);
+});
+
+test("TV short link keeps its query", async () => {
+  const res = await get("/tv?v=3d");
+  assert.ok(isRedirect(res.status), `/tv answered ${res.status}`);
+  assert.match(res.headers.get("location") ?? "", /\/monitor\?v=3d$/);
+});
+
+test("the LINE add-job form page is public", async () => {
+  const res = await get("/liff/add-event");
+  assert.equal(res.status, 200);
+});
+
+for (const [method, path] of [
+  ["GET", "/api/liff/options"],
+  ["POST", "/api/liff/events"],
+  ["POST", "/api/notifications/process"],
+  ["POST", "/api/line/webhook"],
+]) {
+  test(`${method} ${path} refuses a caller with no token / secret / signature`, async () => {
+    const res = await fetch(`${baseUrl}${path}`, {
+      method,
+      redirect: "manual",
+      headers: { "content-type": "application/json", "x-line-signature": "bad" },
+      body: method === "POST" ? "{}" : undefined,
+    });
+    assert.equal(res.status, 401, `${path} answered ${res.status}`);
+  });
+}
+
+for (const path of ["/line/rich-menu.png", "/avatars/default.png", "/monitor/mascot-2.png"]) {
+  test(`asset ${path} is served`, async () => {
+    const res = await get(path);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type") ?? "", /image\/png/);
+  });
+}

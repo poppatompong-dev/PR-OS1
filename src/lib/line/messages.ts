@@ -170,7 +170,7 @@ export function dailySummaryMessage(personName: string, today: TaskItem[], tomor
 }
 
 /** 17:00 — to the admins, only when someone has not acknowledged tomorrow's work. */
-export function adminReportMessage(date: string, pending: TaskItem[], unavailable: TaskItem[]): LineMessage {
+export function adminReportMessage(date: string, pending: TaskItem[], unavailable: TaskItem[], failedToday = 0): LineMessage {
   const lines = [`📋 งานพรุ่งนี้ ${formatThaiDate(date)}`];
   if (pending.length) {
     lines.push("", `⏳ ยังไม่รับทราบ ${pending.length} รายการ`);
@@ -183,6 +183,9 @@ export function adminReportMessage(date: string, pending: TaskItem[], unavailabl
     for (const t of unavailable) {
       lines.push(`• ${t.personName} — ${t.event.startTime} ${t.event.title} (${t.unavailableReason ?? "ไม่ระบุ"})`);
     }
+  }
+  if (failedToday > 0) {
+    lines.push("", `⚠️ วันนี้ส่งแจ้งเตือน LINE ไม่สำเร็จ ${failedToday} ข้อความ (ลองซ้ำแล้ว) — ดูที่หน้าตั้งค่า › คิว/ประวัติล่าสุด`);
   }
   return { type: "text", text: lines.join("\n").slice(0, 4900) };
 }
