@@ -152,8 +152,51 @@ export async function removeAssignment(formData: FormData) {
     new_values: { assignment_id: assignmentId },
   });
 
+  await noticeRemoved(eventId, assignmentId);
+
   revalidatePath(`/events/${eventId}`);
   redirect(`/events/${eventId}`);
+}
+
+/**
+ * Owner, 22 Oct 2026: someone taken off a job that still goes ahead must hear
+ * it, or they turn up anyway. Their pending reminder is dropped and a "ถอนชื่อ
+ * ออกจากงาน" card is queued (queue type cancellation; the sender words it by
+ * the assignment being removed while the job is still published). Only for a
+ * published job — a draft never reached the person. Notifications have no
+ * client write policy, hence the service-role client after the role check.
+ */
+async function noticeRemoved(eventId: string, assignmentId: string) {
+  if (!isSupabaseConfigured()) return;
+  const admin = createAdminClient();
+  const { data: asg } = await admin
+    .from("assignments")
+    .select("id, person_id, event:events!inner(status, deleted_at)")
+    .eq("id", assignmentId)
+    .maybeSingle();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ev = Array.isArray((asg as any)?.event) ? (asg as any).event[0] : (asg as any)?.event;
+  if (!asg || !ev || ev.status !== "published" || ev.deleted_at) return;
+
+  await admin
+    .from("notifications")
+    .update({ status: "skipped", sent_at: new Date().toISOString(), error_message: "นำชื่อออกจากงานแล้ว" })
+    .eq("assignment_id", assignmentId)
+    .eq("status", "queued");
+  const month = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit" })
+    .format(new Date())
+    .slice(0, 7);
+  await admin.from("notifications").insert({
+    event_id: eventId,
+    assignment_id: assignmentId,
+    person_id: asg.person_id,
+    channel: "line",
+    notification_type: "cancellation",
+    scheduled_for: new Date().toISOString(),
+    status: "queued",
+    quota_month: month,
+  });
+  kickNotifications();
 }
 
 /**

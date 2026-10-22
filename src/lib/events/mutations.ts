@@ -156,6 +156,8 @@ export async function editEvent(formData: FormData) {
   }
   const endTime = emptyToNull(formData.get("endTime"));
   const locationId = emptyToNull(formData.get("locationId"));
+  // Optional; shown on the team's orange change card (owner, 22 Oct 2026).
+  const changeReason = String(formData.get("changeReason") ?? "").trim().slice(0, 200);
 
   const { data: current, error: loadErr } = await supabase
     .from("events")
@@ -227,11 +229,11 @@ export async function editEvent(formData: FormData) {
     eventId,
     significant ? "significant_change" : "edit",
     significant
-      ? `แก้ไขงาน (เปลี่ยน: ${changed.join(", ")}) — รีเซ็ตการรับทราบ`
+      ? `แก้ไขงาน (เปลี่ยน: ${changed.join(", ")}) — รีเซ็ตการรับทราบ${changeReason ? ` · เหตุผล: ${changeReason}` : ""}`
       : changed.length
         ? `แก้ไขงาน: ${changed.join(", ")}`
         : "แก้ไขรายละเอียดงาน",
-    { title, event_date: eventDate, start_time: startTime, changed },
+    { title, event_date: eventDate, start_time: startTime, changed, ...(changeReason ? { reason: changeReason } : {}) },
     {
       title: current.title,
       event_date: current.event_date,
@@ -254,11 +256,42 @@ export async function publishEvent(formData: FormData) {
     redirect(`/events/${eventId}?error=${encodeURIComponent("ไม่มีสิทธิ์เผยแพร่งาน")}`);
   }
 
+  const hold = await pendingPostponement(supabase, eventId);
+
   const { error } = await supabase
     .from("events")
     .update({ status: "published", published_at: new Date().toISOString(), updated_by: user.id })
     .eq("id", eventId);
   if (error) redirect(`/events/${eventId}?error=${encodeURIComponent(error.message)}`);
+
+  if (hold) {
+    // Back from "เลื่อนออกไปก่อน": the team already had the job, so they get an
+    // orange change card (old date struck through → new date) and must
+    // acknowledge again, instead of a second "new job" card.
+    const { data: now } = await supabase
+      .from("events")
+      .select("title, event_date, start_time, end_time, location_id")
+      .eq("id", eventId)
+      .maybeSingle();
+    await writeAudit(
+      supabase,
+      user,
+      eventId,
+      "significant_change",
+      "นัดวันใหม่หลังเลื่อน — รีเซ็ตการรับทราบ",
+      { title: now?.title, event_date: now?.event_date, start_time: hhmm(now?.start_time), reason: "นัดวันใหม่หลังเลื่อน", resumed: true },
+      hold.oldValues,
+    );
+    await bumpAssignmentVersions(supabase, eventId);
+    await writeAudit(supabase, user, eventId, "publish", "เผยแพร่งานอีกครั้ง (หลังเลื่อน)", { status: "published", resumed: true });
+    await supabase.rpc("enqueue_event_notifications", { p_event_id: eventId, p_type: "change" });
+    await supabase.rpc("cancel_event_reminders", { p_event_id: eventId });
+    await supabase.rpc("enqueue_event_reminders", { p_event_id: eventId });
+    kickNotifications();
+    revalidatePath("/schedule");
+    revalidatePath(`/events/${eventId}`);
+    redirect(`/events/${eventId}`);
+  }
 
   await writeAudit(supabase, user, eventId, "publish", "เผยแพร่งาน", { status: "published" });
   // Queue assignment notifications for assignees (best-effort).
@@ -291,6 +324,99 @@ export async function completeEvent(formData: FormData) {
   if (error) redirect(`/events/${eventId}?error=${encodeURIComponent(error.message)}`);
 
   await writeAudit(supabase, user, eventId, "complete", "ปิดงาน (เสร็จสิ้น)", { status: "completed" });
+  revalidatePath("/schedule");
+  revalidatePath(`/events/${eventId}`);
+  redirect(`/events/${eventId}`);
+}
+
+/** Every active assignment's version +1: earlier acknowledgements no longer count. */
+async function bumpAssignmentVersions(supabase: Awaited<ReturnType<typeof createClient>>, eventId: string) {
+  const { data: asgs } = await supabase
+    .from("assignments")
+    .select("id, assignment_version")
+    .eq("event_id", eventId)
+    .eq("assignment_status", "assigned");
+  for (const a of asgs ?? []) {
+    await supabase
+      .from("assignments")
+      .update({ assignment_version: (a.assignment_version ?? 1) + 1 })
+      .eq("id", a.id);
+  }
+}
+
+/**
+ * The job was put on hold ("เลื่อนออกไปก่อน") and has not been published since:
+ * returns what it looked like when it was put on hold.
+ */
+async function pendingPostponement(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  eventId: string,
+): Promise<{ oldValues: Record<string, unknown> } | null> {
+  const { data } = await supabase
+    .from("audit_logs")
+    .select("action, old_values")
+    .eq("entity_type", "event")
+    .eq("entity_id", eventId)
+    .in("action", ["postpone", "publish"])
+    .order("changed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data || data.action !== "postpone") return null;
+  return { oldValues: (data.old_values as Record<string, unknown>) ?? {} };
+}
+
+/**
+ * Owner, 22 Oct 2026: jobs often move with no new date yet. "เลื่อนออกไปก่อน"
+ * puts a published job on hold (status draft: off the TV, off LINE lists and
+ * reminders), tells every assignee why, and keeps the team on it. Set the new
+ * date with แก้ไข, then เผยแพร่ — the team gets an orange change card.
+ */
+export async function postponeEvent(formData: FormData) {
+  await blockWritesInDemoMode();
+  const eventId = String(formData.get("eventId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 200);
+  const { supabase, user } = await loadActor();
+  if (!can.publishEvent(user.role)) {
+    redirect(`/events/${eventId}?error=${encodeURIComponent("ไม่มีสิทธิ์เลื่อนงาน")}`);
+  }
+  if (!reason) redirect(`/events/${eventId}?error=${encodeURIComponent("กรุณาระบุเหตุผลที่เลื่อน")}`);
+
+  const { data: current } = await supabase
+    .from("events")
+    .select("title, event_date, start_time, end_time, location_id, status")
+    .eq("id", eventId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!current) redirect(`/events/${eventId}?error=${encodeURIComponent("ไม่พบงาน")}`);
+  if (current.status !== "published") {
+    redirect(`/events/${eventId}?error=${encodeURIComponent("เลื่อนได้เฉพาะงานที่เผยแพร่แล้ว")}`);
+  }
+
+  const { error } = await supabase
+    .from("events")
+    .update({ status: "draft", has_changes: true, updated_by: user.id })
+    .eq("id", eventId);
+  if (error) redirect(`/events/${eventId}?error=${encodeURIComponent(error.message)}`);
+
+  await bumpAssignmentVersions(supabase, eventId);
+  await writeAudit(
+    supabase,
+    user,
+    eventId,
+    "postpone",
+    `เลื่อนออกไปก่อน (ยังไม่มีวันใหม่): ${reason}`,
+    { status: "draft", reason },
+    {
+      title: current.title,
+      event_date: current.event_date,
+      start_time: hhmm(current.start_time),
+      end_time: hhmm(current.end_time),
+      location_id: current.location_id,
+    },
+  );
+  await supabase.rpc("cancel_event_reminders", { p_event_id: eventId });
+  await supabase.rpc("enqueue_event_notifications", { p_event_id: eventId, p_type: "cancellation" });
+  kickNotifications();
   revalidatePath("/schedule");
   revalidatePath(`/events/${eventId}`);
   redirect(`/events/${eventId}`);

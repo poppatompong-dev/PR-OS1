@@ -29,6 +29,7 @@ import {
   claimRun,
   getAdminRecipientIds,
   getPeopleByIds,
+  latestEventAudit,
   loadTask,
   loadTasks,
   logPush,
@@ -36,12 +37,14 @@ import {
   runAge,
   type TaskItem,
 } from "@/lib/line/data";
-import { loadChangeDiff, type FieldChange } from "@/lib/line/change-diff";
+import { loadChangeInfo, type FieldChange } from "@/lib/line/change-diff";
 import {
   adminReportMessage,
   cancellationMessage,
   dailySummaryMessage,
+  postponedMessage,
   quotaWarningMessage,
+  removedMessage,
   taskMessage,
 } from "@/lib/line/messages";
 
@@ -178,10 +181,18 @@ export function messageForRow(
   type: string,
   task: TaskItem | null,
   changes: FieldChange[] = [],
-  opts: { now?: Date; scheduledFor?: string } = {},
+  opts: { now?: Date; scheduledFor?: string; reason?: string | null } = {},
 ): { message: LineMessage | null; skipReason?: string } {
   if (!task) return { message: null, skipReason: "นำชื่อออกจากงานแล้ว หรือไม่พบงาน" };
-  if (type === "cancellation") return { message: cancellationMessage(task) };
+  if (type === "cancellation") {
+    // One queue type, three situations (no schema change): the job was
+    // canceled, put on hold without a new date, or this person was taken off it.
+    if (task.event.status === "canceled") return { message: cancellationMessage(task) };
+    if (task.event.status === "draft") return { message: postponedMessage(task, opts.reason ?? null) };
+    if (task.removed && task.event.status === "published") return { message: removedMessage(task) };
+    return { message: null, skipReason: "งานกลับมาเผยแพร่แล้ว ไม่ต้องแจ้ง" };
+  }
+  if (task.removed) return { message: null, skipReason: "นำชื่อออกจากงานแล้ว" };
   if (task.event.status !== "published") return { message: null, skipReason: "งานไม่ได้อยู่ในสถานะเผยแพร่แล้ว" };
   if (type === "reminder") {
     const start = eventStart(task);
@@ -200,7 +211,7 @@ export function messageForRow(
     if (task.unavailable) return { message: null, skipReason: "แจ้งไม่สะดวกแล้ว" };
     return { message: taskMessage(task, "reminder") };
   }
-  if (type === "change") return { message: taskMessage(task, "change", changes) };
+  if (type === "change") return { message: taskMessage(task, "change", changes, opts.reason ?? null) };
   if (type === "assignment") {
     if (task.acknowledged) return { message: null, skipReason: "รับทราบไปแล้ว" };
     return { message: taskMessage(task, "assignment") };
@@ -240,11 +251,19 @@ async function processQueue(
       continue;
     }
 
-    const task = row.assignment_id ? await loadTask(admin, row.assignment_id) : null;
-    const changes =
-      row.notification_type === "change" && row.event_id ? await loadChangeDiff(admin, row.event_id, task) : [];
+    const isNotice = row.notification_type === "cancellation";
+    const task = row.assignment_id ? await loadTask(admin, row.assignment_id, { includeRemoved: isNotice }) : null;
+    let changes: FieldChange[] = [];
+    let reason: string | null = null;
+    if (row.notification_type === "change" && row.event_id) {
+      ({ changes, reason } = await loadChangeInfo(admin, row.event_id, task));
+    } else if (isNotice && task?.event.status === "draft" && row.event_id) {
+      const hold = await latestEventAudit(admin, row.event_id, ["postpone"]);
+      reason = typeof hold?.new_values?.reason === "string" ? hold.new_values.reason : null;
+    }
     const { message, skipReason } = messageForRow(row.notification_type, task, changes, {
       scheduledFor: row.scheduled_for,
+      reason,
     });
     if (!message) {
       await mark(admin, row.id, "skipped", { error_message: skipReason });

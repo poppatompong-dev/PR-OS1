@@ -30,6 +30,8 @@ export type TaskItem = {
   acknowledged: boolean;
   unavailable: boolean;
   unavailableReason: string | null;
+  /** Taken off the job (assignment_status = removed). Only loaded for the "you are off this job" notice. */
+  removed?: boolean;
   event: {
     id: string;
     title: string;
@@ -127,6 +129,7 @@ function toTask(a: any): TaskItem | null {
     acknowledged: acks.some((k: any) => k.assignment_version === a.assignment_version),
     unavailable: Boolean(a.unavailable_at),
     unavailableReason: a.unavailable_reason ?? null,
+    removed: a.assignment_status === "removed",
     event: {
       id: ev.id,
       title: ev.title,
@@ -168,14 +171,37 @@ export async function loadTasks(
   return (data ?? []).map(toTask).filter((t): t is TaskItem => t !== null).sort(byTime);
 }
 
-export async function loadTask(admin: SupabaseClient, assignmentId: string): Promise<TaskItem | null> {
+export async function loadTask(
+  admin: SupabaseClient,
+  assignmentId: string,
+  opts: { includeRemoved?: boolean } = {},
+): Promise<TaskItem | null> {
   const { data } = await admin
     .from("assignments")
     .select(`${TASK_SELECT}, assignment_status`)
     .eq("id", assignmentId)
     .maybeSingle();
-  if (!data || (data as any).assignment_status !== "assigned") return null;
+  if (!data) return null;
+  if ((data as any).assignment_status !== "assigned" && !opts.includeRemoved) return null;
   return toTask(data);
+}
+
+/** The newest audit row of one kind for an event (reason / old values of a postponement or change). */
+export async function latestEventAudit(
+  admin: SupabaseClient,
+  eventId: string,
+  actions: string[],
+): Promise<{ action: string; changed_at: string; old_values: any; new_values: any } | null> {
+  const { data } = await admin
+    .from("audit_logs")
+    .select("action, changed_at, old_values, new_values")
+    .eq("entity_type", "event")
+    .eq("entity_id", eventId)
+    .in("action", actions)
+    .order("changed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data as any) ?? null;
 }
 
 export type AckOutcome = "ok" | "already" | "stale" | "not_yours" | "not_found" | "closed";

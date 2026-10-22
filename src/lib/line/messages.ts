@@ -106,7 +106,7 @@ function changeLine(c: FieldChange) {
  * change, reminder) end with a pointer to "งานของฉัน", the list that is always
  * current — a change card also says the older card for this job no longer counts.
  */
-export function taskBubble(t: TaskItem, kind: BubbleKind, changes: FieldChange[] = []): Record<string, unknown> {
+export function taskBubble(t: TaskItem, kind: BubbleKind, changes: FieldChange[] = [], reason: string | null = null): Record<string, unknown> {
   const head = HEADINGS[kind];
   const changed = new Set(kind === "change" ? changes.map((c) => c.field) : []);
   const details = [
@@ -121,11 +121,14 @@ export function taskBubble(t: TaskItem, kind: BubbleKind, changes: FieldChange[]
     details.unshift(row("เวลา", t.event.endTime ? `${t.event.startTime}–${t.event.endTime} น.` : `${t.event.startTime} น.`));
   }
   const body: unknown[] = [{ type: "text", text: t.event.title, weight: "bold", size: "lg", wrap: true }];
-  if (kind === "change" && changes.length > 0) {
+  if (kind === "change" && (changes.length > 0 || reason)) {
     body.push({
       type: "box", layout: "vertical", spacing: "xs", margin: "md", paddingAll: "8px",
       backgroundColor: "#fff4e5", cornerRadius: "8px",
-      contents: changes.map(changeLine),
+      contents: [
+        ...changes.map(changeLine),
+        ...(reason ? [{ type: "text", text: `เหตุผล: ${reason}`, size: "sm", color: AMBER, wrap: true, margin: changes.length ? "sm" : "none" }] : []),
+      ],
     });
   }
   body.push({ type: "box", layout: "vertical", spacing: "sm", margin: "md", contents: details });
@@ -171,14 +174,67 @@ export function taskBubble(t: TaskItem, kind: BubbleKind, changes: FieldChange[]
   };
 }
 
-export function taskMessage(t: TaskItem, kind: BubbleKind, changes: FieldChange[] = []): LineMessage {
+export function taskMessage(t: TaskItem, kind: BubbleKind, changes: FieldChange[] = [], reason: string | null = null): LineMessage {
   const prefix = HEADINGS[kind].label;
   const what = kind === "change" && changes.length ? ` (${changes.map((c) => `${c.label} ${c.to}`).join(", ")})` : "";
   return {
     type: "flex",
     altText: `${prefix}: ${t.event.title} ${formatThaiDate(t.event.eventDate)} ${t.event.startTime} น.${what}`.slice(0, 390),
-    contents: taskBubble(t, kind, changes),
+    contents: taskBubble(t, kind, changes, reason),
   };
+}
+
+/** A grey card with no buttons: the job is on hold or the person is off it. */
+function noticeCard(head: { label: string; color: string }, t: TaskItem, lines: string[], altText: string): LineMessage {
+  return {
+    type: "flex",
+    altText: altText.slice(0, 390),
+    contents: {
+      type: "bubble",
+      size: "kilo",
+      header: {
+        type: "box", layout: "vertical", backgroundColor: head.color, paddingAll: "12px",
+        contents: [{ type: "text", text: head.label, color: "#ffffff", size: "sm", weight: "bold", wrap: true }],
+      },
+      body: {
+        type: "box", layout: "vertical", spacing: "sm",
+        contents: [
+          { type: "text", text: t.event.title, weight: "bold", size: "lg", wrap: true, decoration: "line-through", color: MUTED },
+          { type: "box", layout: "vertical", spacing: "sm", margin: "md", contents: [row("วันเวลาเดิม", when(t)), row("สถานที่", t.event.locationName)] },
+          ...lines.map((l) => ({ type: "text", text: l, size: "sm", wrap: true, margin: "md" })),
+        ],
+      },
+      footer: {
+        type: "box", layout: "vertical",
+        contents: [button({ type: "message", label: "งานของฉัน (ล่าสุด)", text: COMMANDS.mine }, "link")],
+      },
+    },
+    quickReply: commandQuickReply(),
+  };
+}
+
+/**
+ * Owner, 22 Oct 2026: a job "เลื่อนออกไปก่อน" — no new date yet. The team is told
+ * to hold; when the new date is set and the job is published again they get an
+ * orange change card with the new date and must acknowledge it.
+ */
+export function postponedMessage(t: TaskItem, reason: string | null): LineMessage {
+  return noticeCard(
+    { label: "⏸ งานเลื่อนออกไปก่อน · ยังไม่มีวันใหม่", color: "#6b6475" },
+    t,
+    [`เหตุผล: ${reason ?? "ไม่ระบุ"}`, "ยังไม่ต้องไปตามวันเวลาเดิม เมื่อได้วันใหม่ ระบบจะส่งการ์ดสีส้มให้กดรับทราบอีกครั้ง"],
+    `⏸ งานเลื่อนออกไปก่อน: ${t.event.title} (เดิม ${formatThaiDate(t.event.eventDate)} ${t.event.startTime} น.)`,
+  );
+}
+
+/** The person was taken off a job that still goes ahead (someone else covers it). */
+export function removedMessage(t: TaskItem): LineMessage {
+  return noticeCard(
+    { label: "➖ ถอนชื่อคุณออกจากงานนี้แล้ว", color: "#6b6475" },
+    t,
+    ["งานนี้ยังมีอยู่ แต่ไม่ต้องไปปฏิบัติแล้ว (หัวหน้าปรับคนรับผิดชอบ)", "การเตือนก่อนงานของงานนี้จะไม่ส่งถึงคุณอีก"],
+    `➖ ถอนชื่อคุณออกจากงาน: ${t.event.title} ${formatThaiDate(t.event.eventDate)}`,
+  );
 }
 
 export type StatusKind = "acked" | "already_acked" | "unavailable" | "already_unavailable";

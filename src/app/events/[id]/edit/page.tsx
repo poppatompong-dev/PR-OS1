@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { getEventById, getEventFormData } from "@/lib/events/queries";
 import { editEvent } from "@/lib/events/mutations";
+import { ShiftButtons } from "./ShiftButtons";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,11 @@ export default async function EditEventPage({
         <label className="form-field">
           เวลาสิ้นสุด
           <input className="input" type="time" name="endTime" defaultValue={event.endTime ?? ""} />
+        </label>
+        <ShiftButtons />
+        <label className="form-field full">
+          เหตุผลที่เปลี่ยน (ไม่บังคับ — ขึ้นบนการ์ดสีส้มที่ทีมได้รับใน LINE)
+          <input className="input" name="changeReason" maxLength={200} placeholder="เช่น ผู้บริหารติดภารกิจ เลื่อนเป็นช่วงบ่าย" />
         </label>
         <label className="form-field">
           สถานที่

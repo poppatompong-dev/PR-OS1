@@ -53,18 +53,32 @@ export function ackLabelFor(changes: FieldChange[]): string {
 
 /** Old → new per field, from the latest significant-change audit row of the job. */
 export async function loadChangeDiff(admin: SupabaseClient, eventId: string, task: TaskItem | null): Promise<FieldChange[]> {
-  if (!task) return [];
+  return (await loadChangeInfo(admin, eventId, task)).changes;
+}
+
+/**
+ * The change card's content: old → new per field, plus the reason the editor
+ * typed (owner, 22 Oct 2026: jobs move often — say why, so nobody has to call).
+ */
+export async function loadChangeInfo(
+  admin: SupabaseClient,
+  eventId: string,
+  task: TaskItem | null,
+): Promise<{ changes: FieldChange[]; reason: string | null }> {
+  if (!task) return { changes: [], reason: null };
   const { data } = await admin
     .from("audit_logs")
-    .select("old_values")
+    .select("old_values, new_values")
     .eq("entity_type", "event")
     .eq("entity_id", eventId)
     .eq("action", "significant_change")
     .order("changed_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  const reasonRaw = (data?.new_values as { reason?: unknown } | null)?.reason;
+  const reason = typeof reasonRaw === "string" && reasonRaw.trim() ? reasonRaw.trim().slice(0, 200) : null;
   const old = (data?.old_values ?? null) as OldEventValues | null;
-  if (!old) return [];
+  if (!old) return { changes: [], reason };
   if (old.location_id !== undefined && old.location_name === undefined) {
     old.location_name = null;
     if (old.location_id) {
@@ -72,5 +86,5 @@ export async function loadChangeDiff(admin: SupabaseClient, eventId: string, tas
       old.location_name = loc?.name ?? null;
     }
   }
-  return diffEvent(old, task);
+  return { changes: diffEvent(old, task), reason };
 }

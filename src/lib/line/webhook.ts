@@ -30,7 +30,7 @@ import {
   withinRateLimit,
   type LinePerson,
 } from "@/lib/line/data";
-import { loadChangeDiff } from "@/lib/line/change-diff";
+import { loadChangeInfo } from "@/lib/line/change-diff";
 import {
   COMMANDS,
   UNAVAILABLE_PRESETS,
@@ -162,11 +162,18 @@ async function runCommand(ctx: Ctx, cmd: Command, person: LinePerson | null, inG
   }
 }
 
+/** Why a button on this job does nothing any more, in the job's own words. */
+function closedText(task: { event: { status: string } } | null): string {
+  if (task?.event.status === "draft") return "งานนี้เลื่อนออกไปก่อน ยังไม่มีวันใหม่ เมื่อได้วันใหม่ระบบจะส่งการ์ดให้กดรับทราบอีกครั้งครับ";
+  if (task?.event.status === "completed") return "งานนี้ปิดไปแล้ว (เสร็จสิ้น) ครับ";
+  return "งานนี้ถูกยกเลิกไปแล้ว ไม่ต้องไปปฏิบัติครับ";
+}
+
 async function finishUnavailable(ctx: Ctx, person: LinePerson, assignmentId: string, reason: string): Promise<LineMessage[]> {
   const { outcome, task } = await recordUnavailable(ctx.admin, { assignmentId, personId: person.id, reason });
   if (outcome === "not_found") return [text("ไม่พบงานนี้แล้ว อาจถูกนำชื่อออกหรือลบไปแล้ว", true)];
   if (outcome === "not_yours") return [text("งานนี้ไม่ได้มอบหมายให้คุณครับ", true)];
-  if (outcome === "closed") return [text("งานนี้ถูกยกเลิกหรือปิดไปแล้ว ไม่ต้องแจ้งครับ", true)];
+  if (outcome === "closed") return [text(closedText(task), true)];
   if (outcome === "already") return [statusCardMessage(task!, "already_unavailable")];
   if (outcome === "acknowledged") {
     return [text("งานนี้คุณกดรับทราบไว้แล้ว ถ้าไปไม่ได้จริง ๆ กรุณาแจ้งแอดมินโดยตรงครับ", true)];
@@ -193,17 +200,17 @@ async function handlePostback(ctx: Ctx, ev: LineEvent, person: LinePerson | null
       if (outcome === "already") return [statusCardMessage({ ...task!, acknowledged: true }, "already_acked")];
       if (outcome === "stale") {
         // The newest card again, with the same old → new lines the change push had (found in the 21 Oct loop test).
-        const changes = await loadChangeDiff(ctx.admin, task!.event.id, task!);
-        return [text("งานนี้มีการแก้ไขหลังจากส่งข้อความนี้ ใช้การ์ดด้านล่างแทนแล้วกดรับทราบอีกครั้งครับ"), taskMessage(task!, "change", changes)];
+        const { changes, reason } = await loadChangeInfo(ctx.admin, task!.event.id, task!);
+        return [text("งานนี้มีการแก้ไขหลังจากส่งข้อความนี้ ใช้การ์ดด้านล่างแทนแล้วกดรับทราบอีกครั้งครับ"), taskMessage(task!, "change", changes, reason)];
       }
-      if (outcome === "closed") return [text("งานนี้ถูกยกเลิกหรือปิดไปแล้วครับ", true)];
+      if (outcome === "closed") return [text(closedText(task), true)];
       if (outcome === "not_yours") return [text("งานนี้ไม่ได้มอบหมายให้คุณครับ", true)];
       return [text("ไม่พบงานนี้แล้ว อาจถูกนำชื่อออกหรือลบไปแล้ว", true)];
     }
     case "unav": {
       const task = await loadTask(ctx.admin, p.id);
       if (!task || task.personId !== person.id) return [text("ไม่พบงานนี้ หรืองานนี้ไม่ได้มอบหมายให้คุณแล้ว", true)];
-      if (task.event.status !== "published") return [text("งานนี้ถูกยกเลิกหรือปิดไปแล้ว ไม่ต้องแจ้งครับ", true)];
+      if (task.event.status !== "published") return [text(closedText(task), true)];
       if (task.unavailable) return [statusCardMessage(task, "already_unavailable")];
       if (task.acknowledged) return [text("งานนี้คุณกดรับทราบไว้แล้ว ถ้าไปไม่ได้จริง ๆ กรุณาแจ้งแอดมินโดยตรงครับ", true), statusCardMessage(task, "already_acked")];
       await setPendingReason(ctx.admin, userId, task.assignmentId);

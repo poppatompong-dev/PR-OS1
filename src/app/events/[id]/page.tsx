@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { StatusPill } from "@/components/StatusPill";
 import { getEventAuditLog, getEventById, getEventFormData } from "@/lib/events/queries";
-import { cancelEvent, completeEvent, deleteEvent, publishEvent } from "@/lib/events/mutations";
+import { cancelEvent, completeEvent, deleteEvent, postponeEvent, publishEvent } from "@/lib/events/mutations";
 import { addAssignment, removeAssignment } from "@/lib/assignments/mutations";
 import { checkConflictsForEvent } from "@/lib/assignments/queries";
 import { conflictLevel } from "@/lib/assignments/conflict";
@@ -68,6 +68,9 @@ export default async function EventDetailPage({
     role = user?.role ?? "assignee";
   }
   const audit = await getEventAuditLog(id);
+  // Newest of "postpone" / "publish" decides whether the job is on hold right now.
+  const lastHoldOrPublish = audit.find((a) => a.action === "postpone" || a.action === "publish");
+  const onHold = event.status === "draft" && lastHoldOrPublish?.action === "postpone" ? lastHoldOrPublish : null;
 
   const canEdit = can.editPublished(role) && (event.status === "draft" || event.status === "published");
   const canPublish = can.publishEvent(role) && event.status === "draft";
@@ -99,6 +102,14 @@ export default async function EventDetailPage({
       </header>
 
       {error ? <div className="login-error">{error}</div> : null}
+
+      {onHold ? (
+        <div className="hold-banner" role="status">
+          <strong>⏸ งานนี้เลื่อนออกไปก่อน</strong> — {onHold.summary.replace(/^เลื่อนออกไปก่อน \(ยังไม่มีวันใหม่\): /, "เหตุผล: ")}
+          <br />
+          ทีมได้รับแจ้งแล้วว่ายังไม่ต้องไป · เมื่อได้วันใหม่: กด แก้ไข ใส่วันเวลาใหม่ แล้วกด เผยแพร่ ทีมจะได้การ์ดสีส้มให้รับทราบใหม่
+        </div>
+      ) : null}
 
       <section className="panel">
         <h2>ข้อมูลหลัก</h2>
@@ -280,6 +291,26 @@ export default async function EventDetailPage({
               </form>
             ) : null}
           </div>
+        </section>
+      ) : null}
+
+      {event.status === "published" && canComplete ? (
+        <section className="panel">
+          <h2>เลื่อนออกไปก่อน (ยังไม่มีวันใหม่)</h2>
+          <p className="ack-tag">
+            ถ้ารู้วันเวลาใหม่แล้ว ให้กด แก้ไข แทน · ปุ่มนี้พักงานไว้ ทีมได้แจ้งใน LINE ว่ายังไม่ต้องไป
+            งานหายจากจอทีวีและการเตือน เมื่อได้วันใหม่ให้แก้วันเวลา แล้วกด เผยแพร่ ทีมจะได้การ์ดสีส้มให้รับทราบใหม่
+          </p>
+          <form action={postponeEvent} className="form-grid">
+            <input type="hidden" name="eventId" value={event.id} />
+            <label className="form-field full">
+              เหตุผลที่เลื่อน *
+              <input className="input" name="reason" required maxLength={200} placeholder="เช่น ผู้บริหารติดภารกิจ รอกำหนดวันใหม่" />
+            </label>
+            <div className="form-actions full" style={{ justifyContent: "flex-start" }}>
+              <button className="button secondary" type="submit">⏸ เลื่อนออกไปก่อน</button>
+            </div>
+          </form>
         </section>
       ) : null}
 
