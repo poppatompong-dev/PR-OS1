@@ -198,3 +198,25 @@ test("after-login redirect stays on this site", () => {
   assert.equal(safeNextPath("/\n/evil.example"), "/");
   assert.equal(safeNextPath("/schedule?view=week"), "/schedule?view=week");
 });
+
+// Owner, 22 Oct 2026: a tap on รับทราบ / ไม่สะดวก must visibly answer with the new status.
+test("status card after a tap: coloured status header, saved time, no action buttons", async () => {
+  const { statusCardMessage, bangkokHhmm } = await import("@/lib/line/messages");
+  const at = new Date("2026-10-22T11:23:00Z"); // 18:23 Bangkok
+  assert.equal(bangkokHhmm(at), "18:23");
+  const kinds = ["acked", "already_acked", "unavailable", "already_unavailable"] as const;
+  for (const k of kinds) {
+    const t = k.includes("unavailable") ? task({ unavailable: true, unavailableReason: "เวลาชนกับงานอื่น" }) : task({ acknowledged: true });
+    const m = statusCardMessage(t, k, at);
+    assert.equal(m.type, "flex");
+    if (m.type !== "flex") continue;
+    assert.ok(m.altText.length <= 400);
+    const json = JSON.stringify(m.contents);
+    assert.ok(!json.includes('"postback"'), `${k}: no รับทราบ/ไม่สะดวก buttons on a done card`);
+    assert.ok(json.includes(t.event.title));
+    if (k === "acked" || k === "unavailable") assert.ok(json.includes("บันทึกเมื่อ 18:23 น."));
+    assert.ok(json.includes(k.includes("unavailable") ? "⛔" : "✅"));
+    assert.ok((m.quickReply?.items.length ?? 0) > 0);
+    for (const it of m.quickReply!.items) assert.ok(it.action.label.length <= 20);
+  }
+});

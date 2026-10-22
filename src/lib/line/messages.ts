@@ -181,6 +181,70 @@ export function taskMessage(t: TaskItem, kind: BubbleKind, changes: FieldChange[
   };
 }
 
+export type StatusKind = "acked" | "already_acked" | "unavailable" | "already_unavailable";
+
+const STATUS_HEAD: Record<StatusKind, { label: string; color: string }> = {
+  acked: { label: "✅ รับทราบแล้ว · บันทึกในระบบเรียบร้อย", color: GREEN },
+  already_acked: { label: "✅ งานนี้รับทราบไว้แล้ว", color: GREEN },
+  unavailable: { label: "⛔ แจ้งไม่สะดวกแล้ว · ส่งถึงแอดมินแล้ว", color: RED },
+  already_unavailable: { label: "⛔ งานนี้แจ้งไม่สะดวกไว้แล้ว", color: RED },
+};
+
+/** "18:23" in Bangkok, for "บันทึกเมื่อ …" on the status card. */
+export function bangkokHhmm(d = new Date()): string {
+  return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
+}
+
+/**
+ * The answer to a tap on รับทราบ / ไม่สะดวก (owner, 22 Oct 2026: "กดแล้วไม่รู้ว่าระบบทำงาน
+ * ให้มีอัพเดทสถานะ"). LINE cannot change a card that was already sent, so the
+ * reply is a fresh card with the job's new status in its coloured header, the
+ * time it was saved, and no action buttons — clearly "done", not "do this".
+ * Replies are free; this never touches the monthly push quota.
+ */
+export function statusCardMessage(t: TaskItem, kind: StatusKind, at = new Date()): LineMessage {
+  const head = STATUS_HEAD[kind];
+  const fresh = kind === "acked" || kind === "unavailable";
+  const note =
+    kind === "unavailable" || kind === "already_unavailable"
+      ? "แอดมินจะหาคนแทนให้ ถ้าเปลี่ยนใจไปได้ กดรับทราบงานนี้ได้ที่ปุ่ม \"งานของฉัน\""
+      : "หัวหน้าเห็นสถานะนี้ในระบบและบนจอทีวีแล้ว";
+  const body: unknown[] = [
+    { type: "text", text: t.event.title, weight: "bold", size: "lg", wrap: true },
+    {
+      type: "box", layout: "vertical", spacing: "sm", margin: "md",
+      contents: [row("วันเวลา", when(t)), row("สถานที่", t.event.locationName), row("หน้าที่", t.roleName)],
+    },
+    {
+      type: "box", layout: "vertical", margin: "md", paddingAll: "8px", cornerRadius: "8px",
+      backgroundColor: kind === "acked" || kind === "already_acked" ? "#e8f5ee" : "#fdecea",
+      contents: [
+        statusLine(t),
+        ...(fresh ? [{ type: "text", text: `บันทึกเมื่อ ${bangkokHhmm(at)} น.`, size: "xs", color: MUTED }] : []),
+      ],
+    },
+    { type: "text", text: note, size: "xs", color: MUTED, wrap: true, margin: "md" },
+  ];
+  return {
+    type: "flex",
+    altText: `${head.label.replace(/ · .*/, "")}: ${t.event.title} ${formatThaiDate(t.event.eventDate)}`.slice(0, 390),
+    contents: {
+      type: "bubble",
+      size: "kilo",
+      header: {
+        type: "box", layout: "vertical", backgroundColor: head.color, paddingAll: "12px",
+        contents: [{ type: "text", text: head.label, color: "#ffffff", size: "sm", weight: "bold", wrap: true }],
+      },
+      body: { type: "box", layout: "vertical", spacing: "sm", contents: body },
+      footer: {
+        type: "box", layout: "vertical", spacing: "sm",
+        contents: [button({ type: "message", label: "งานของฉัน (ล่าสุด)", text: COMMANDS.mine }, "link")],
+      },
+    },
+    quickReply: commandQuickReply(),
+  };
+}
+
 /** Up to 12 cards side by side (LINE's carousel limit). */
 export function taskCarousel(tasks: TaskItem[], altText: string): LineMessage {
   return {

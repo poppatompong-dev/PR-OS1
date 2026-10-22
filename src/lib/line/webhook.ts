@@ -10,7 +10,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, todayInBangkok } from "@/lib/date";
-import { addFriendUrl, getBotBasicId, getGroupMemberProfile, replyMessages, type LineMessage } from "@/lib/line/api";
+import { addFriendUrl, getBotBasicId, getGroupMemberProfile, replyMessages, startLoading, type LineMessage } from "@/lib/line/api";
 import { alertAdminsUnavailable } from "@/lib/line/alerts";
 import {
   claimRun,
@@ -38,6 +38,7 @@ import {
   linkPromptMessage,
   myTasksTextMessage,
   parsePostback,
+  statusCardMessage,
   pendingApprovalMessage,
   pendingListMessage,
   registerCardMessage,
@@ -124,7 +125,9 @@ async function handleRegister(ctx: Ctx, ev: LineEvent, person: LinePerson | null
 
 async function reply(ev: LineEvent, messages: LineMessage[]) {
   if (!ev.replyToken || messages.length === 0) return;
-  await replyMessages(ev.replyToken, messages);
+  const res = await replyMessages(ev.replyToken, messages);
+  // A rejected reply is otherwise invisible: the person just sees nothing happen.
+  if (!res.ok) console.error("line reply failed", ev.type, res.status ?? "", res.error ?? "");
 }
 
 async function runCommand(ctx: Ctx, cmd: Command, person: LinePerson | null, inGroup: boolean): Promise<LineMessage[]> {
@@ -164,12 +167,12 @@ async function finishUnavailable(ctx: Ctx, person: LinePerson, assignmentId: str
   if (outcome === "not_found") return [text("ไม่พบงานนี้แล้ว อาจถูกนำชื่อออกหรือลบไปแล้ว", true)];
   if (outcome === "not_yours") return [text("งานนี้ไม่ได้มอบหมายให้คุณครับ", true)];
   if (outcome === "closed") return [text("งานนี้ถูกยกเลิกหรือปิดไปแล้ว ไม่ต้องแจ้งครับ", true)];
-  if (outcome === "already") return [text("แจ้งไม่สะดวกงานนี้ไว้แล้ว แอดมินรับทราบแล้วครับ", true)];
+  if (outcome === "already") return [statusCardMessage(task!, "already_unavailable")];
   if (outcome === "acknowledged") {
     return [text("งานนี้คุณกดรับทราบไว้แล้ว ถ้าไปไม่ได้จริง ๆ กรุณาแจ้งแอดมินโดยตรงครับ", true)];
   }
   await alertAdminsUnavailable(ctx.admin, task!);
-  return [text(`รับเรื่องแล้วครับ แจ้งแอดมินให้หาคนแทนงาน "${task!.event.title}" แล้ว\nถ้าเปลี่ยนใจไปได้ กดรับทราบงานนี้ได้ตามเดิม`, true)];
+  return [statusCardMessage(task!, "unavailable")];
 }
 
 async function handlePostback(ctx: Ctx, ev: LineEvent, person: LinePerson | null): Promise<LineMessage[]> {
@@ -186,8 +189,8 @@ async function handlePostback(ctx: Ctx, ev: LineEvent, person: LinePerson | null
         personId: person.id,
         channel: "line",
       });
-      if (outcome === "ok") return [text(`✅ รับทราบงาน "${task!.event.title}" แล้วครับ`, true)];
-      if (outcome === "already") return [text("รับทราบงานนี้ไปแล้วครับ", true)];
+      if (outcome === "ok") return [statusCardMessage(task!, "acked")];
+      if (outcome === "already") return [statusCardMessage({ ...task!, acknowledged: true }, "already_acked")];
       if (outcome === "stale") {
         // The newest card again, with the same old → new lines the change push had (found in the 21 Oct loop test).
         const changes = await loadChangeDiff(ctx.admin, task!.event.id, task!);
@@ -201,8 +204,8 @@ async function handlePostback(ctx: Ctx, ev: LineEvent, person: LinePerson | null
       const task = await loadTask(ctx.admin, p.id);
       if (!task || task.personId !== person.id) return [text("ไม่พบงานนี้ หรืองานนี้ไม่ได้มอบหมายให้คุณแล้ว", true)];
       if (task.event.status !== "published") return [text("งานนี้ถูกยกเลิกหรือปิดไปแล้ว ไม่ต้องแจ้งครับ", true)];
-      if (task.unavailable) return [text("แจ้งไม่สะดวกงานนี้ไว้แล้วครับ", true)];
-      if (task.acknowledged) return [text("งานนี้คุณกดรับทราบไว้แล้ว ถ้าไปไม่ได้จริง ๆ กรุณาแจ้งแอดมินโดยตรงครับ", true)];
+      if (task.unavailable) return [statusCardMessage(task, "already_unavailable")];
+      if (task.acknowledged) return [text("งานนี้คุณกดรับทราบไว้แล้ว ถ้าไปไม่ได้จริง ๆ กรุณาแจ้งแอดมินโดยตรงครับ", true), statusCardMessage(task, "already_acked")];
       await setPendingReason(ctx.admin, userId, task.assignmentId);
       return [unavailableReasonPrompt(task.assignmentId, task.event.title)];
     }
@@ -271,7 +274,12 @@ export async function handleLineEvent(ctx: Ctx, ev: LineEvent): Promise<void> {
   }
 
   const userId = ev.source.userId;
-  if (userId && (ev.type === "message" || ev.type === "postback") && !(await withinRateLimit(ctx.admin, userId))) return;
+  // Instant feedback on a button tap in 1:1 chat, before any database work.
+  const loading = ev.type === "postback" && ev.source.type === "user" && userId ? startLoading(userId) : null;
+  if (userId && (ev.type === "message" || ev.type === "postback") && !(await withinRateLimit(ctx.admin, userId))) {
+    await loading;
+    return;
+  }
   const person = userId ? await findPersonByLineUserId(ctx.admin, userId) : null;
 
   switch (ev.type) {

@@ -65,6 +65,15 @@ export function replyMessages(replyToken: string, messages: LineMessage[]): Prom
 }
 
 /**
+ * The "…" typing dots in a 1:1 chat while the bot works on a tap (owner,
+ * 22 Oct 2026: a tap must visibly do something). Free; ends by itself when
+ * the reply arrives. Groups do not support it.
+ */
+export function startLoading(chatId: string, seconds = 10): Promise<SendResult> {
+  return post(`${API}/chat/loading/start`, { chatId, loadingSeconds: seconds });
+}
+
+/**
  * LINE's own count for this month, which is the one that actually stops
  * delivery. Our notifications table is a fallback when this call fails.
  */
