@@ -278,8 +278,8 @@ export async function publishEvent(formData: FormData) {
       user,
       eventId,
       "significant_change",
-      "นัดวันใหม่หลังเลื่อน — รีเซ็ตการรับทราบ",
-      { title: now?.title, event_date: now?.event_date, start_time: hhmm(now?.start_time), reason: "นัดวันใหม่หลังเลื่อน", resumed: true },
+      `นัดวันใหม่หลังเลื่อน — รีเซ็ตการรับทราบ${hold.editReason ? ` · เหตุผล: ${hold.editReason}` : ""}`,
+      { title: now?.title, event_date: now?.event_date, start_time: hhmm(now?.start_time), reason: hold.editReason || "นัดวันใหม่หลังเลื่อน", resumed: true },
       hold.oldValues,
     );
     await bumpAssignmentVersions(supabase, eventId);
@@ -351,10 +351,10 @@ async function bumpAssignmentVersions(supabase: Awaited<ReturnType<typeof create
 async function pendingPostponement(
   supabase: Awaited<ReturnType<typeof createClient>>,
   eventId: string,
-): Promise<{ oldValues: Record<string, unknown> } | null> {
+): Promise<{ oldValues: Record<string, unknown>; editReason: string } | null> {
   const { data } = await supabase
     .from("audit_logs")
-    .select("action, old_values")
+    .select("action, old_values, changed_at")
     .eq("entity_type", "event")
     .eq("entity_id", eventId)
     .in("action", ["postpone", "publish"])
@@ -362,7 +362,22 @@ async function pendingPostponement(
     .limit(1)
     .maybeSingle();
   if (!data || data.action !== "postpone") return null;
-  return { oldValues: (data.old_values as Record<string, unknown>) ?? {} };
+  // The reason typed when the new date was set (แก้ไข while on hold) goes on the
+  // orange card; without one the card says "นัดวันใหม่หลังเลื่อน".
+  const { data: edit } = await supabase
+    .from("audit_logs")
+    .select("new_values")
+    .eq("entity_type", "event")
+    .eq("entity_id", eventId)
+    .eq("action", "edit")
+    .gt("changed_at", data.changed_at)
+    .order("changed_at", { ascending: false })
+    .limit(5);
+  const editReason =
+    (edit ?? [])
+      .map((r) => String((r.new_values as { reason?: unknown } | null)?.reason ?? "").trim())
+      .find((r) => r.length > 0) ?? "";
+  return { oldValues: (data.old_values as Record<string, unknown>) ?? {}, editReason };
 }
 
 /**
