@@ -7,6 +7,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./add-event.module.css";
+import { AttachmentPicker } from "@/components/AttachmentPicker";
+import type { StagedAttachment } from "@/lib/attachments/rules";
 
 type Option = { id: string; name: string };
 type Person = Option & { position: string | null; avatar: string };
@@ -66,6 +68,8 @@ export function AddEventForm({ liffId }: { liffId: string }) {
   const [locationId, setLocationId] = useState("");
   const [shortNote, setShortNote] = useState("");
   const [rows, setRows] = useState<Row[]>([{ personId: "", roleId: "" }]);
+  const [files, setFiles] = useState<{ staged: StagedAttachment[]; busy: boolean }>({ staged: [], busy: false });
+  const [pickerKey, setPickerKey] = useState(0);
 
   const token = useCallback(() => liff?.getIDToken() ?? "", [liff]);
 
@@ -109,6 +113,8 @@ export function AddEventForm({ liffId }: { liffId: string }) {
     setEndTime("");
     setShortNote("");
     setRows([{ personId: "", roleId: "" }]);
+    setFiles({ staged: [], busy: false });
+    setPickerKey((k) => k + 1);
     setError(null);
     setPhase({ kind: "form" });
   }
@@ -119,12 +125,13 @@ export function AddEventForm({ liffId }: { liffId: string }) {
     if (!eventDate || !startTime) return setError("กรุณาเลือกวันที่และเวลาเริ่ม");
     if (endTime && endTime <= startTime) return setError("เวลาสิ้นสุดต้องหลังเวลาเริ่ม");
     if (halfRow) return setError("เลือกทั้งชื่อและบทบาทของผู้ปฏิบัติงานให้ครบ หรือลบแถวที่ไม่ใช้");
+    if (files.busy) return setError("กำลังอัปโหลดไฟล์แนบ รอสักครู่แล้วกดอีกครั้ง");
     setSaving(publish ? "publish" : "draft");
     try {
       const res = await fetch("/api/liff/events", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ title, eventDate, startTime, endTime: endTime || null, locationId: locationId || null, shortNote, assignees: filled, publish }),
+        body: JSON.stringify({ title, eventDate, startTime, endTime: endTime || null, locationId: locationId || null, shortNote, assignees: filled, attachments: files.staged, publish }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "บันทึกไม่สำเร็จ");
@@ -272,6 +279,14 @@ export function AddEventForm({ liffId }: { liffId: string }) {
           <span>หมายเหตุบนจอทีวี</span>
           <textarea value={shortNote} onChange={(e) => setShortNote(e.target.value)} rows={2} maxLength={500} placeholder="ไม่บังคับ" />
         </label>
+      </section>
+
+      <section className={styles.card}>
+        <AttachmentPicker
+          key={pickerKey}
+          authHeader={() => `Bearer ${token()}`}
+          onChange={(staged, busy) => setFiles({ staged, busy })}
+        />
       </section>
 
       <div className={styles.footer}>

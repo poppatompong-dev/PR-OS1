@@ -11,6 +11,12 @@ import { formatThaiDate } from "@/lib/format";
 import type { LineAction, LineMessage, QuickReply } from "@/lib/line/api";
 import type { TaskItem } from "@/lib/line/data";
 import { ackLabelFor, type FieldChange } from "@/lib/line/change-diff";
+import { LIFF_ADD_EVENT_URL } from "@/lib/liff/config";
+
+/** liff.line.me/<id>/files → the LIFF endpoint + "/files" (/liff/add-event/files). */
+export function attachmentsUrl(eventId: string): string {
+  return `${LIFF_ADD_EVENT_URL}/files?e=${encodeURIComponent(eventId)}`;
+}
 
 const PURPLE = "#5e2f73";
 const MUTED = "#6b6475";
@@ -143,6 +149,11 @@ export function taskBubble(t: TaskItem, kind: BubbleKind, changes: FieldChange[]
     if (!t.unavailable) {
       footer.push(button({ type: "postback", label: "ไม่สะดวก", data: postback.unavailable(t), displayText: "ไม่สะดวก" }));
     }
+  }
+  const files = t.event.attachmentCount ?? 0;
+  if (files > 0) {
+    // Opens inside LINE (LIFF): only people on this job, and the admins, can open the files.
+    footer.push(button({ type: "uri", label: `📎 ดูไฟล์แนบ (${files})`, uri: attachmentsUrl(t.event.id) }, "secondary"));
   }
   if (kind === "list") {
     footer.push(button({ type: "uri", label: "ดูรายละเอียด", uri: appUrl("/mobile/my-tasks") }, "link"));

@@ -11,6 +11,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LiffCaller } from "@/lib/liff/auth";
+import { parseStagedList, type StagedAttachment } from "@/lib/attachments/rules";
+import { attachStaged } from "@/lib/attachments/staging";
 
 export type LiffEventInput = {
   title: string;
@@ -20,6 +22,8 @@ export type LiffEventInput = {
   locationId: string | null;
   shortNote: string | null;
   assignees: Array<{ personId: string; roleId: string }>;
+  /** Files already uploaded to staging from the form (max 5). */
+  attachments: StagedAttachment[];
   publish: boolean;
 };
 
@@ -70,6 +74,7 @@ export function parseLiffEventInput(body: unknown): { ok: true; input: LiffEvent
       locationId,
       shortNote: optional(b.shortNote, 500),
       assignees,
+      attachments: parseStagedList(b.attachments),
       publish: b.publish === true,
     },
   };
@@ -143,6 +148,9 @@ export async function createEventFromLiff(
     if (asgError) return { ok: false, error: `บันทึกงานแล้ว แต่บันทึกผู้ปฏิบัติงานไม่สำเร็จ: ${asgError.message}` };
     assignmentIds = rows ?? [];
   }
+
+  // Before the cards go out, so the card can offer "ดูไฟล์แนบ".
+  if (input.attachments.length > 0) await attachStaged(admin, created.id, input.attachments, caller.userId);
 
   await admin.from("audit_logs").insert({
     entity_type: "event",

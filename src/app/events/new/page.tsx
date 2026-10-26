@@ -2,6 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import { getEventById, getEventFormData } from "@/lib/events/queries";
 import { createEvent } from "@/lib/events/mutations";
 import { FormWizard } from "@/components/FormWizard";
+import { AttachmentPicker } from "@/components/AttachmentPicker";
 
 export const dynamic = "force-dynamic";
 
@@ -217,6 +218,8 @@ export default async function NewEventPage({
                 placeholder="ข้อมูลส่วนนี้ไม่แสดงบนจอมอนิเตอร์"
               />
             </label>
+
+            <AttachmentPicker name="stagedAttachment" className="form-field full" />
 
             <div className="form-actions full">
               <button

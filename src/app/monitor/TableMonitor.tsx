@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { fetchMonitorEvents, fetchMonitorTeam } from "@/lib/monitor/client";
 import type { MonitorEvent } from "@/lib/monitor/types";
 import { Avatar } from "@/components/Avatar";
@@ -109,10 +110,28 @@ type Alert = {
   why: string;
 };
 
+/** Click / Enter opens the job page. Only used when signed in (never on the TV). */
+function openProps(id: string, title: string) {
+  const go = () => window.location.assign(`/events/${id}`);
+  return {
+    role: "link" as const,
+    tabIndex: 0,
+    title: `ดูรายละเอียด: ${title}`,
+    style: { cursor: "pointer" },
+    onClick: go,
+    onKeyDown: (ev: KeyboardEvent<HTMLElement>) => {
+      if (ev.key === "Enter") go();
+    },
+  };
+}
+
 export function TableMonitor({
   variant = "default",
   staticMode = false,
+  linkable = false,
 }: {
+  /** Signed in on a phone/PC (not the TV): tapping a job opens its page (owner, 26 Oct 2026). */
+  linkable?: boolean;
   /** "3d" = the same screen plus the mascot column (/monitor?v=3d): navy
    *  studio theme with the pre-rendered โพโพ + ฟูฟู loops (owner, 21 Oct 2026). */
   variant?: "default" | "3d";
@@ -368,6 +387,7 @@ export function TableMonitor({
                 <article
                   key={e.id}
                   className={`tv-row${i === nextIndex ? " is-next" : ""}${past ? " is-past" : ""}${i >= visible ? " is-clipped" : ""}`}
+                  {...(linkable ? openProps(e.id, e.title) : {})}
                 >
                   <div className="tv-time">
                     <strong>{e.startTime}</strong>
@@ -426,7 +446,7 @@ export function TableMonitor({
               {d.items.length > 0 ? (
                 <ul>
                   {d.items.slice(0, weekItems).map((it) => (
-                    <li key={it.id}>
+                    <li key={it.id} {...(linkable ? openProps(it.id, it.title) : {})}>
                       <i>{it.startTime}</i> {it.title}
                     </li>
                   ))}

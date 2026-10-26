@@ -5,8 +5,10 @@ import { kickNotifications } from "@/lib/notifications/kick";
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { can, getSessionUser } from "@/lib/auth/roles";
+import { parseStagedFormValues } from "@/lib/attachments/rules";
+import { attachStaged } from "@/lib/attachments/staging";
 
 function emptyToNull(value: FormDataEntryValue | null): string | null {
   const text = String(value ?? "").trim();
@@ -78,6 +80,11 @@ export async function createEvent(formData: FormData) {
     });
     if (asgError) fail(`บันทึกผู้รับผิดชอบไม่สำเร็จ: ${asgError.message}`);
   }
+
+  // Files picked in the form's last step were uploaded to staging already;
+  // put them on the job before the team's card goes out (the card shows them).
+  const staged = parseStagedFormValues(formData.getAll("stagedAttachment"));
+  if (staged.length > 0) await attachStaged(createAdminClient(), created.id, staged, user.id);
 
   // Audit log — append-only record of the create/publish action.
   await supabase.from("audit_logs").insert({

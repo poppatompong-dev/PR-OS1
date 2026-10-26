@@ -1,5 +1,8 @@
 import { ClassicMonitor } from "./ClassicMonitor";
 import { TableMonitor } from "./TableMonitor";
+import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth/roles";
+import { isSupabaseConfigured } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +19,11 @@ export default async function MonitorPage({
   if (classic === "1") {
     return <ClassicMonitor />;
   }
+  // The TV opens this page without signing in; a signed-in phone/PC may tap a job to open it.
+  const user = isSupabaseConfigured() ? await getSessionUser(await createClient()).catch(() => null) : null;
+  const linkable = Boolean(user && user.role !== "display");
   if (v === "3d") {
-    return <TableMonitor variant="3d" staticMode={still === "1"} />;
+    return <TableMonitor variant="3d" staticMode={still === "1"} linkable={linkable} />;
   }
-  return <TableMonitor />;
+  return <TableMonitor linkable={linkable} />;
 }

@@ -23,6 +23,9 @@ const PUBLIC_PREFIXES = [
   // LINE "add job" form (LIFF): no web session; the API checks the LINE ID token.
   "/liff",
   "/api/liff",
+  // Upload slot for files that go with a new order: the LINE form calls it with
+  // a LINE ID token (no web session); the route checks the token or the session.
+  "/api/attachments/stage",
   "/api/health",
   // LINE calls the webhook with no session; it checks x-line-signature itself.
   "/api/line/webhook",
