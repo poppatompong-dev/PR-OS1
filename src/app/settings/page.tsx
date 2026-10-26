@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { QuotaBar } from "@/components/QuotaBar";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/roles";
 import { buildTeam } from "@/lib/settings/team";
@@ -11,6 +12,7 @@ import {
   getMasterLists,
   getNotificationFeed,
   getNotificationSettings,
+  getQuotaBar,
   type MasterItem,
 } from "@/lib/settings/queries";
 import {
@@ -101,13 +103,14 @@ export default async function SettingsPage({
     );
   }
 
-  const [people, accounts, master, notifFeed, notifSettings, pendingLine] = await Promise.all([
+  const [people, accounts, master, notifFeed, notifSettings, pendingLine, quotaBar] = await Promise.all([
     getAllPeople(),
     getAccounts(),
     getMasterLists(),
     getNotificationFeed(),
     getNotificationSettings(),
     getPendingLineRegistrations(),
+    getQuotaBar(),
   ]);
   const team = buildTeam(people, accounts, notifSettings.adminPersonIds);
   const tvAddress = `${new URL(env.appBaseUrl).host}/tv`;
@@ -199,12 +202,10 @@ export default async function SettingsPage({
               {notifSettings.failedLast24h > 0 ? ` · ส่งไม่สำเร็จ 24 ชม. ล่าสุด ${notifSettings.failedLast24h} ข้อความ` : ""}
             </dd>
           </div>
-          <div>
-            <dt>ใช้โควต้าเดือนนี้ (ตามที่ระบบส่ง)</dt>
+          <div id="line-quota">
+            <dt>ใช้โควต้าเดือนนี้</dt>
             <dd>
-              {notifSettings.quotaUsedThisMonth} / {notifSettings.lineMonthlyQuota} ข้อความ
-              {" "}(การ์ดงาน {notifSettings.budget.sent.critical} · เตือนก่อนงาน {notifSettings.budget.sent.reminder} · สรุปเช้า/รายงานเย็น{" "}
-              {notifSettings.budget.sent.low})
+              <QuotaBar q={quotaBar} />
             </dd>
           </div>
           <div>

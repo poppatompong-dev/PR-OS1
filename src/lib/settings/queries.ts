@@ -4,7 +4,8 @@ import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { LAST_RUN_KEY, schedulerHealth, type LastRun, type SchedulerHealth } from "@/lib/notifications/health";
 import { budgetLabel, budgetPlan, priorityOf, type BudgetState, type Priority } from "@/lib/notifications/budget";
 import { isLineMessagingConfigured, isSupabaseConfigured } from "@/lib/env";
-import { getFriendStatus, type FriendStatus } from "@/lib/line/api";
+import { getFriendStatus, getQuotaStatus, type FriendStatus } from "@/lib/line/api";
+import { quotaView, type QuotaView } from "@/lib/notifications/quota-view";
 import { getPendingRegistrations } from "@/lib/line/data";
 import type { PendingRegistration } from "@/lib/line/registrations";
 import type { AppRole } from "@/lib/auth/roles";
@@ -396,4 +397,32 @@ export async function getPendingLineRegistrations(): Promise<PendingLineView[]> 
   } catch {
     return [];
   }
+}
+
+/**
+ * Numbers for the quota bar (home page + /settings, admins only). LINE's own
+ * counter when it answers — that is the one that stops delivery — and our
+ * notifications table for the split by kind.
+ */
+export async function getQuotaBar(): Promise<QuotaView> {
+  const date = bangkokDate();
+  if (!isSupabaseConfigured()) {
+    return quotaView({ date, sent: { critical: 44, reminder: 4, low: 12 }, settingsLimit: 300, line: null });
+  }
+  const supabase = await createClient();
+  const month = date.slice(0, 7);
+  const [{ data: limitRow }, { data: sentRows }, line] = await Promise.all([
+    supabase.from("settings").select("value").eq("key", "line_monthly_quota").maybeSingle(),
+    supabase
+      .from("notifications")
+      .select("notification_type")
+      .eq("channel", "line")
+      .eq("status", "sent")
+      .eq("quota_month", month)
+      .limit(5000),
+    isLineMessagingConfigured() ? getQuotaStatus() : Promise.resolve(null),
+  ]);
+  const sent: Record<Priority, number> = { critical: 0, reminder: 0, low: 0 };
+  for (const r of sentRows ?? []) sent[priorityOf(String(r.notification_type))] += 1;
+  return quotaView({ date, sent, settingsLimit: Number(limitRow?.value) || 300, line });
 }

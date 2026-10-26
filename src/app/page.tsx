@@ -5,12 +5,20 @@ import { getReportData } from "@/lib/reports/queries";
 import { formatThaiDate } from "@/lib/format";
 import { ArrowRight, PlusCircle } from "lucide-react";
 import { addDays, todayInBangkok } from "@/lib/date";
+import { QuotaBar } from "@/components/QuotaBar";
+import { getQuotaBar } from "@/lib/settings/queries";
+import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth/roles";
+import { isSupabaseConfigured } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const today = todayInBangkok();
   const report = await getReportData({ from: today, to: addDays(today, 30) });
+  // Quota bar: admins only (owner, 26 Oct 2026).
+  const user = isSupabaseConfigured() ? await getSessionUser(await createClient()).catch(() => null) : null;
+  const quota = !isSupabaseConfigured() || user?.role === "admin" ? await getQuotaBar().catch(() => null) : null;
 
   const weekEnd = addDays(today, 7);
   const todays = report.events.filter((e) => e.eventDate === today);
@@ -53,6 +61,8 @@ export default async function HomePage() {
           </article>
         </div>
       </section>
+
+      {quota ? <QuotaBar q={quota} href="/settings#line-quota" /> : null}
 
       <section className="panel">
         <div className="panel-head">

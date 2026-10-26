@@ -3853,3 +3853,20 @@ textarea:focus-visible {
   color: #3b2a4e;
   line-height: 1.6;
 }
+
+/* LINE quota bar (home + settings, admins only) */
+.quota-bar { display: grid; gap: 8px; }
+.quota-link { color: inherit; text-decoration: none; }
+.quota-link:hover { border-color: var(--line-strong); }
+.quota-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.quota-num { font-variant-numeric: tabular-nums; font-weight: 600; }
+.quota-track { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--line); border: 1px solid var(--line-strong); }
+.quota-seg { display: block; height: 100%; }
+.quota-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--muted); }
+.quota-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.quota-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.quota-foot { margin: 0; font-size: 14px; font-weight: 600; }
+.quota-ok { color: var(--green); }
+.quota-warn { color: var(--amber); }
+.quota-danger { color: var(--red); }
+.quota-note { margin: 0; font-size: 12px; color: var(--muted); }
