@@ -12,6 +12,7 @@ import {
   ATTACHMENT_MIME,
   MAX_ATTACHMENTS_PER_EVENT,
   checkAttachmentMeta,
+  thumbPathFor,
   type StagedAttachment,
 } from "@/lib/attachments/rules";
 
@@ -67,6 +68,8 @@ export async function attachStaged(
       failed.push(s.fileName);
       continue;
     }
+    // The photo's small preview goes next to it; a failed move only means no thumbnail.
+    if (s.thumbPath) await admin.storage.from(ATTACHMENT_BUCKET).move(s.thumbPath, thumbPathFor(finalPath));
     attached += 1;
   }
   if (attached > 0) {

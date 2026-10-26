@@ -145,7 +145,8 @@ export async function getMasterLists(): Promise<MasterLists> {
   const supabase = await createClient();
   const [d, l, t, r] = await Promise.all([
     supabase.from("departments").select("id, name, short_name, is_active").order("name"),
-    supabase.from("locations").select("id, name, description, is_active").order("name"),
+    // Places typed on a job (is_custom, 0016) stay out of the master list.
+    supabase.from("locations").select("id, name, description, is_active").eq("is_custom", false).order("name"),
     supabase.from("event_types").select("id, name, color, is_active").order("name"),
     supabase.from("roles").select("id, name, code, color, is_active").order("name"),
   ]);

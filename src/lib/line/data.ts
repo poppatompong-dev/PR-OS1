@@ -107,7 +107,7 @@ export async function getPeopleByIds(admin: SupabaseClient, ids: string[]): Prom
 
 const TASK_SELECT = `
   id, assignment_version, person_id, unavailable_at, unavailable_reason,
-  role:roles(name),
+  role:roles(name), role_names,
   person:people(display_name, line_user_id),
   acknowledgements(assignment_version),
   event:events!inner(
@@ -128,7 +128,7 @@ function toTask(a: any): TaskItem | null {
     personId: a.person_id,
     personName: person?.display_name ?? "—",
     lineUserId: person?.line_user_id ?? null,
-    roleName: one(a.role)?.name ?? "—",
+    roleName: a.role_names ?? one(a.role)?.name ?? "—",
     acknowledged: acks.some((k: any) => k.assignment_version === a.assignment_version),
     unavailable: Boolean(a.unavailable_at),
     unavailableReason: a.unavailable_reason ?? null,

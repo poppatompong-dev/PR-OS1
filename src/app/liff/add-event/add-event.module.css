@@ -109,9 +109,27 @@
   display: grid;
   grid-template-columns: 1fr 40px;
   gap: 6px 4px;
-  padding-bottom: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+}
+/* One person + their duties (0016) */
+.person {
+  padding-bottom: 12px;
+  margin-bottom: 12px;
   border-bottom: 1px solid var(--line);
+}
+.person :global(.role-chip input) {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+}
+.person :global(.role-chip span) {
+  padding: 9px 14px;
+  font-size: 15px;
+}
+.hint {
+  margin: -4px 0 10px;
+  font-size: 13px;
+  color: var(--muted);
 }
 .row > select:first-child {
   grid-column: 1;

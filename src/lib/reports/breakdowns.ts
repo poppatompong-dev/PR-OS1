@@ -131,7 +131,10 @@ export function byPerson(events: PrEvent[]): PersonRow[] {
       if (assignment.ackStatus === "pending") row.pending += 1;
       if (event.urgency !== "normal") row.urgent += 1;
       if (event.eventDate > row.lastDate) row.lastDate = event.eventDate;
-      row.roles.set(assignment.role.name, (row.roles.get(assignment.role.name) ?? 0) + 1);
+      // One person can hold several duties on one job ("ช่างภาพนิ่ง · ทำข่าว"): count each.
+      for (const roleName of assignment.role.name.split(" · ")) {
+        row.roles.set(roleName, (row.roles.get(roleName) ?? 0) + 1);
+      }
       row.departments.add(event.ownerDepartment.shortName);
     }
   }

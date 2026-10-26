@@ -7,6 +7,7 @@ import { DEMO_WRITE_MESSAGE } from "@/lib/demo-guard";
 import { createAdminClient } from "@/lib/supabase/server";
 import { authenticateLiff } from "@/lib/liff/auth";
 import { avatarUrl } from "@/lib/avatars";
+import { placeSuggestions } from "@/lib/locations/resolve";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
   const [people, roles, locations, displayProfiles] = await Promise.all([
     admin.from("people").select("id, display_name, position").eq("is_active", true).order("display_name"),
     admin.from("roles").select("id, name").eq("is_active", true).order("name"),
-    admin.from("locations").select("id, name").eq("is_active", true).order("name"),
+    placeSuggestions(admin).catch(() => [] as string[]),
     // A TV-screen account is not someone who goes out on a job (found in the 21 Oct test).
     admin.from("profiles").select("person_id").eq("role", "display").not("person_id", "is", null),
   ]);
@@ -29,6 +30,7 @@ export async function GET(request: Request) {
     me: { id: auth.caller.personId, name: auth.caller.displayName },
     people: (people.data ?? []).filter((p) => !notAssignable.has(p.id)).map((p) => ({ id: p.id, name: p.display_name, position: p.position, avatar: avatarUrl(p.id) })),
     roles: (roles.data ?? []).map((r) => ({ id: r.id, name: r.name })),
-    locations: (locations.data ?? []).map((l) => ({ id: l.id, name: l.name })),
+    // Typed place box (0016): master list + places typed before.
+    places: locations,
   });
 }

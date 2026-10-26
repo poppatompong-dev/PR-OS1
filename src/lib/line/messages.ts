@@ -120,7 +120,7 @@ export function taskBubble(t: TaskItem, kind: BubbleKind, changes: FieldChange[]
     ...(changed.has("date") || changed.has("start") || changed.has("end") ? [] : [row("วันเวลา", when(t))]),
     ...(changed.has("date") ? [] : changed.has("start") || changed.has("end") ? [row("วันที่", formatThaiDate(t.event.eventDate))] : []),
     ...(changed.has("location") ? [] : [row("สถานที่", t.event.locationName)]),
-    row("หน้าที่", t.roleName),
+    ...(changed.has("role") ? [] : [row("หน้าที่", t.roleName)]),
     ...(t.event.shortNote ? [row("หมายเหตุ", t.event.shortNote)] : []),
   ];
   if (changed.has("date") && !changed.has("start") && !changed.has("end")) {

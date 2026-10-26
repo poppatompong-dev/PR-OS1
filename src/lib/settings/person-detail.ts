@@ -58,7 +58,7 @@ export type PersonDetail = {
 
 const TASK_SELECT = `
   id, assignment_version, unavailable_at, unavailable_reason,
-  role:roles(name),
+  role:roles(name), role_names,
   acknowledgements(assignment_version),
   event:events!inner(id, title, event_date, start_time, status, deleted_at)
 `;
@@ -75,7 +75,7 @@ function toTask(a: any): PersonTask | null {
     eventDate: ev.event_date,
     startTime: String(ev.start_time ?? "").slice(0, 5),
     eventStatus: ev.status,
-    roleName: one(a.role)?.name ?? "—",
+    roleName: a.role_names ?? one(a.role)?.name ?? "—",
     ack: acknowledged ? "acknowledged" : a.unavailable_at ? "unavailable" : "pending",
     unavailableReason: a.unavailable_reason ?? null,
   };

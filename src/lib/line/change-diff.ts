@@ -8,7 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatThaiDate } from "@/lib/format";
 import type { TaskItem } from "@/lib/line/data";
 
-export type ChangeField = "title" | "date" | "start" | "end" | "location";
+export type ChangeField = "title" | "date" | "start" | "end" | "location" | "role";
 
 export type FieldChange = { field: ChangeField; label: string; from: string; to: string };
 
@@ -41,6 +41,14 @@ export function diffEvent(old: OldEventValues | null | undefined, t: TaskItem): 
   return out;
 }
 
+/** Duties before → now, from a roles_change audit row. */
+export function diffRoles(old: { role_names?: string | null } | null | undefined, t: TaskItem): FieldChange[] {
+  const from = (old?.role_names ?? "").trim();
+  const to = (t.roleName ?? "").trim();
+  if (!from || from === to) return [];
+  return [{ field: "role", label: "หน้าที่", from, to: to || "ไม่ระบุ" }];
+}
+
 /** The acknowledge button says what is being acknowledged (≤ 20 characters). */
 export function ackLabelFor(changes: FieldChange[]): string {
   const f = new Set(changes.map((c) => c.field));
@@ -48,6 +56,7 @@ export function ackLabelFor(changes: FieldChange[]): string {
   if (f.has("date")) return "รับทราบวันใหม่";
   if (f.has("start") || f.has("end")) return f.has("location") ? "รับทราบงานที่แก้" : "รับทราบเวลาใหม่";
   if (f.has("location")) return "รับทราบสถานที่ใหม่";
+  if (f.has("role") && f.size === 1) return "รับทราบหน้าที่ใหม่";
   return "รับทราบงานที่แก้";
 }
 
@@ -66,15 +75,31 @@ export async function loadChangeInfo(
   task: TaskItem | null,
 ): Promise<{ changes: FieldChange[]; reason: string | null }> {
   if (!task) return { changes: [], reason: null };
-  const { data } = await admin
-    .from("audit_logs")
-    .select("old_values, new_values")
-    .eq("entity_type", "event")
-    .eq("entity_id", eventId)
-    .eq("action", "significant_change")
-    .order("changed_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const [{ data }, { data: roleRow }] = await Promise.all([
+    admin
+      .from("audit_logs")
+      .select("old_values, new_values, changed_at")
+      .eq("entity_type", "event")
+      .eq("entity_id", eventId)
+      .eq("action", "significant_change")
+      .order("changed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    // This person's duties changed (0016) — newer than any job edit → that is the news.
+    admin
+      .from("audit_logs")
+      .select("old_values, new_values, changed_at")
+      .eq("entity_type", "event")
+      .eq("entity_id", eventId)
+      .eq("action", "roles_change")
+      .eq("new_values->>assignment_id", task.assignmentId)
+      .order("changed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  if (roleRow && (!data || roleRow.changed_at > data.changed_at)) {
+    return { changes: diffRoles(roleRow.old_values, task), reason: null };
+  }
   const reasonRaw = (data?.new_values as { reason?: unknown } | null)?.reason;
   const reason = typeof reasonRaw === "string" && reasonRaw.trim() ? reasonRaw.trim().slice(0, 200) : null;
   const old = (data?.old_values ?? null) as OldEventValues | null;

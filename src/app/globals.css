@@ -3870,3 +3870,45 @@ textarea:focus-visible {
 .quota-warn { color: var(--amber); }
 .quota-danger { color: var(--red); }
 .quota-note { margin: 0; font-size: 12px; color: var(--muted); }
+
+/* Duties as chips: one person, several duties (0016) */
+.role-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.role-chip { position: relative; display: inline-flex; }
+.role-chip input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.role-chip span { display: inline-block; padding: 6px 12px; border: 1px solid var(--line-strong); border-radius: 999px; font-size: 14px; background: var(--surface, transparent); color: inherit; user-select: none; }
+.role-chip input:checked + span { background: var(--blue); border-color: var(--blue); color: var(--surface); font-weight: 600; }
+.role-chip input:checked + span::before { content: "✓ "; }
+.role-chip input:focus-visible + span { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+/* Place box with suggestions (0016) */
+.place-input { position: relative; }
+.place-suggest { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); max-height: 260px; overflow: auto; }
+.place-suggest button { width: 100%; text-align: left; padding: 10px 10px; border: 0; background: transparent; color: inherit; font: inherit; border-radius: 8px; cursor: pointer; }
+.place-suggest button:hover, .place-suggest button:focus-visible { background: var(--line); }
+.role-edit { position: relative; }
+.role-edit > summary { list-style: none; cursor: pointer; }
+.role-edit > summary::-webkit-details-marker { display: none; }
+.role-edit[open] > summary { margin-bottom: 8px; }
+.role-edit-form { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line-strong); border-radius: var(--radius, 12px); background: var(--surface-soft); min-width: min(320px, 80vw); }
+@media (min-width: 700px) { .role-edit[open] .role-edit-form { position: absolute; right: 0; z-index: 20; width: 360px; box-shadow: 0 8px 24px rgba(0,0,0,.14); } }
+.assignment-add .form-field:has(.role-chips) { flex: 1 1 100%; }
+
+/* Attachment tiles with thumbnails (owner, 26 Oct 2026) */
+.file-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; margin: 8px 0 0; padding: 0; list-style: none; }
+.file-tile { display: grid; gap: 4px; position: relative; }
+.file-tile-link { display: grid; gap: 4px; color: inherit; text-decoration: none; padding: 6px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); }
+.file-tile-link:hover { border-color: var(--blue); }
+.file-thumb { display: grid; place-items: center; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--surface-soft); font-size: 30px; line-height: 1; text-align: center; }
+.file-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.file-thumb small { display: block; font-size: 12px; font-weight: 700; margin-top: 4px; color: var(--muted); }
+.file-thumb-pdf { background: var(--red-soft); }
+.file-thumb-doc { background: rgba(60, 120, 220, .14); }
+.file-thumb-xls { background: var(--green-soft); }
+.file-name { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.file-size { font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; }
+.file-delete { border: 0; background: transparent; color: var(--red); font: inherit; font-size: 13px; cursor: pointer; padding: 2px 6px; justify-self: start; }
+.file-thumb { position: relative; }
+.file-badge { position: absolute; top: 4px; right: 4px; font-size: 16px; background: var(--surface); border-radius: 999px; padding: 2px 4px; }
+.file-error { color: var(--red); font-size: 12px; overflow-wrap: anywhere; }
+.file-tile-error .file-tile-link { border-color: var(--red); }
+.picker-tiles { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }

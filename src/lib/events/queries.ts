@@ -15,6 +15,7 @@ import {
   roles as mockRoles,
 } from "@/data/mock-data";
 import { isSupabaseConfigured } from "@/lib/env";
+import { placeSuggestions } from "@/lib/locations/resolve";
 import type { AckStatus, Assignment, Department, PrEvent } from "@/types/domain";
 
 export type ScheduleFilters = {
@@ -35,7 +36,7 @@ const EVENT_SELECT = `
   assignments(
     id, assignment_version, assignment_status, note, unavailable_at, unavailable_reason,
     person:people(id, display_name, position, is_active),
-    role:roles(id, code, name, color),
+    role:roles(id, code, name, color), role_names, extra_role_ids,
     acknowledgements(assignment_version, acknowledged_at)
   )
 `;
@@ -121,6 +122,8 @@ export async function getEventAuditLog(eventId: string): Promise<AuditEntry[]> {
 
 export type EventFormData = {
   locations: { id: string; name: string }[];
+  /** Suggestions for the typed place box: master list + places typed before (0016). */
+  places: string[];
   departments: { id: string; name: string }[];
   eventTypes: { id: string; name: string }[];
   roles: { id: string; name: string }[];
@@ -131,6 +134,7 @@ export async function getEventFormData(): Promise<EventFormData> {
   if (!isSupabaseConfigured()) {
     return {
       locations: mockLocations.map(({ id, name }) => ({ id, name })),
+      places: mockLocations.map(({ name }) => name),
       departments: mockDepartments.map(({ id, name }) => ({ id, name })),
       eventTypes: [...new Set(mockEvents.map((event) => event.eventType))].map((name, index) => ({
         id: `mock_event_type_${index + 1}`,
@@ -142,8 +146,8 @@ export async function getEventFormData(): Promise<EventFormData> {
   }
 
   const supabase = await createClient();
-  const [locations, departments, eventTypes, roles, people] = await Promise.all([
-    supabase.from("locations").select("id, name").eq("is_active", true).order("name"),
+  const [locations, departments, eventTypes, roles, people, places] = await Promise.all([
+    supabase.from("locations").select("id, name").eq("is_active", true).eq("is_custom", false).order("name"),
     supabase.from("departments").select("id, name").eq("is_active", true).order("name"),
     supabase.from("event_types").select("id, name").eq("is_active", true).order("name"),
     supabase.from("roles").select("id, name").eq("is_active", true).order("name"),
@@ -152,10 +156,12 @@ export async function getEventFormData(): Promise<EventFormData> {
       .select("id, display_name")
       .eq("is_active", true)
       .order("display_name"),
+    placeSuggestions(supabase).catch(() => [] as string[]),
   ]);
 
   return {
     locations: locations.data ?? [],
+    places,
     departments: departments.data ?? [],
     eventTypes: eventTypes.data ?? [],
     roles: roles.data ?? [],
@@ -228,9 +234,10 @@ function mapEvent(row: any): PrEvent {
         role: {
           id: role?.id ?? "",
           code: role?.code ?? "",
-          name: role?.name ?? "—",
+          name: a.role_names ?? role?.name ?? "—",
           color: role?.color ?? "gray",
         },
+        roleIds: [role?.id, ...(Array.isArray(a.extra_role_ids) ? a.extra_role_ids : [])].filter(Boolean),
         ackStatus,
         acknowledgedAt: matched?.acknowledged_at ?? undefined,
         unavailableReason: a.unavailable_at ? (a.unavailable_reason ?? "ไม่ระบุเหตุผล") : undefined,

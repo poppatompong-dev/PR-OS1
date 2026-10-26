@@ -33,7 +33,10 @@ export type Role = {
 export type Assignment = {
   id: string;
   person: Person;
+  /** role.name holds every duty, e.g. "ช่างภาพนิ่ง · ทำข่าว / ข้อมูล" (0016). */
   role: Role;
+  /** Every duty id, first one = role.id (owner, 26 Oct 2026: one person, several duties). */
+  roleIds?: string[];
   ackStatus: AckStatus;
   acknowledgedAt?: string;
   /** Set when the assignee pressed "ไม่สะดวก" and has not acknowledged since. */

@@ -120,7 +120,7 @@ export async function getMyAssignments(): Promise<MyAssignments> {
     .select(
       `
       id, assignment_version, assignment_status, unavailable_at, unavailable_reason,
-      role:roles(name),
+      role:roles(name), role_names,
       acknowledgements(assignment_version),
       event:events!inner(
         id, title, event_date, start_time, end_time, short_note, status, has_changes, deleted_at,
@@ -146,7 +146,7 @@ export async function getMyAssignments(): Promise<MyAssignments> {
       return {
         assignmentId: a.id,
         assignmentVersion: a.assignment_version,
-        roleName: one(a.role)?.name ?? "—",
+        roleName: a.role_names ?? one(a.role)?.name ?? "—",
         acknowledged,
         unavailableReason: a.unavailable_at ? (a.unavailable_reason ?? "ไม่ระบุเหตุผล") : null,
         event: {
@@ -196,7 +196,7 @@ export async function checkConflictsForEvent(
     .select(
       `
       id, person_id,
-      role:roles(name),
+      role:roles(name), role_names,
       event:events!inner(
         id, title, event_date, start_time, end_time, status, deleted_at,
         location:locations(name)
@@ -229,7 +229,7 @@ export async function checkConflictsForEvent(
       startTime: String(ev.start_time ?? "").slice(0, 5),
       endTime: ev.end_time ? String(ev.end_time).slice(0, 5) : undefined,
       locationName: one(ev.location)?.name ?? "—",
-      roleName: one(row.role)?.name ?? "—",
+      roleName: row.role_names ?? one(row.role)?.name ?? "—",
     });
   }
 

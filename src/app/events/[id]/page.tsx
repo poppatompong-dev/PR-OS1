@@ -5,7 +5,8 @@ import { AppShell } from "@/components/AppShell";
 import { StatusPill } from "@/components/StatusPill";
 import { getEventAuditLog, getEventById, getEventFormData } from "@/lib/events/queries";
 import { cancelEvent, completeEvent, deleteEvent, postponeEvent, publishEvent } from "@/lib/events/mutations";
-import { addAssignment, removeAssignment } from "@/lib/assignments/mutations";
+import { addAssignment, removeAssignment, updateAssignmentRoles } from "@/lib/assignments/mutations";
+import { RoleChips } from "@/components/RoleChips";
 import { checkConflictsForEvent } from "@/lib/assignments/queries";
 import { conflictLevel } from "@/lib/assignments/conflict";
 import { getEventAttachments } from "@/lib/attachments/queries";
@@ -23,6 +24,7 @@ import {
 import { AlertTriangle, Copy, Download, Paperclip } from "lucide-react";
 import type { EventStatus } from "@/types/domain";
 import { AttachmentUpload } from "@/components/AttachmentUpload";
+import { fileKind, isImageMime } from "@/lib/attachments/rules";
 
 export const dynamic = "force-dynamic";
 
@@ -142,6 +144,25 @@ export default async function EventDetailPage({
                         <span className="ack-tag">— {ackStatusLabel(assignment.ackStatus)}</span>
                       )}
                     </div>
+                    {canManageAssignments && formData ? (
+                      <details className="role-edit">
+                        <summary className="button secondary">แก้หน้าที่</summary>
+                        <form action={updateAssignmentRoles} className="role-edit-form">
+                          <input type="hidden" name="eventId" value={event.id} />
+                          <input type="hidden" name="assignmentId" value={assignment.id} />
+                          <RoleChips
+                            roles={formData.roles}
+                            name="roleIds"
+                            defaultSelected={assignment.roleIds ?? [assignment.role.id]}
+                            idPrefix={`edit-${assignment.id}`}
+                          />
+                          <button className="button" type="submit">บันทึกหน้าที่</button>
+                          {event.status === "published" ? (
+                            <small className="muted">เปลี่ยนหน้าที่แล้ว {assignment.person.displayName} จะได้การ์ดสีส้มให้กดรับทราบใหม่</small>
+                          ) : null}
+                        </form>
+                      </details>
+                    ) : null}
                     {canManageAssignments ? (
                       <form action={removeAssignment}>
                         <input type="hidden" name="eventId" value={event.id} />
@@ -208,17 +229,10 @@ export default async function EventDetailPage({
                 ))}
               </select>
             </label>
-            <label className="form-field">
-              บทบาท
-              <select className="select" name="roleId" defaultValue="">
-                <option value="">— เลือก —</option>
-                {formData.roles.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="form-field">
+              หน้าที่ (เลือกได้หลายอย่าง)
+              <RoleChips roles={formData.roles} name="roleIds" idPrefix="add-role" />
+            </div>
             <button className="button" type="submit">เพิ่มผู้รับผิดชอบ</button>
           </form>
         ) : null}
@@ -232,26 +246,41 @@ export default async function EventDetailPage({
           ไฟล์แนบเป็นความลับ เปิดได้เฉพาะผู้มีสิทธิ์ ลิงก์ดาวน์โหลดหมดอายุใน 60 วินาที และไม่แสดงบนจอมอนิเตอร์
         </p>
         {attachments.length > 0 ? (
-          <div>
-            {attachments.map((file) => (
-              <div className="assignment-row" key={file.id}>
-                <div className="assignment-main">
-                  <a className="attachment-link" href={`/api/attachments/${file.id}`}>
-                    <Download size={16} aria-hidden="true" />
-                    {file.fileName}
-                  </a>{" "}
-                  <span className="ack-tag">— {formatFileSize(file.sizeBytes)}</span>
-                </div>
-                {canManageAttachments ? (
-                  <form action={deleteAttachment}>
-                    <input type="hidden" name="eventId" value={event.id} />
-                    <input type="hidden" name="attachmentId" value={file.id} />
-                    <button className="button secondary" type="submit">ลบไฟล์</button>
-                  </form>
-                ) : null}
-              </div>
-            ))}
-          </div>
+          <ul className="file-tiles">
+            {attachments.map((file) => {
+              const kind = fileKind(file.mimeType, file.fileName);
+              return (
+                <li className="file-tile" key={file.id}>
+                  <a className="file-tile-link" href={`/api/attachments/${file.id}`} title={`เปิด ${file.fileName}`}>
+                    <span className={`file-thumb file-thumb-${kind.tone}`}>
+                      {isImageMime(file.mimeType) ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={`/api/attachments/${file.id}/thumb`} alt="" loading="lazy" />
+                      ) : (
+                        <span aria-hidden="true">
+                          {kind.icon}
+                          <small>{kind.label}</small>
+                        </span>
+                      )}
+                    </span>
+                    <span className="file-name">{file.fileName}</span>
+                    <span className="file-size">
+                      <Download size={13} aria-hidden="true" /> {formatFileSize(file.sizeBytes)}
+                    </span>
+                  </a>
+                  {canManageAttachments ? (
+                    <form action={deleteAttachment}>
+                      <input type="hidden" name="eventId" value={event.id} />
+                      <input type="hidden" name="attachmentId" value={file.id} />
+                      <button className="file-delete" type="submit" aria-label={`ลบ ${file.fileName}`}>
+                        ลบ
+                      </button>
+                    </form>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
         ) : (
           <p>ยังไม่มีไฟล์แนบ</p>
         )}

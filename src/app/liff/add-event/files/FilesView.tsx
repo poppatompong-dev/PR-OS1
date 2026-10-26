@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import styles from "../add-event.module.css";
+import { fileKind } from "@/lib/attachments/rules";
 
 type Liff = {
   init(opts: { liffId: string }): Promise<void>;
@@ -14,7 +15,7 @@ type Liff = {
   isInClient(): boolean;
   closeWindow(): void;
 };
-type FileRow = { id: string; fileName: string; mimeType: string | null; sizeBytes: number | null };
+type FileRow = { id: string; fileName: string; mimeType: string | null; sizeBytes: number | null; thumb?: string | null };
 type Data = { title: string; eventDate: string; files: FileRow[] };
 
 const SDK = "https://static.line-scdn.net/liff/edge/2/sdk.js";
@@ -32,14 +33,6 @@ function loadSdk(): Promise<Liff> {
   });
 }
 
-function icon(mime: string | null): string {
-  if (!mime) return "📄";
-  if (mime.startsWith("image/")) return "🖼️";
-  if (mime === "application/pdf") return "📕";
-  if (mime.includes("sheet") || mime.includes("excel")) return "📗";
-  if (mime.includes("word")) return "📘";
-  return "📄";
-}
 
 const mb = (n: number | null) => (n ? `${(n / 1024 / 1024).toFixed(1)} MB` : "");
 
@@ -102,22 +95,38 @@ export function FilesView({ liffId }: { liffId: string }) {
         {error ? <p className={styles.err}>{error}</p> : null}
         {!data && !error ? <p className={styles.muted}>กำลังโหลด…</p> : null}
         {data && data.files.length === 0 ? <p className={styles.muted}>งานนี้ยังไม่มีไฟล์แนบ</p> : null}
-        {data
-          ? data.files.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                className={styles.secondary}
-                style={{ display: "flex", width: "100%", gap: 10, alignItems: "center", textAlign: "left", marginBottom: 8 }}
-                disabled={opening !== null}
-                onClick={() => open(f)}
-              >
-                <span aria-hidden="true">{icon(f.mimeType)}</span>
-                <span style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>{f.fileName}</span>
-                <small>{opening === f.id ? "กำลังเปิด…" : mb(f.sizeBytes)}</small>
-              </button>
-            ))
-          : null}
+        {data && data.files.length > 0 ? (
+          <ul className="file-tiles">
+            {data.files.map((f) => {
+              const kind = fileKind(f.mimeType, f.fileName);
+              return (
+                <li key={f.id} className="file-tile">
+                  <button
+                    type="button"
+                    className="file-tile-link"
+                    style={{ font: "inherit", textAlign: "left", cursor: "pointer" }}
+                    disabled={opening !== null}
+                    onClick={() => open(f)}
+                  >
+                    <span className={`file-thumb file-thumb-${kind.tone}`}>
+                      {f.thumb ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={f.thumb} alt="" loading="lazy" />
+                      ) : (
+                        <span aria-hidden="true">
+                          {kind.icon}
+                          <small>{kind.label}</small>
+                        </span>
+                      )}
+                    </span>
+                    <span className="file-name">{f.fileName}</span>
+                    <span className="file-size">{opening === f.id ? "กำลังเปิด…" : mb(f.sizeBytes)}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
         <p className={styles.muted} style={{ marginTop: 8 }}>
           ไฟล์เป็นความลับของงาน ลิงก์เปิดไฟล์ใช้ได้ 60 วินาที
         </p>

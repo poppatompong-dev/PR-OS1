@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { PlaceInput } from "@/components/PlaceInput";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { getEventById, getEventFormData } from "@/lib/events/queries";
@@ -22,7 +23,7 @@ export default async function EditEventPage({
   const [event, formData] = await Promise.all([getEventById(id), getEventFormData()]);
   if (!event) notFound();
 
-  const { locations, departments, eventTypes } = formData;
+  const { departments, eventTypes } = formData;
 
   return (
     <AppShell>
@@ -64,17 +65,10 @@ export default async function EditEventPage({
           เหตุผลที่เปลี่ยน (ไม่บังคับ — ขึ้นบนการ์ดสีส้มที่ทีมได้รับใน LINE)
           <input className="input" name="changeReason" maxLength={200} placeholder="เช่น ผู้บริหารติดภารกิจ เลื่อนเป็นช่วงบ่าย" />
         </label>
-        <label className="form-field">
+        <div className="form-field">
           สถานที่
-          <select className="select" name="locationId" defaultValue={event.location.id}>
-            <option value="">— ไม่ระบุ —</option>
-            {locations.map((location) => (
-              <option key={location.id} value={location.id}>
-                {location.name}
-              </option>
-            ))}
-          </select>
-        </label>
+          <PlaceInput name="locationText" defaultValue={event.location.id ? event.location.name : ""} suggestions={formData.places} />
+        </div>
         <label className="form-field">
           หน่วยงานเจ้าของเรื่อง
           <select className="select" name="ownerDepartmentId" defaultValue={event.ownerDepartment.id}>

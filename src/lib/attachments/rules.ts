@@ -19,8 +19,34 @@ export const ATTACHMENT_MIME: Record<string, string> = {
 
 export const ATTACHMENT_ACCEPT = Object.keys(ATTACHMENT_MIME).join(",");
 
-/** A file already uploaded to the staging area, waiting for its job to exist. */
-export type StagedAttachment = { path: string; fileName: string; mimeType: string; sizeBytes: number };
+/**
+ * A file already uploaded to the staging area, waiting for its job to exist.
+ * thumbPath: a small JPEG preview the browser made for a photo (owner,
+ * 26 Oct 2026: thumbnails), so lists never pull the full-size picture.
+ */
+export type StagedAttachment = { path: string; fileName: string; mimeType: string; sizeBytes: number; thumbPath?: string };
+
+/** Size of the preview the browser makes for a photo (longest side, px). */
+export const THUMB_MAX_PX = 360;
+
+/** Where a file's preview sits next to it in storage: <event>/<uuid>.thumb.jpg */
+export function thumbPathFor(storagePath: string): string {
+  return storagePath.replace(/\.[a-z0-9]+$/i, "") + ".thumb.jpg";
+}
+
+export function isImageMime(mime: string | null | undefined): boolean {
+  return typeof mime === "string" && mime.startsWith("image/");
+}
+
+/** Icon + colour for a file tile when there is no picture to show. */
+export function fileKind(mime: string | null | undefined, fileName = ""): { icon: string; label: string; tone: string } {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  if (isImageMime(mime)) return { icon: "🖼️", label: "รูป", tone: "img" };
+  if (mime === "application/pdf" || ext === "pdf") return { icon: "📕", label: "PDF", tone: "pdf" };
+  if (/word/.test(mime ?? "") || ext === "doc" || ext === "docx") return { icon: "📘", label: "Word", tone: "doc" };
+  if (/excel|sheet/.test(mime ?? "") || ext === "xls" || ext === "xlsx") return { icon: "📗", label: "Excel", tone: "xls" };
+  return { icon: "📄", label: "ไฟล์", tone: "file" };
+}
 
 export function formatMb(bytes: number): string {
   return (bytes / 1024 / 1024).toFixed(1);
@@ -37,6 +63,7 @@ export function checkAttachmentMeta(m: { fileName: string; mimeType: string; siz
 }
 
 const STAGED_PATH = /^staging\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(pdf|jpg|png|webp|docx?|xlsx?)$/;
+const STAGED_THUMB = /^staging\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jpg$/;
 
 /** Keep only well-formed staged entries (a client could send anything), at most the per-job limit. */
 export function parseStagedList(raw: unknown): StagedAttachment[] {
@@ -53,7 +80,8 @@ export function parseStagedList(raw: unknown): StagedAttachment[] {
     if (checkAttachmentMeta({ fileName, mimeType, sizeBytes })) continue;
     if (!path.endsWith(`.${ATTACHMENT_MIME[mimeType]}`)) continue;
     seen.add(path);
-    out.push({ path, fileName, mimeType, sizeBytes });
+    const thumbPath = typeof s.thumbPath === "string" && STAGED_THUMB.test(s.thumbPath) && s.thumbPath !== path && isImageMime(mimeType) ? s.thumbPath : null;
+    out.push({ path, fileName, mimeType, sizeBytes, ...(thumbPath ? { thumbPath } : {}) });
     if (out.length >= MAX_ATTACHMENTS_PER_EVENT) break;
   }
   return out;

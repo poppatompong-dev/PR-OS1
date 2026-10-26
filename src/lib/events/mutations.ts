@@ -9,6 +9,8 @@ import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { can, getSessionUser } from "@/lib/auth/roles";
 import { parseStagedFormValues } from "@/lib/attachments/rules";
 import { attachStaged } from "@/lib/attachments/staging";
+import { normalizeRoleIds, roleColumns } from "@/lib/assignments/roles";
+import { resolveLocationId } from "@/lib/locations/resolve";
 
 function emptyToNull(value: FormDataEntryValue | null): string | null {
   const text = String(value ?? "").trim();
@@ -40,7 +42,20 @@ export async function createEvent(formData: FormData) {
   }
 
   const personId = emptyToNull(formData.get("personId"));
-  const roleId = emptyToNull(formData.get("roleId"));
+  // Several duties for the person (0016); an old form still posts one roleId.
+  const roleIds = normalizeRoleIds([...formData.getAll("roleIds"), formData.get("roleId")]);
+  const hasAssignee = Boolean(personId && roleIds.length > 0);
+  if (personId && roleIds.length === 0) fail("เลือกหน้าที่ของผู้ปฏิบัติงานอย่างน้อย 1 อย่าง");
+
+  let locationId: string | null;
+  try {
+    locationId = await resolveLocationId(createAdminClient(), {
+      locationText: formData.get("locationText"),
+      locationId: formData.get("locationId"),
+    });
+  } catch (e) {
+    fail(e instanceof Error ? e.message : "บันทึกสถานที่ไม่สำเร็จ");
+  }
 
   const { data: created, error } = await supabase
     .from("events")
@@ -49,7 +64,7 @@ export async function createEvent(formData: FormData) {
       event_date: eventDate,
       start_time: startTime,
       end_time: emptyToNull(formData.get("endTime")),
-      location_id: emptyToNull(formData.get("locationId")),
+      location_id: locationId,
       owner_department_id: emptyToNull(formData.get("ownerDepartmentId")),
       event_type_id: emptyToNull(formData.get("eventTypeId")),
       intake_channel: emptyToNull(formData.get("intakeChannel")) ?? "อื่นๆ",
@@ -69,11 +84,11 @@ export async function createEvent(formData: FormData) {
   }
 
   // Optional single assignment (the form currently captures one person + role).
-  if (personId && roleId) {
+  if (hasAssignee) {
     const { error: asgError } = await supabase.from("assignments").insert({
       event_id: created.id,
       person_id: personId,
-      role_id: roleId,
+      ...roleColumns(roleIds),
       assignment_status: "assigned",
       assignment_version: 1,
       created_by: user.id,
@@ -103,7 +118,7 @@ export async function createEvent(formData: FormData) {
 
   // Created and published in one go from the 4-step form: tell the assignee
   // now, like publishEvent does. (Before 19 Oct 2026 this path sent nothing.)
-  if (publish && personId && roleId) {
+  if (publish && hasAssignee) {
     await supabase.rpc("enqueue_event_notifications", { p_event_id: created.id, p_type: "assignment" });
     await supabase.rpc("enqueue_event_reminders", { p_event_id: created.id });
     kickNotifications();
@@ -162,7 +177,17 @@ export async function editEvent(formData: FormData) {
     redirect(`${editPath}?error=${encodeURIComponent("กรุณากรอกชื่องาน วันที่ และเวลาเริ่ม")}`);
   }
   const endTime = emptyToNull(formData.get("endTime"));
-  const locationId = emptyToNull(formData.get("locationId"));
+  let locationId: string | null = null;
+  try {
+    const { data: before } = await supabase.from("events").select("location_id").eq("id", eventId).maybeSingle();
+    locationId = await resolveLocationId(createAdminClient(), {
+      locationText: formData.get("locationText"),
+      locationId: formData.get("locationId"),
+      currentId: before?.location_id ?? null,
+    });
+  } catch (e) {
+    redirect(`${editPath}?error=${encodeURIComponent(e instanceof Error ? e.message : "บันทึกสถานที่ไม่สำเร็จ")}`);
+  }
   // Optional; shown on the team's orange change card (owner, 22 Oct 2026).
   const changeReason = String(formData.get("changeReason") ?? "").trim().slice(0, 200);
 

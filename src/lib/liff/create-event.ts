@@ -13,6 +13,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LiffCaller } from "@/lib/liff/auth";
 import { parseStagedList, type StagedAttachment } from "@/lib/attachments/rules";
 import { attachStaged } from "@/lib/attachments/staging";
+import { mergeAssignees, normalizeRoleIds, roleColumns } from "@/lib/assignments/roles";
+import { cleanPlace, resolveLocationId } from "@/lib/locations/resolve";
 
 export type LiffEventInput = {
   title: string;
@@ -20,8 +22,11 @@ export type LiffEventInput = {
   startTime: string;
   endTime: string | null;
   locationId: string | null;
+  /** Place typed in the form (0016); wins over locationId. */
+  locationText: string | null;
   shortNote: string | null;
-  assignees: Array<{ personId: string; roleId: string }>;
+  /** One row per person, every duty they hold on this job (0016). */
+  assignees: Array<{ personId: string; roleIds: string[] }>;
   /** Files already uploaded to staging from the form (max 5). */
   attachments: StagedAttachment[];
   publish: boolean;
@@ -50,19 +55,17 @@ export function parseLiffEventInput(body: unknown): { ok: true; input: LiffEvent
   if (locationId && !UUID.test(locationId)) return { ok: false, error: "สถานที่ไม่ถูกต้อง" };
 
   const raw = Array.isArray(b.assignees) ? b.assignees.slice(0, 20) : [];
-  const seen = new Set<string>();
-  const assignees: LiffEventInput["assignees"] = [];
+  const rows: LiffEventInput["assignees"] = [];
   for (const a of raw as Array<Record<string, unknown>>) {
     const personId = text(a?.personId, 36);
-    const roleId = text(a?.roleId, 36);
-    if (!personId && !roleId) continue;
+    // roleIds (several duties); an old form still sends one roleId.
+    const roleIds = normalizeRoleIds([...(Array.isArray(a?.roleIds) ? a.roleIds : []), a?.roleId]);
+    if (!personId && roleIds.length === 0) continue;
     if (!UUID.test(personId)) return { ok: false, error: "เลือกผู้ปฏิบัติงานให้ครบ" };
-    if (!UUID.test(roleId)) return { ok: false, error: "เลือกบทบาทของผู้ปฏิบัติงานให้ครบ" };
-    const key = `${personId}:${roleId}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    assignees.push({ personId, roleId });
+    if (roleIds.length === 0) return { ok: false, error: "เลือกหน้าที่ของผู้ปฏิบัติงานอย่างน้อย 1 อย่าง" };
+    rows.push({ personId, roleIds });
   }
+  const assignees = mergeAssignees(rows);
 
   return {
     ok: true,
@@ -72,6 +75,7 @@ export function parseLiffEventInput(body: unknown): { ok: true; input: LiffEvent
       startTime,
       endTime,
       locationId,
+      locationText: cleanPlace(b.locationText),
       shortNote: optional(b.shortNote, 500),
       assignees,
       attachments: parseStagedList(b.attachments),
@@ -99,13 +103,20 @@ export async function createEventFromLiff(
   // Only active people and roles from the lists the form showed.
   if (input.assignees.length > 0) {
     const personIds = [...new Set(input.assignees.map((a) => a.personId))];
-    const roleIds = [...new Set(input.assignees.map((a) => a.roleId))];
+    const roleIds = [...new Set(input.assignees.flatMap((a) => a.roleIds))];
     const [{ data: people }, { data: roles }] = await Promise.all([
       admin.from("people").select("id").in("id", personIds).eq("is_active", true),
       admin.from("roles").select("id").in("id", roleIds).eq("is_active", true),
     ]);
     if ((people ?? []).length !== personIds.length) return { ok: false, error: "มีผู้ปฏิบัติงานที่ไม่อยู่ในทีมแล้ว ลองเปิดฟอร์มใหม่" };
     if ((roles ?? []).length !== roleIds.length) return { ok: false, error: "มีบทบาทที่ถูกปิดไปแล้ว ลองเปิดฟอร์มใหม่" };
+  }
+
+  let locationId: string | null;
+  try {
+    locationId = await resolveLocationId(admin, { locationText: input.locationText, locationId: input.locationId });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "บันทึกสถานที่ไม่สำเร็จ" };
   }
 
   const nowIso = new Date().toISOString();
@@ -116,7 +127,7 @@ export async function createEventFromLiff(
       event_date: input.eventDate,
       start_time: input.startTime,
       end_time: input.endTime,
-      location_id: input.locationId,
+      location_id: locationId,
       intake_channel: "อื่นๆ", // the edit page offers only its fixed list; "via LINE" is in metadata
       urgency: "normal",
       short_note: input.shortNote,
@@ -138,7 +149,7 @@ export async function createEventFromLiff(
         input.assignees.map((a) => ({
           event_id: created.id,
           person_id: a.personId,
-          role_id: a.roleId,
+          ...roleColumns(a.roleIds),
           assignment_status: "assigned",
           assignment_version: 1,
           created_by: caller.userId,

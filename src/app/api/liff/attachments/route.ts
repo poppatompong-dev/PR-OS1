@@ -12,6 +12,9 @@ import { authenticateLiff, type LiffCaller } from "@/lib/liff/auth";
 import { getAdminRecipientIds } from "@/lib/line/data";
 import { ATTACHMENT_BUCKET, SIGNED_URL_TTL_SECONDS } from "@/lib/attachments/queries";
 import { isSupabaseConfigured } from "@/lib/env";
+import { isImageMime, thumbPathFor } from "@/lib/attachments/rules";
+
+const THUMB_TTL_SECONDS = 300;
 
 export const dynamic = "force-dynamic";
 
@@ -57,14 +60,32 @@ export async function GET(request: Request) {
 
   const { data: files } = await g.admin
     .from("event_attachments")
-    .select("id, file_name, mime_type, size_bytes, created_at")
+    .select("id, file_name, mime_type, size_bytes, created_at, storage_path")
     .eq("event_id", eventId)
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
+  // Photo tiles (owner, 26 Oct 2026): the small preview made at upload; an
+  // older photo without one falls back to the picture itself. 5-minute links.
+  const thumbs = await Promise.all(
+    (files ?? []).map(async (f) => {
+      if (!isImageMime(f.mime_type)) return null;
+      const bucket = g.admin.storage.from(ATTACHMENT_BUCKET);
+      const small = await bucket.createSignedUrl(thumbPathFor(f.storage_path), THUMB_TTL_SECONDS);
+      if (small.data?.signedUrl) return small.data.signedUrl;
+      const full = await bucket.createSignedUrl(f.storage_path, THUMB_TTL_SECONDS);
+      return full.data?.signedUrl ?? null;
+    }),
+  );
   return NextResponse.json({
     title: ev.title,
     eventDate: ev.event_date,
-    files: (files ?? []).map((f) => ({ id: f.id, fileName: f.file_name, mimeType: f.mime_type, sizeBytes: f.size_bytes })),
+    files: (files ?? []).map((f, i) => ({
+      id: f.id,
+      fileName: f.file_name,
+      mimeType: f.mime_type,
+      sizeBytes: f.size_bytes,
+      thumb: thumbs[i],
+    })),
   });
 }
 

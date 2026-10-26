@@ -1,5 +1,7 @@
 "use server";
 
+import { thumbPathFor } from "@/lib/attachments/rules";
+
 import { blockWritesInDemoMode } from "@/lib/demo-guard";
 
 import { randomUUID } from "node:crypto";
@@ -124,7 +126,7 @@ export async function deleteAttachment(formData: FormData) {
 
   const { error: removeError } = await supabase.storage
     .from(ATTACHMENT_BUCKET)
-    .remove([row.storage_path]);
+    .remove([row.storage_path, thumbPathFor(row.storage_path)]);
   if (removeError) {
     backToEvent(eventId, `ลบไฟล์ไม่สำเร็จ: ${removeError.message}`);
   }

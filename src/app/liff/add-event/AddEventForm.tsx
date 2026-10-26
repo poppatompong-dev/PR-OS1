@@ -8,12 +8,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./add-event.module.css";
 import { AttachmentPicker } from "@/components/AttachmentPicker";
+import { PlaceInput } from "@/components/PlaceInput";
+import { RoleChips } from "@/components/RoleChips";
 import type { StagedAttachment } from "@/lib/attachments/rules";
 
 type Option = { id: string; name: string };
 type Person = Option & { position: string | null; avatar: string };
-type Lists = { me: Option; people: Person[]; roles: Option[]; locations: Option[] };
-type Row = { personId: string; roleId: string };
+type Lists = { me: Option; people: Person[]; roles: Option[]; places: string[] };
+type Row = { personId: string; roleIds: string[] };
 
 type Liff = {
   init(opts: { liffId: string }): Promise<void>;
@@ -65,9 +67,9 @@ export function AddEventForm({ liffId }: { liffId: string }) {
   const [eventDate, setEventDate] = useState(bangkokDate(1));
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("");
-  const [locationId, setLocationId] = useState("");
+  const [place, setPlace] = useState("");
   const [shortNote, setShortNote] = useState("");
-  const [rows, setRows] = useState<Row[]>([{ personId: "", roleId: "" }]);
+  const [rows, setRows] = useState<Row[]>([{ personId: "", roleIds: [] }]);
   const [files, setFiles] = useState<{ staged: StagedAttachment[]; busy: boolean }>({ staged: [], busy: false });
   const [pickerKey, setPickerKey] = useState(0);
 
@@ -101,8 +103,8 @@ export function AddEventForm({ liffId }: { liffId: string }) {
     };
   }, [liffId]);
 
-  const filled = useMemo(() => rows.filter((r) => r.personId && r.roleId), [rows]);
-  const halfRow = rows.some((r) => (r.personId && !r.roleId) || (!r.personId && r.roleId));
+  const filled = useMemo(() => rows.filter((r) => r.personId && r.roleIds.length > 0), [rows]);
+  const halfRow = rows.some((r) => (r.personId && r.roleIds.length === 0) || (!r.personId && r.roleIds.length > 0));
 
   function setRow(i: number, patch: Partial<Row>) {
     setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
@@ -112,7 +114,7 @@ export function AddEventForm({ liffId }: { liffId: string }) {
     setTitle("");
     setEndTime("");
     setShortNote("");
-    setRows([{ personId: "", roleId: "" }]);
+    setRows([{ personId: "", roleIds: [] }]);
     setFiles({ staged: [], busy: false });
     setPickerKey((k) => k + 1);
     setError(null);
@@ -124,14 +126,14 @@ export function AddEventForm({ liffId }: { liffId: string }) {
     if (!title.trim()) return setError("กรุณากรอกชื่องาน");
     if (!eventDate || !startTime) return setError("กรุณาเลือกวันที่และเวลาเริ่ม");
     if (endTime && endTime <= startTime) return setError("เวลาสิ้นสุดต้องหลังเวลาเริ่ม");
-    if (halfRow) return setError("เลือกทั้งชื่อและบทบาทของผู้ปฏิบัติงานให้ครบ หรือลบแถวที่ไม่ใช้");
+    if (halfRow) return setError("เลือกทั้งชื่อและหน้าที่ของผู้ปฏิบัติงานให้ครบ หรือลบแถวที่ไม่ใช้");
     if (files.busy) return setError("กำลังอัปโหลดไฟล์แนบ รอสักครู่แล้วกดอีกครั้ง");
     setSaving(publish ? "publish" : "draft");
     try {
       const res = await fetch("/api/liff/events", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ title, eventDate, startTime, endTime: endTime || null, locationId: locationId || null, shortNote, assignees: filled, attachments: files.staged, publish }),
+        body: JSON.stringify({ title, eventDate, startTime, endTime: endTime || null, locationText: place.trim() || null, shortNote, assignees: filled, attachments: files.staged, publish }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "บันทึกไม่สำเร็จ");
@@ -229,36 +231,23 @@ export function AddEventForm({ liffId }: { liffId: string }) {
           </label>
         </div>
 
-        <label className={styles.field}>
+        <div className={styles.field}>
           <span>สถานที่</span>
-          <select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
-            <option value="">— ไม่ระบุ —</option>
-            {L.locations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </label>
+          <PlaceInput value={place} onChange={setPlace} suggestions={L.places ?? []} inputClassName="" />
+        </div>
       </section>
 
       <section className={styles.card}>
         <h2 className={styles.h2}>ผู้ปฏิบัติงาน</h2>
+        <p className={styles.hint}>เลือกคน แล้วแตะหน้าที่ได้หลายอย่าง — ได้การ์ดใบเดียว กดรับทราบครั้งเดียว</p>
         {rows.map((r, i) => (
-          <div key={i} className={styles.row}>
+          <div key={i} className={styles.person}>
+          <div className={styles.row}>
             <select value={r.personId} onChange={(e) => setRow(i, { personId: e.target.value })} aria-label="ผู้ปฏิบัติงาน">
               <option value="">— เลือกคน —</option>
               {L.people.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
-                </option>
-              ))}
-            </select>
-            <select value={r.roleId} onChange={(e) => setRow(i, { roleId: e.target.value })} aria-label="บทบาท">
-              <option value="">— บทบาท —</option>
-              {L.roles.map((x) => (
-                <option key={x.id} value={x.id}>
-                  {x.name}
                 </option>
               ))}
             </select>
@@ -268,8 +257,10 @@ export function AddEventForm({ liffId }: { liffId: string }) {
               </button>
             ) : null}
           </div>
+          <RoleChips roles={L.roles} selected={r.roleIds} onChange={(ids) => setRow(i, { roleIds: ids })} idPrefix={`liff-${i}`} />
+          </div>
         ))}
-        <button type="button" className={styles.add} onClick={() => setRows((rs) => [...rs, { personId: "", roleId: "" }])}>
+        <button type="button" className={styles.add} onClick={() => setRows((rs) => [...rs, { personId: "", roleIds: [] }])}>
           + เพิ่มคน
         </button>
       </section>

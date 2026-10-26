@@ -3,6 +3,8 @@ import { getEventById, getEventFormData } from "@/lib/events/queries";
 import { createEvent } from "@/lib/events/mutations";
 import { FormWizard } from "@/components/FormWizard";
 import { AttachmentPicker } from "@/components/AttachmentPicker";
+import { PlaceInput } from "@/components/PlaceInput";
+import { RoleChips } from "@/components/RoleChips";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +22,14 @@ export default async function NewEventPage({
   searchParams: Promise<{ error?: string; cloneFrom?: string }>;
 }) {
   const { error, cloneFrom } = await searchParams;
-  const [{ locations, departments, eventTypes, roles, people }, clone] =
+  const [{ places, departments, eventTypes, roles, people }, clone] =
     await Promise.all([
       getEventFormData(),
       cloneFrom ? getEventById(cloneFrom) : Promise.resolve(null),
     ]);
 
   const defaultPersonId = clone?.assignments?.[0]?.person?.id ?? "";
-  const defaultRoleId = clone?.assignments?.[0]?.role?.id ?? "";
+  const defaultRoleIds = clone?.assignments?.[0]?.roleIds ?? [];
 
   return (
     <AppShell>
@@ -93,21 +95,10 @@ export default async function NewEventPage({
           </div>
 
           <div className="form-grid">
-            <label className="form-field">
+            <div className="form-field">
               สถานที่
-              <select
-                className="select"
-                name="locationId"
-                defaultValue={clone?.location?.id ?? ""}
-              >
-                <option value="">— ไม่ระบุ —</option>
-                {locations.map((location) => (
-                  <option key={location.id} value={location.id}>
-                    {location.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <PlaceInput name="locationText" defaultValue={clone?.location?.id ? clone.location.name : ""} suggestions={places} />
+            </div>
             <label className="form-field">
               หน่วยงานเจ้าของเรื่อง
               <select
@@ -182,21 +173,10 @@ export default async function NewEventPage({
                 ))}
               </select>
             </label>
-            <label className="form-field">
-              บทบาท
-              <select
-                className="select"
-                name="roleId"
-                defaultValue={defaultRoleId}
-              >
-                <option value="">— ไม่ระบุ —</option>
-                {roles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="form-field">
+              หน้าที่ (เลือกได้หลายอย่าง)
+              <RoleChips roles={roles} name="roleIds" defaultSelected={defaultRoleIds} idPrefix="new-role" />
+            </div>
           </div>
 
           <div className="form-grid">
