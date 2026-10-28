@@ -1,0 +1,139 @@
+/* =====================================================================
+   จอทีวี "แบบ A · งานถัดไปเด่น" (พี่ป๊อปเลือก 28 ต.ค. 2569)
+   ทุกขนาดผูกกับ --u = 1px บนจอ 1920x1080 เพื่อให้จอ 1366x768 หรือ 4K
+   ได้เลย์เอาต์เดียวกันแบบย่อ/ขยายตามสัดส่วน
+   อนิเมชั่นเบา ๆ เท่านั้น (เบราว์เซอร์ในทีวีช้า) ปิดได้ด้วย ?static=1
+   ===================================================================== */
+
+.hm {
+  --u: min(calc(100vw / 1920), calc(100vh / 1080));
+  --hm-text: #f4eefa;
+  --hm-dim: #bba9cb;
+  --hm-accent: #e2b8ff;
+  --hm-ok: #3ed68a;
+  --hm-wait: #ffb84d;
+  --hm-off: #ff7a5c;
+  --hm-gold: #ffd36b;
+
+  color-scheme: dark;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  color: var(--hm-text);
+  background: radial-gradient(calc(1200 * var(--u)) calc(700 * var(--u)) at 15% 0%, #3b1f4d 0%, #1a1222 55%, #120c18 100%);
+  font-family: "IBM Plex Sans Thai", "Noto Sans Thai", "Leelawadee UI", system-ui, sans-serif;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: calc(18 * var(--u));
+  padding: calc(26 * var(--u)) calc(44 * var(--u)) calc(22 * var(--u));
+}
+.hm b, .hm-time, .hm-clock b, .hm-row-t { font-variant-numeric: tabular-nums; }
+.hm-time, .hm-clock b, .hm-row-t { font-family: "JetBrains Mono Variable", "JetBrains Mono", Consolas, monospace; }
+
+/* ---- head ---- */
+.hm-head { display: flex; align-items: center; gap: calc(22 * var(--u)); }
+.hm-seal { width: calc(80 * var(--u)); height: calc(80 * var(--u)); border-radius: calc(18 * var(--u)); background: #fff; padding: calc(4 * var(--u)); display: grid; place-items: center; }
+.hm-seal img { width: 100%; height: 100%; object-fit: contain; }
+.hm-head h1 { font-size: calc(42 * var(--u)); font-weight: 700; line-height: 1.15; }
+.hm-head p { font-size: calc(23 * var(--u)); color: var(--hm-dim); }
+.hm-clock { margin-left: auto; text-align: right; }
+.hm-clock b { display: block; font-size: calc(88 * var(--u)); font-weight: 800; line-height: 1; color: var(--hm-accent); text-shadow: 0 0 calc(30 * var(--u)) rgba(200, 140, 255, .35); }
+.hm-clock span { font-size: calc(25 * var(--u)); color: #cbb9dc; }
+
+/* ---- main ---- */
+.hm-main { display: grid; grid-template-columns: 1.55fr 1fr; gap: calc(28 * var(--u)); min-height: 0; }
+
+.hm-hero {
+  position: relative; overflow: hidden; min-height: 0; display: flex; flex-direction: column;
+  border-radius: calc(32 * var(--u)); padding: calc(32 * var(--u)) calc(44 * var(--u));
+  background: linear-gradient(135deg, #5e2f73 0%, #3d1f52 60%, #2a1638 100%);
+  border: calc(2 * var(--u)) solid rgba(226, 184, 255, .5);
+  animation: hm-fade .7s both, hm-glow 3s 1s ease-in-out infinite;
+}
+.hm-hero::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .07) 50%, transparent 70%); background-size: calc(1400 * var(--u)) 100%; animation: hm-shimmer 7s linear infinite; }
+.hm-hero--running { background: linear-gradient(135deg, #1f6a4a 0%, #194a3a 60%, #12312a 100%); border-color: rgba(120, 240, 180, .55); }
+.hm-hero--none { animation: hm-fade .7s both; background: linear-gradient(135deg, #3a2a48, #241a2e); }
+.hm-hero.is-soon .hm-tag { animation: hm-pulse-tag 1.6s ease-in-out infinite; }
+
+.hm-tag { align-self: flex-start; display: inline-flex; align-items: center; gap: calc(12 * var(--u)); font-size: calc(28 * var(--u)); font-weight: 700; background: var(--hm-gold); color: #3a2400; padding: calc(8 * var(--u)) calc(24 * var(--u)); border-radius: 999px; }
+.hm-tag i { width: calc(14 * var(--u)); height: calc(14 * var(--u)); border-radius: 50%; background: #3a2400; animation: hm-blink 1.2s infinite; }
+.hm-hero--running .hm-tag { background: #9cf2c6; color: #08311f; }
+.hm-hero--running .hm-tag i { background: #08311f; }
+.hm-time { font-size: calc(116 * var(--u)); font-weight: 800; line-height: 1; margin: calc(14 * var(--u)) 0 calc(4 * var(--u)); letter-spacing: calc(-2 * var(--u)); }
+.hm-time small { font-size: calc(50 * var(--u)); color: #d9c3ec; font-weight: 600; margin-left: calc(16 * var(--u)); letter-spacing: 0; }
+.hm-title { font-size: calc(52 * var(--u)); font-weight: 700; line-height: 1.18; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.hm-place { font-size: calc(29 * var(--u)); color: #e6d6f3; margin-top: calc(6 * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm-note { font-size: calc(22 * var(--u)); color: #f3e3ff; margin-top: calc(6 * var(--u)); opacity: .9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.hm-people { display: flex; gap: calc(10 * var(--u)); margin-top: calc(16 * var(--u)); flex-wrap: wrap; max-height: calc(128 * var(--u)); overflow: hidden; }
+.hm-pp { display: inline-flex; align-items: center; gap: calc(10 * var(--u)); background: rgba(255, 255, 255, .1); border-radius: 999px; padding: calc(6 * var(--u)) calc(18 * var(--u)) calc(6 * var(--u)) calc(6 * var(--u)); font-size: calc(24 * var(--u)); }
+.hm-pp .hm-pp-img { width: calc(46 * var(--u)) !important; height: calc(46 * var(--u)) !important; border-radius: 50%; background: #fff; }
+.hm-pp i { font-style: normal; color: #d5c2e6; font-size: calc(21 * var(--u)); }
+.hm-pp em { font-style: normal; width: calc(34 * var(--u)); height: calc(34 * var(--u)); border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: calc(22 * var(--u)); animation: hm-pop .5s 1s both; }
+.hm-pp.is-ack em { background: var(--hm-ok); color: #062b18; }
+.hm-pp.is-wait em { background: var(--hm-wait); color: #3a2400; animation: hm-pop .5s 1s both, hm-blink 1.4s 2s infinite; }
+.hm-pp.is-off em { background: var(--hm-off); color: #3a0d00; }
+
+.hm-bar { margin-top: calc(14 * var(--u)); width: calc(640 * var(--u)); max-width: 100%; }
+.hm-bar p { display: none; }
+.hm-bar div { height: calc(10 * var(--u)); border-radius: 99px; background: rgba(255, 255, 255, .15); overflow: hidden; }
+.hm-bar span { display: block; height: 100%; width: 100%; transform-origin: left; background: linear-gradient(90deg, var(--hm-gold), #ff9a6b); transition: transform 1s linear; }
+.hm-hero--running .hm-bar span { background: linear-gradient(90deg, #9cf2c6, #4fd39a); }
+
+/* ---- side ---- */
+.hm-side { display: flex; flex-direction: column; gap: calc(20 * var(--u)); min-height: 0; }
+.hm-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(16 * var(--u)); }
+.hm-st { border-radius: calc(24 * var(--u)); padding: calc(18 * var(--u)) calc(22 * var(--u)); background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .1); animation: hm-fade .6s both; }
+.hm-st:nth-child(2) { animation-delay: .12s; } .hm-st:nth-child(3) { animation-delay: .24s; }
+.hm-st b { display: block; font-size: calc(76 * var(--u)); font-weight: 800; line-height: 1; animation: hm-pop .5s both; }
+.hm-st span { font-size: calc(24 * var(--u)); color: #c7b6d6; }
+.hm-st.is-warn b { color: var(--hm-wait); } .hm-st.is-ok b { color: var(--hm-ok); }
+
+.hm-list { flex: 1; min-height: 0; overflow: hidden; border-radius: calc(24 * var(--u)); background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .08); padding: calc(18 * var(--u)) calc(22 * var(--u)); display: flex; flex-direction: column; gap: calc(12 * var(--u)); }
+.hm-list h3 { font-size: calc(26 * var(--u)); color: #cdb8e0; font-weight: 600; }
+.hm-empty, .hm-more { font-size: calc(24 * var(--u)); color: var(--hm-dim); }
+.hm-row { display: grid; grid-template-columns: calc(124 * var(--u)) minmax(0, 1fr) auto; gap: calc(16 * var(--u)); align-items: center; padding: calc(14 * var(--u)) calc(16 * var(--u)); border-radius: calc(18 * var(--u)); background: rgba(255, 255, 255, .05); animation: hm-fade .6s both; }
+.hm-row.is-past { opacity: .42; }
+.hm-row-t { font-size: calc(40 * var(--u)); font-weight: 800; color: var(--hm-accent); }
+.hm-row-b strong { display: block; font-size: calc(30 * var(--u)); font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm-row-b span { display: block; font-size: calc(22 * var(--u)); color: var(--hm-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm-row-p { display: flex; }
+.hm-row-p .hm-mini { width: calc(48 * var(--u)) !important; height: calc(48 * var(--u)) !important; border-radius: 50%; background: #fff; margin-left: calc(-10 * var(--u)); border: calc(3 * var(--u)) solid var(--hm-ok); }
+.hm-row-p .hm-mini.is-wait { border-color: var(--hm-wait); animation: hm-blink 1.4s infinite; }
+.hm-row-p .hm-mini.is-off { border-color: var(--hm-off); }
+
+/* ---- ticker ---- */
+.hm-ticker { height: calc(54 * var(--u)); margin: 0 calc(-44 * var(--u)); background: rgba(255, 211, 107, .12); border-top: 1px solid rgba(255, 211, 107, .35); border-bottom: 1px solid rgba(255, 211, 107, .35); overflow: hidden; white-space: pre; font-size: calc(27 * var(--u)); color: #ffe3a0; display: flex; align-items: center; }
+.hm-ticker > div { display: inline-flex; animation: hm-marquee 40s linear infinite; }
+.hm-ticker--quiet { justify-content: center; background: rgba(62, 214, 138, .08); border-color: rgba(62, 214, 138, .25); color: #9cf2c6; }
+
+/* ---- week ---- */
+.hm-week { display: grid; grid-template-columns: repeat(6, 1fr); gap: calc(14 * var(--u)); }
+.hm-day { position: relative; border-radius: calc(18 * var(--u)); background: rgba(255, 255, 255, .06); padding: calc(12 * var(--u)) calc(16 * var(--u)); animation: hm-fade .6s .8s both; min-width: 0; }
+.hm-day.has { background: rgba(201, 155, 255, .12); }
+.hm-day-h { font-size: calc(22 * var(--u)); color: #c7b6d6; }
+.hm-day-h b { font-size: calc(32 * var(--u)); color: #fff; }
+.hm-day-h em { position: absolute; right: calc(14 * var(--u)); top: calc(12 * var(--u)); font-style: normal; background: #c99bff; color: #2a1438; border-radius: 999px; padding: 0 calc(12 * var(--u)); font-weight: 800; font-size: calc(22 * var(--u)); }
+.hm-day-x { font-size: calc(21 * var(--u)); color: #e9dcf5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: calc(2 * var(--u)); }
+.hm-day-x.is-none { color: var(--hm-dim); }
+
+/* ---- motion ---- */
+@keyframes hm-fade { from { opacity: 0; transform: translateY(calc(22 * var(--u))); } to { opacity: 1; transform: none; } }
+@keyframes hm-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(190, 120, 255, .4); } 50% { box-shadow: 0 0 calc(40 * var(--u)) calc(6 * var(--u)) rgba(190, 120, 255, .25); } }
+@keyframes hm-shimmer { from { background-position: calc(-1400 * var(--u)) 0; } to { background-position: calc(1400 * var(--u)) 0; } }
+@keyframes hm-blink { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+@keyframes hm-pop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
+@keyframes hm-pulse-tag { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+@keyframes hm-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+.hm--still *, .hm--still *::before, .hm--still *::after { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .hm *, .hm *::before, .hm *::after { animation: none !important; transition: none !important; }
+}
+
+.hm-hero > * { flex-shrink: 0; }
+/* globals.css gives headings and paragraphs margins; this screen sets its own spacing. */
+.hm h1, .hm h2, .hm h3, .hm p { margin: 0; }
+.hm-title { margin-top: calc(6 * var(--u)) !important; }
+.hm-place { margin-top: calc(6 * var(--u)) !important; }
+.hm-note { margin-top: calc(4 * var(--u)) !important; }
