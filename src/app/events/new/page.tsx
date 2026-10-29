@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { IconPicker } from "@/components/IconPicker";
 import { getEventById, getEventFormData } from "@/lib/events/queries";
 import { createEvent } from "@/lib/events/mutations";
 import { FormWizard } from "@/components/FormWizard";
@@ -73,6 +74,10 @@ export default async function NewEventPage({
                 placeholder="ใส่เมื่อชื่องานยาว เช่น ซ้อมดับเพลิง รร.วัดปากน้ำโพ"
               />
             </label>
+            <div className="form-field full">
+              ไอคอนงาน
+              <IconPicker defaultValue={clone?.icon ?? ""} />
+            </div>
             <label className="form-field">
               วันที่ *
               <input

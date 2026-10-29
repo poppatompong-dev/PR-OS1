@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { IconPicker } from "@/components/IconPicker";
 import { PlaceInput } from "@/components/PlaceInput";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
@@ -52,6 +53,10 @@ export default async function EditEventPage({
           ชื่อสั้นบนจอทีวี (ไม่บังคับ)
           <input className="input" name="screenTitle" maxLength={60} defaultValue={event.screenTitle ?? ""} placeholder="ใส่เมื่อชื่องานยาว" />
         </label>
+        <div className="form-field full">
+          ไอคอนงาน
+          <IconPicker defaultValue={event.icon ?? ""} />
+        </div>
         <label className="form-field">
           วันที่ *
           <input className="input" type="date" name="eventDate" required defaultValue={event.eventDate} />

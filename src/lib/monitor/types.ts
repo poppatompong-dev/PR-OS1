@@ -35,6 +35,8 @@ export type MonitorEvent = {
   cancellationReason: string;
   /** "ชื่อสั้นบนจอ" (0017), shown instead of the title when set. */
   screenTitle?: string;
+  /** Job icon chosen in the form (0019); empty = guessed from the title. */
+  icon?: string;
 };
 
 export type MonitorAnnouncement = { id: string; message: string; authorName: string; endsAt: string };

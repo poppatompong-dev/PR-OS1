@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { JobIconTile } from "@/components/JobIconTile";
 import type { PrEvent } from "@/types/domain";
 import { eventStatusLabel, formatThaiDate, urgencyLabel } from "@/lib/format";
 import { MapPin, Users } from "lucide-react";
@@ -23,7 +24,7 @@ function EventCard({ event }: { event: PrEvent }) {
         </div>
 
         <div className="event-card-body">
-          <h3>{event.title}</h3>
+          <h3><JobIconTile title={event.title} icon={event.icon} size="28px" className="title-icon" />{event.title}</h3>
           <p className="event-card-meta">
             <MapPin size={14} aria-hidden="true" />
             <span>

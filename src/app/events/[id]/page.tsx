@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { JobIconTile } from "@/components/JobIconTile";
 import { Avatar } from "@/components/Avatar";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
@@ -97,7 +98,7 @@ export default async function EventDetailPage({
     <AppShell>
       <header className="page-header">
         <div>
-          <h1 className="page-title">{event.title}</h1>
+          <h1 className="page-title"><JobIconTile title={event.title} icon={event.icon} size="40px" className="title-icon" />{event.title}</h1>
           <p className="page-subtitle">
             {formatThaiDate(event.eventDate)} เวลา {event.startTime}
             {event.endTime ? `-${event.endTime}` : ""} ที่ {event.location.name}

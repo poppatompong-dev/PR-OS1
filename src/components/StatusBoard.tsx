@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { JobIconTile } from "@/components/JobIconTile";
 import type { PrEvent, EventStatus } from "@/types/domain";
 import { eventStatusLabel, formatThaiDate } from "@/lib/format";
 
@@ -40,7 +41,7 @@ export function StatusBoard({ events, today }: { events: PrEvent[]; today: strin
                   return (
                     <li key={event.id} className="board-card">
                       <Link href={`/events/${event.id}`}>
-                        <strong>{event.title}</strong>
+                        <strong><JobIconTile title={event.title} icon={event.icon} size="22px" className="title-icon" />{event.title}</strong>
                         <span className="board-when">
                           {formatThaiDate(event.eventDate)}
                           {event.eventDate === today ? " · วันนี้" : ""} · {event.startTime}

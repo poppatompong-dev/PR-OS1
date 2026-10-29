@@ -85,6 +85,7 @@ export async function fetchMonitorEvents(): Promise<MonitorEvent[]> {
     status: r.status ?? "published",
     cancellationReason: r.cancellation_reason ?? "",
     screenTitle: r.screen_title ?? "",
+    icon: r.icon ?? "",
   }));
 }
 

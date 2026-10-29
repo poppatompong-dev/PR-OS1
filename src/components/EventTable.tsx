@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { JobIconTile } from "@/components/JobIconTile";
 import type { PrEvent } from "@/types/domain";
 import { ackStatusLabel, eventStatusLabel, formatThaiDate, urgencyLabel } from "@/lib/format";
 import { StatusPill } from "@/components/StatusPill";
@@ -37,6 +38,7 @@ export function EventTable({ events }: { events: PrEvent[] }) {
               </td>
               <td>
                 <Link className="table-title table-link" href={`/events/${event.id}`}>
+                  <JobIconTile title={event.title} icon={event.icon} size="24px" className="title-icon" />
                   {event.title}
                 </Link>
                 <div className="table-note">

@@ -38,6 +38,8 @@ export type TaskItem = {
   event: {
     id: string;
     title: string;
+    /** Job icon chosen in the form (0019); null = guessed from the title. */
+    icon?: string | null;
     eventDate: string;
     startTime: string;
     endTime: string | null;
@@ -131,7 +133,7 @@ const TASK_SELECT = `
   person:people(display_name, line_user_id, telegram_chat_id),
   acknowledgements(assignment_version),
   event:events!inner(
-    id, title, event_date, start_time, end_time, short_note, status, cancellation_reason, deleted_at,
+    id, title, event_date, start_time, end_time, short_note, status, cancellation_reason, deleted_at, icon,
     location:locations(name),
     attachments:event_attachments(id, deleted_at)
   )
@@ -157,6 +159,7 @@ function toTask(a: any): TaskItem | null {
     event: {
       id: ev.id,
       title: ev.title,
+      icon: ev.icon ?? null,
       eventDate: ev.event_date,
       startTime: String(ev.start_time ?? "").slice(0, 5),
       endTime: ev.end_time ? String(ev.end_time).slice(0, 5) : null,

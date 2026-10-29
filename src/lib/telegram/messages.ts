@@ -10,6 +10,10 @@ import { ackLabelFor, type FieldChange } from "@/lib/line/change-diff";
 import { COMMANDS, UNAVAILABLE_PRESETS, appUrl, bangkokHhmm, type BubbleKind, type StatusKind } from "@/lib/line/messages";
 import { esc, type TgButton, type TgMessage } from "@/lib/telegram/api";
 import { callName, shortName } from "@/lib/names";
+import { jobIcon } from "@/lib/events/job-icon";
+
+/** The job type at a glance, e.g. 🚴 for a cycling event. */
+const ic = (e: { title: string; icon?: string | null }) => jobIcon(e.title, e.icon).emoji;
 
 /** "พฤ. 30 ต.ค." — lists have no room for the year. */
 function dayShort(iso: string): string {
@@ -103,7 +107,7 @@ function details(t: TaskItem, skip: Set<string> = new Set()): string[] {
 export function tgTask(t: TaskItem, kind: BubbleKind, changes: FieldChange[] = [], reason: string | null = null, savedAt?: Date): TgMessage {
   const changed = new Set(kind === "change" ? changes.map((c) => c.field) : []);
   const lines = HEADINGS[kind] ? [HEADINGS[kind], ""] : [];
-  lines.push(`<b>${esc(t.event.title)}</b>`);
+  lines.push(`${ic(t.event)} <b>${esc(t.event.title)}</b>`);
   if (kind === "change" && (changes.length || reason)) {
     for (const c of changes) lines.push(`✏️ ${esc(c.label)}: <s>${esc(c.from)}</s> → <b>${esc(c.to)}</b>`);
     if (reason) lines.push(`💬 ${esc(reason)}`);
@@ -126,7 +130,7 @@ export function tgTask(t: TaskItem, kind: BubbleKind, changes: FieldChange[] = [
 /** "ไม่สะดวก" tapped: the same card now asks why. */
 export function tgReasonPrompt(t: TaskItem): TgMessage {
   return {
-    text: [`⛔ <b>แจ้งไม่สะดวก</b>`, "", `<b>${esc(t.event.title)}</b>`, `🗓 ${esc(when(t))}`, "", "เลือกเหตุผล 👇"].join("\n"),
+    text: [`⛔ <b>แจ้งไม่สะดวก</b>`, "", `${ic(t.event)} <b>${esc(t.event.title)}</b>`, `🗓 ${esc(when(t))}`, "", "เลือกเหตุผล 👇"].join("\n"),
     buttons: [
       ...UNAVAILABLE_PRESETS.map((label, i) => [{ text: label, callback_data: cb.reason(t.assignmentId, i) }]),
       [{ text: "✏️ พิมพ์เหตุผลเอง", callback_data: cb.typeReason(t.assignmentId) }],
@@ -164,7 +168,7 @@ function mark(t: TaskItem) {
 
 export function tgDailySummary(personName: string, today: TaskItem[], tomorrow: TaskItem[]): TgMessage {
   const pending = [...today, ...tomorrow].filter((t) => !t.acknowledged && !t.unavailable).length;
-  const day = (ts: TaskItem[]) => ts.map((t) => `${mark(t)} <b>${t.event.startTime}</b> ${esc(t.event.title)}\n      📍 ${esc(t.event.locationName)} · 👤 ${esc(t.roleName)}`);
+  const day = (ts: TaskItem[]) => ts.map((t) => `${mark(t)} <b>${t.event.startTime}</b> ${ic(t.event)} ${esc(t.event.title)}\n      📍 ${esc(t.event.locationName)} · 👤 ${esc(t.roleName)}`);
   const lines = [`☀️ อรุณสวัสดิ์ครับ ${esc(callName(personName))}`];
   if (today.length) lines.push("", `📌 <b>วันนี้</b> · ${esc(dayShort(today[0].event.eventDate))}`, ...day(today));
   if (tomorrow.length) lines.push("", `🗓 <b>พรุ่งนี้</b> · ${esc(dayShort(tomorrow[0].event.eventDate))}`, ...day(tomorrow));
@@ -194,7 +198,7 @@ export function tgUnavailableAlert(t: TaskItem): TgMessage {
     text: [
       "🚨 <b>ไม่สะดวก · ต้องหาคนแทน</b>",
       "",
-      `<b>${esc(t.event.title)}</b>`,
+      `${ic(t.event)} <b>${esc(t.event.title)}</b>`,
       `🗓 ${esc(when(t))}`,
       `👤 ${esc(shortName(t.personName))} · ${esc(t.roleName)}`,
       `💬 ${esc(t.unavailableReason ?? "ไม่ระบุเหตุผล")}`,
@@ -270,7 +274,7 @@ export function tgTeamDay(label: string, date: string, tasks: TaskItem[]): TgMes
     const e = group[0].event;
     return [
       "",
-      `🕘 <b>${e.startTime}${e.endTime ? `–${e.endTime}` : ""}</b> ${esc(e.title)}`,
+      `${ic(e)} <b>${e.startTime}${e.endTime ? `–${e.endTime}` : ""}</b> ${esc(e.title)}`,
       `📍 ${esc(e.locationName)}`,
       ...group.map((t) => `      ${mark(t)} ${esc(shortName(t.personName))} · ${esc(t.roleName)}`),
     ];
@@ -287,7 +291,7 @@ export function tgPendingTeam(tasks: TaskItem[]): TgMessage {
     const e = group[0].event;
     return [
       "",
-      `🗓 <b>${esc(dayShort(e.eventDate))} ${e.startTime}</b> ${esc(e.title)}`,
+      `${ic(e)} <b>${esc(dayShort(e.eventDate))} ${e.startTime}</b> ${esc(e.title)}`,
       `      ${group.map((t) => `${esc(shortName(t.personName))}${t.unavailable ? " ⛔" : ""}`).join(", ")}`,
     ];
   });

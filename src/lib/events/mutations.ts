@@ -11,6 +11,7 @@ import { parseStagedFormValues } from "@/lib/attachments/rules";
 import { attachStaged } from "@/lib/attachments/staging";
 import { normalizeRoleIds, roleColumns } from "@/lib/assignments/roles";
 import { resolveLocationId } from "@/lib/locations/resolve";
+import { cleanIcon } from "@/lib/events/job-icon";
 import { cleanScreenTitle } from "@/lib/events/screen-title";
 import { createAnnouncement } from "@/lib/announcements";
 
@@ -73,6 +74,7 @@ export async function createEvent(formData: FormData) {
       urgency: String(formData.get("urgency") ?? "normal"),
       short_note: emptyToNull(formData.get("shortNote")),
       screen_title: cleanScreenTitle(formData.get("screenTitle")),
+      icon: cleanIcon(formData.get("icon"), title),
       internal_note: emptyToNull(formData.get("internalNote")),
       status: publish ? "published" : "draft",
       published_at: publish ? new Date().toISOString() : null,
@@ -238,6 +240,7 @@ export async function editEvent(formData: FormData) {
     urgency: String(formData.get("urgency") ?? "normal"),
     short_note: emptyToNull(formData.get("shortNote")),
     screen_title: cleanScreenTitle(formData.get("screenTitle")),
+    icon: cleanIcon(formData.get("icon"), title),
     internal_note: emptyToNull(formData.get("internalNote")),
     updated_by: user.id,
   };

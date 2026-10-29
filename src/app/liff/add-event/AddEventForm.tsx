@@ -6,6 +6,7 @@
 // LINE and finds the team member by their LINE user id.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { IconPicker } from "@/components/IconPicker";
 import styles from "./add-event.module.css";
 import { AttachmentPicker } from "@/components/AttachmentPicker";
 import { PlaceInput } from "@/components/PlaceInput";
@@ -97,6 +98,7 @@ export function AddEventForm({ liffId }: { liffId: string }) {
   const [place, setPlace] = useState("");
   const [shortNote, setShortNote] = useState("");
   const [screenTitle, setScreenTitle] = useState("");
+  const [icon, setIcon] = useState("");
   const [announce, setAnnounce] = useState("");
   const [rows, setRows] = useState<Row[]>([{ personId: "", roleIds: [] }]);
   const [files, setFiles] = useState<{ staged: StagedAttachment[]; busy: boolean }>({ staged: [], busy: false });
@@ -173,7 +175,7 @@ export function AddEventForm({ liffId }: { liffId: string }) {
       const res = await fetch("/api/liff/events", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: auth() },
-        body: JSON.stringify({ title, eventDate, startTime, endTime: endTime || null, locationText: place.trim() || null, shortNote, screenTitle, announce, assignees: filled, attachments: files.staged, publish }),
+        body: JSON.stringify({ title, eventDate, startTime, endTime: endTime || null, locationText: place.trim() || null, shortNote, screenTitle, icon, announce, assignees: filled, attachments: files.staged, publish }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "บันทึกไม่สำเร็จ");
@@ -253,6 +255,12 @@ export function AddEventForm({ liffId }: { liffId: string }) {
             />
           ) : null}
         </label>
+        {title.trim() ? (
+          <div className={styles.field}>
+            <span>ไอคอนงาน</span>
+            <IconPicker name="liff-icon" title={title} onChange={setIcon} />
+          </div>
+        ) : null}
 
         <div className={styles.field}>
           <span>วันที่ *</span>

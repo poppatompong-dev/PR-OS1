@@ -3912,3 +3912,29 @@ textarea:focus-visible {
 .file-error { color: var(--red); font-size: 12px; overflow-wrap: anywhere; }
 .file-tile-error .file-tile-link { border-color: var(--red); }
 .picker-tiles { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+
+/* Job icon tile (components/JobIconTile.tsx) */
+.jit {
+  position: relative; flex: none; display: inline-grid; place-items: center;
+  width: var(--jit-size); height: var(--jit-size); border-radius: calc(var(--jit-size) * .28);
+  background: linear-gradient(135deg, var(--jit-a), var(--jit-b));
+  box-shadow: 0 calc(var(--jit-size) * .05) calc(var(--jit-size) * .14) color-mix(in srgb, var(--jit-b) 70%, transparent),
+    inset 0 0 0 1px rgba(255, 255, 255, .45);
+  color: #fff; overflow: hidden; vertical-align: middle;
+}
+.jit::before {
+  content: ""; position: absolute; left: 2%; right: 2%; top: 2%; height: 44%;
+  border-radius: calc(var(--jit-size) * .26) calc(var(--jit-size) * .26) 50% 50% / calc(var(--jit-size) * .26) calc(var(--jit-size) * .26) 22% 22%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0));
+}
+.jit svg { position: relative; width: 56%; height: 56%; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .35)); }
+
+/* Icon picker in the add/edit forms */
+.icon-picker-now { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent; border: 1px solid var(--border, #ddd); border-radius: 12px; padding: 8px 10px; cursor: pointer; color: inherit; font: inherit; }
+.icon-picker-now small { display: block; opacity: .7; font-size: 12px; }
+.icon-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; margin-top: 8px; }
+.icon-picker-grid button { display: flex; flex-direction: column; align-items: center; gap: 3px; background: transparent; border: 1px solid transparent; border-radius: 10px; padding: 6px 2px; cursor: pointer; color: inherit; font: inherit; }
+.icon-picker-grid button small { font-size: 11px; line-height: 1.2; text-align: center; }
+.icon-picker-grid button.is-on { border-color: #6a2c91; background: rgba(106, 44, 145, .08); }
+
+.title-icon { margin-right: .45em; position: relative; top: -.08em; }

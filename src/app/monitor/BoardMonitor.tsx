@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { fetchMonitorAnnouncements, fetchMonitorEvents, fetchMonitorTeam } from "@/lib/monitor/client";
 import type { MonitorAnnouncement, MonitorAssignee, MonitorEvent } from "@/lib/monitor/types";
+import { JobIconTile } from "@/components/JobIconTile";
 import { buildBoard, screenTitle, thaiTime, titleSize } from "@/lib/monitor/board";
 import { shortName } from "@/lib/monitor/rows";
 import { TH_MONTH_SHORT, TH_WEEKDAY_SHORT, bangkokNow, isoParts, thaiLongDate, whenLabel } from "@/lib/monitor/thai-time";
@@ -145,9 +146,12 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
                 return (
                   <article className="bm-job" key={e.id} {...link(e)}>
                     <div className="bm-job-info">
-                      <div className="bm-job-time">{thaiTime(e.startTime, e.endTime)}</div>
-                      <h2 className={`bm-job-title ${titleSize(t)}`}>{t}</h2>
-                      <p className="bm-job-place">📍 {e.locationName || "ไม่ระบุสถานที่"}</p>
+                      <JobIconTile title={e.title} icon={e.icon} size="var(--bm-ic)" className="bm-job-icon" />
+                      <div className="bm-job-text">
+                        <div className="bm-job-time">{thaiTime(e.startTime, e.endTime)}</div>
+                        <h2 className={`bm-job-title ${titleSize(t)}`}>{t}</h2>
+                        <p className="bm-job-place">📍 {e.locationName || "ไม่ระบุสถานที่"}</p>
+                      </div>
                     </div>
                     <div className="bm-job-people">
                       {e.assigneeDetail.slice(0, todayCount >= 3 ? 3 : 4).map((p, k) => (
@@ -183,16 +187,20 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
                 </div>
                 <div className="bm-day-body">
                   {one ? (
-                    <div {...link(one)}>
-                      <div className={`bm-day-title ${titleSize(screenTitle(one))}`}>
-                        <em>{thaiTime(one.startTime)}</em> {screenTitle(one)}
+                    <div className="bm-day-one" {...link(one)}>
+                      <JobIconTile title={one.title} icon={one.icon} size="calc(54 * var(--u))" />
+                      <div className="bm-day-text">
+                        <div className={`bm-day-title ${titleSize(screenTitle(one))}`}>
+                          <em>{thaiTime(one.startTime)}</em> {screenTitle(one)}
+                        </div>
+                        <p className="bm-day-place">📍 {one.locationName || "ไม่ระบุสถานที่"}</p>
                       </div>
-                      <p className="bm-day-place">📍 {one.locationName || "ไม่ระบุสถานที่"}</p>
                     </div>
                   ) : (
                     <>
                       {d.events.slice(0, d.events.length > 3 ? 2 : 3).map((e) => (
                         <div className="bm-day-line" key={e.id} {...link(e)}>
+                          <JobIconTile title={e.title} icon={e.icon} size="calc(30 * var(--u))" className="bm-inline-icon" />
                           <em>{thaiTime(e.startTime)}</em> <b>{screenTitle(e)}</b> <span>📍 {e.locationName || "—"}</span>
                         </div>
                       ))}
@@ -220,6 +228,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
               {c.events.length === 0 ? <div className="bm-cell-x is-none">ไม่มีงาน</div> : null}
               {c.events.slice(0, 2).map((e) => (
                 <div className="bm-cell-x" key={e.id} {...link(e)}>
+                  <JobIconTile title={e.title} icon={e.icon} size="calc(22 * var(--u))" className="bm-inline-icon" />
                   {thaiTime(e.startTime)} {screenTitle(e)}
                 </div>
               ))}

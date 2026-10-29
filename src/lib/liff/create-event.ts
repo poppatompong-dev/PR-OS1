@@ -15,6 +15,7 @@ import { parseStagedList, type StagedAttachment } from "@/lib/attachments/rules"
 import { attachStaged } from "@/lib/attachments/staging";
 import { mergeAssignees, normalizeRoleIds, roleColumns } from "@/lib/assignments/roles";
 import { cleanPlace, resolveLocationId } from "@/lib/locations/resolve";
+import { cleanIcon } from "@/lib/events/job-icon";
 import { cleanScreenTitle } from "@/lib/events/screen-title";
 import { createAnnouncement } from "@/lib/announcements";
 
@@ -29,6 +30,8 @@ export type LiffEventInput = {
   shortNote: string | null;
   /** "ชื่อสั้นบนจอ" (0017). */
   screenTitle: string | null;
+  /** Job icon picked in the form (0019); null = guessed from the title. */
+  icon: string | null;
   /** "ประกาศบนจอ": a ticker line until midnight. */
   announce: string | null;
   /** One row per person, every duty they hold on this job (0016). */
@@ -84,6 +87,7 @@ export function parseLiffEventInput(body: unknown): { ok: true; input: LiffEvent
       locationText: cleanPlace(b.locationText),
       shortNote: optional(b.shortNote, 500),
       screenTitle: cleanScreenTitle(typeof b.screenTitle === "string" ? b.screenTitle : null),
+      icon: cleanIcon(b.icon, title),
       announce: optional(b.announce, 140),
       assignees,
       attachments: parseStagedList(b.attachments),
@@ -140,6 +144,7 @@ export async function createEventFromLiff(
       urgency: "normal",
       short_note: input.shortNote,
       screen_title: input.screenTitle,
+      icon: input.icon,
       status: input.publish ? "published" : "draft",
       published_at: input.publish ? nowIso : null,
       created_by: caller.userId,

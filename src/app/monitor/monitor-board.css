@@ -123,3 +123,14 @@
 .bm--c { --hm-text: #f3f5fa; --hm-dim: #a9b6cc; --hm-accent: #ffd36b; --bm-block: #ffd36b; --bm-block-text: #1a2440; --bm-time: #ffd36b; background: radial-gradient(calc(1200 * var(--u)) calc(700 * var(--u)) at 15% 0%, #1d3461 0%, #0f1d38 55%, #0a1428 100%); }
 .bm--c .hm-clock b { color: #ffd36b; text-shadow: 0 0 calc(30 * var(--u)) rgba(255, 211, 107, .3); }
 .bm--c .hm-clock span, .bm--c .hm-head p { color: #c4cee0; }
+
+/* Job icons (owner 29 Oct 2026: ไอคอนวาด) — size per how many jobs share the card */
+.bm-today { --bm-ic: calc(86 * var(--u)); }
+.bm-today.is-one { --bm-ic: calc(118 * var(--u)); }
+.bm-today.is-many { --bm-ic: calc(62 * var(--u)); }
+.bm-today.is-lots { --bm-ic: calc(50 * var(--u)); }
+.bm-job-info { display: flex; align-items: center; gap: calc(18 * var(--u)); }
+.bm-job-text, .bm-day-text { min-width: 0; flex: 1 1 auto; }
+.bm-day-one { display: flex; align-items: center; gap: calc(14 * var(--u)); min-width: 0; }
+.bm-inline-icon { margin-right: calc(8 * var(--u)); position: relative; top: calc(-2 * var(--u)); }
+.bm-cell-x .bm-inline-icon { margin-right: calc(5 * var(--u)); }

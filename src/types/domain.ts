@@ -60,6 +60,8 @@ export type PrEvent = {
   shortNote?: string;
   /** "ชื่อสั้นบนจอ" (0017): shown on the TV instead of the title. */
   screenTitle?: string;
+  /** Job icon chosen in the form (0019); empty = guessed from the title. */
+  icon?: string;
   internalNote?: string;
   hasChanges: boolean;
   assignments: Assignment[];
