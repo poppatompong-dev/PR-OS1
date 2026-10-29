@@ -31,6 +31,7 @@ import {
   type LinePerson,
 } from "@/lib/line/data";
 import { loadChangeInfo } from "@/lib/line/change-diff";
+import { faqCooldownKey, faqMessage, matchFaq } from "@/lib/line/faq";
 import {
   COMMANDS,
   UNAVAILABLE_PRESETS,
@@ -253,7 +254,15 @@ async function handleText(ctx: Ctx, ev: LineEvent, person: LinePerson | null): P
     // Owner rule: in the group, speak only when spoken to — and only in a
     // group an admin has allowed, so the schedule cannot be read from a group
     // a stranger set up.
-    if (!cmd) return [];
+    if (!cmd) {
+      // A short how-to question ("เพิ่มงาน …", "แนบรูปยังไง") gets the how-to,
+      // once per 30 minutes per group (owner, 29 Oct 2026). Free: a reply.
+      const faq = matchFaq(raw);
+      if (!faq) return [];
+      if (!(await getAllowedGroupIds(ctx.admin)).includes(groupId)) return [];
+      if (!(await claimRun(ctx.admin, faqCooldownKey(groupId, faq)))) return [];
+      return [faqMessage(faq, true)];
+    }
     if (!(await getAllowedGroupIds(ctx.admin)).includes(groupId)) return [];
     return runCommand(ctx, cmd, person, true);
   }
@@ -266,6 +275,8 @@ async function handleText(ctx: Ctx, ev: LineEvent, person: LinePerson | null): P
   if (cmd === "help") return [helpMessage()];
   if (!person) return notLinkedReply(ctx, userId);
   if (cmd) return runCommand(ctx, cmd, person, false);
+  const faq = matchFaq(raw);
+  if (faq) return [faqMessage(faq, false)];
   return [helpMessage()];
 }
 
