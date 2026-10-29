@@ -99,7 +99,8 @@ export function HeroMonitor({ linkable = false, staticMode = false }: { linkable
   const others = todayEvents.filter((e) => e.id !== heroId);
 
   const pendingToday = todayEvents.flatMap((e) => e.assigneeDetail).filter((p) => !p.ack && !p.unavailable).length;
-  const ahead = live.filter((e) => e.eventDate > today).length;
+  // The feed reaches 14 days ahead since 0017; this tile still says "7 วันข้างหน้า".
+  const ahead = today ? live.filter((e) => e.eventDate > today && e.eventDate <= addDaysIso(today, 7)).length : 0;
 
   const alerts = useMemo(() => {
     if (!today) return [];

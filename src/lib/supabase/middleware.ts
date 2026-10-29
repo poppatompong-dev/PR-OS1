@@ -29,6 +29,8 @@ const PUBLIC_PREFIXES = [
   "/api/health",
   // LINE calls the webhook with no session; it checks x-line-signature itself.
   "/api/line/webhook",
+  // Telegram calls its webhook with no session; it checks the secret header itself.
+  "/api/telegram/webhook",
   // LINE Login: /login (sign in with LINE) and /callback must work before
   // there is a session. /start checks for a session itself.
   "/api/auth/line",

@@ -18,6 +18,8 @@ export type LinePerson = {
   id: string;
   displayName: string;
   lineUserId: string | null;
+  /** Telegram chat (owner, 29 Oct 2026): when set, notifications go there instead of LINE. */
+  telegramChatId?: number | null;
 };
 
 export type TaskItem = {
@@ -26,6 +28,7 @@ export type TaskItem = {
   personId: string;
   personName: string;
   lineUserId: string | null;
+  telegramChatId?: number | null;
   roleName: string;
   acknowledged: boolean;
   unavailable: boolean;
@@ -50,11 +53,28 @@ export type TaskItem = {
 export async function findPersonByLineUserId(admin: SupabaseClient, lineUserId: string): Promise<LinePerson | null> {
   const { data } = await admin
     .from("people")
-    .select("id, display_name, line_user_id, is_active")
+    .select("id, display_name, line_user_id, telegram_chat_id, is_active")
     .eq("line_user_id", lineUserId)
     .maybeSingle();
   if (!data || data.is_active === false) return null;
-  return { id: data.id, displayName: data.display_name, lineUserId: data.line_user_id };
+  return { id: data.id, displayName: data.display_name, lineUserId: data.line_user_id, telegramChatId: tgId(data.telegram_chat_id) };
+}
+
+export async function findPersonByTelegramChatId(admin: SupabaseClient, chatId: number): Promise<LinePerson | null> {
+  const { data } = await admin
+    .from("people")
+    .select("id, display_name, line_user_id, telegram_chat_id, is_active")
+    .eq("telegram_chat_id", chatId)
+    .maybeSingle();
+  if (!data || data.is_active === false) return null;
+  return { id: data.id, displayName: data.display_name, lineUserId: data.line_user_id, telegramChatId: tgId(data.telegram_chat_id) };
+}
+
+/** bigint comes back as a number or a string depending on size; chat ids fit in a JS number. */
+function tgId(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 /** people.id of everyone who gets the admin-side LINE messages. */
@@ -98,17 +118,17 @@ export async function getPeopleByIds(admin: SupabaseClient, ids: string[]): Prom
   if (ids.length === 0) return [];
   const { data } = await admin
     .from("people")
-    .select("id, display_name, line_user_id, is_active")
+    .select("id, display_name, line_user_id, telegram_chat_id, is_active")
     .in("id", ids);
   return (data ?? [])
     .filter((p: any) => p.is_active !== false)
-    .map((p: any) => ({ id: p.id, displayName: p.display_name, lineUserId: p.line_user_id }));
+    .map((p: any) => ({ id: p.id, displayName: p.display_name, lineUserId: p.line_user_id, telegramChatId: tgId(p.telegram_chat_id) }));
 }
 
 const TASK_SELECT = `
   id, assignment_version, person_id, unavailable_at, unavailable_reason,
   role:roles(name), role_names,
-  person:people(display_name, line_user_id),
+  person:people(display_name, line_user_id, telegram_chat_id),
   acknowledgements(assignment_version),
   event:events!inner(
     id, title, event_date, start_time, end_time, short_note, status, cancellation_reason, deleted_at,
@@ -128,6 +148,7 @@ function toTask(a: any): TaskItem | null {
     personId: a.person_id,
     personName: person?.display_name ?? "—",
     lineUserId: person?.line_user_id ?? null,
+    telegramChatId: tgId(person?.telegram_chat_id),
     roleName: a.role_names ?? one(a.role)?.name ?? "—",
     acknowledged: acks.some((k: any) => k.assignment_version === a.assignment_version),
     unavailable: Boolean(a.unavailable_at),
@@ -217,7 +238,7 @@ export type AckOutcome = "ok" | "already" | "stale" | "not_yours" | "not_found" 
  */
 export async function recordAck(
   admin: SupabaseClient,
-  opts: { assignmentId: string; version: number; personId: string; channel: "line" | "mobile_web" },
+  opts: { assignmentId: string; version: number; personId: string; channel: "line" | "mobile_web" | "telegram" },
 ): Promise<{ outcome: AckOutcome; task: TaskItem | null }> {
   const task = await loadTask(admin, opts.assignmentId);
   if (!task) return { outcome: "not_found", task: null };
@@ -348,6 +369,8 @@ export async function logPush(
     providerMessageId?: string;
     error?: string;
     quotaMonth: string;
+    /** Telegram pushes are logged too (history) but never count against the LINE quota. */
+    channel?: "line" | "telegram";
   },
 ) {
   const now = new Date().toISOString();
@@ -355,7 +378,7 @@ export async function logPush(
     person_id: row.personId,
     event_id: row.eventId ?? null,
     assignment_id: row.assignmentId ?? null,
-    channel: "line",
+    channel: row.channel ?? "line",
     notification_type: row.type,
     scheduled_for: now,
     sent_at: now,

@@ -32,8 +32,14 @@ import {
 } from "@/lib/line/data";
 import { loadChangeInfo } from "@/lib/line/change-diff";
 import { faqCooldownKey, faqMessage, matchFaq } from "@/lib/line/faq";
+import { announceDoneText, createAnnouncement, parseAnnounceCommand } from "@/lib/announcements";
+import { avatarUrl, hasAvatar } from "@/lib/avatars";
+import { isTelegramConfigured } from "@/lib/env";
+import { getBotUsername } from "@/lib/telegram/api";
+import { LINK_TOKEN_MINUTES, createLinkToken } from "@/lib/telegram/link";
 import {
   COMMANDS,
+  appUrl,
   UNAVAILABLE_PRESETS,
   helpMessage,
   linkPromptMessage,
@@ -225,6 +231,18 @@ async function handlePostback(ctx: Ctx, ev: LineEvent, person: LinePerson | null
     case "cancelreason":
       await clearPending(ctx.admin, userId);
       return [text("ยกเลิกแล้วครับ งานยังอยู่ในชื่อของคุณตามเดิม", true)];
+    case "avok":
+    case "avedit": {
+      const ok = p.a === "avok";
+      await ctx.admin.from("audit_logs").insert({
+        entity_type: "person",
+        entity_id: person.id,
+        action: ok ? "avatar_ok" : "avatar_change_request",
+        changed_by: null,
+        summary: ok ? "เจ้าตัวยืนยันรูปการ์ตูน (LINE)" : "เจ้าตัวขอแก้รูปการ์ตูน (LINE)",
+      });
+      return [text(ok ? "ขอบคุณครับ 👍 ใช้รูปนี้ต่อ" : "รับเรื่องแล้วครับ บอกได้เลยว่าอยากแก้ตรงไหน หรือส่งรูปถ่ายใหม่ให้แอดมิน (แอดมินเห็นคำขอนี้แล้ว)")];
+    }
     default:
       return [helpMessage()];
   }
@@ -251,6 +269,15 @@ async function handleText(ctx: Ctx, ev: LineEvent, person: LinePerson | null): P
       if (!(await getAllowedGroupIds(ctx.admin)).includes(groupId)) return [];
       return [registerCardMessage()];
     }
+    const announce = parseAnnounceCommand(raw);
+    if (announce !== null) {
+      if (!person || !(await getAllowedGroupIds(ctx.admin)).includes(groupId)) return [];
+      return [await announceReply(ctx, person, announce)];
+    }
+    if (isLinkTelegramCommand(raw)) {
+      if (!(await getAllowedGroupIds(ctx.admin)).includes(groupId)) return [];
+      return [text('พิมพ์ "ผูก Telegram" ในแชทส่วนตัวกับ "ผู้ช่วยงาน ปชส." นะครับ (ลิงก์ผูกเป็นของแต่ละคน ไม่ส่งในกลุ่ม)')];
+    }
     // Owner rule: in the group, speak only when spoken to — and only in a
     // group an admin has allowed, so the schedule cannot be read from a group
     // a stranger set up.
@@ -275,6 +302,10 @@ async function handleText(ctx: Ctx, ev: LineEvent, person: LinePerson | null): P
   if (cmd === "help") return [helpMessage()];
   if (!person) return notLinkedReply(ctx, userId);
   if (cmd) return runCommand(ctx, cmd, person, false);
+  if (isLinkTelegramCommand(raw)) return [await telegramLinkReply(ctx, person)];
+  const announce = parseAnnounceCommand(raw);
+  if (announce !== null) return [await announceReply(ctx, person, announce)];
+  if (/^(รูปของฉัน|รูปฉัน)$/.test(raw.replace(/\s+/g, ""))) return avatarReply(person);
   const faq = matchFaq(raw);
   if (faq) return [faqMessage(faq, false)];
   return [helpMessage()];
@@ -328,4 +359,53 @@ export async function handleLineEvent(ctx: Ctx, ev: LineEvent): Promise<void> {
     default:
       return; // unfollow, leave, read receipts …: nothing to say
   }
+}
+
+// ---- Telegram link, ประกาศบนจอ, รูปของฉัน (owner, 29 Oct 2026) -----------------
+
+export function isLinkTelegramCommand(raw: string): boolean {
+  return /^(ผูก|เชื่อม|ย้ายไป)\s*(telegram|เทเลแกรม|เทเลแกม)$/i.test(raw.trim());
+}
+
+async function telegramLinkReply(ctx: Ctx, person: LinePerson): Promise<LineMessage> {
+  if (!isTelegramConfigured()) return text("ระบบ Telegram ยังไม่เปิดใช้งานครับ รอแอดมินตั้งค่าให้เสร็จก่อน");
+  const username = await getBotUsername();
+  if (!username) return text("ติดต่อบอท Telegram ไม่ได้ชั่วคราว ลองใหม่อีกครั้งครับ");
+  const token = await createLinkToken(ctx.admin, person.id);
+  const link = `https://t.me/${username}?start=${token}`;
+  return text(
+    [
+      `ลิงก์ผูก Telegram ของคุณ${person.displayName} (ใช้ได้ครั้งเดียว ภายใน ${LINK_TOKEN_MINUTES} นาที)`,
+      "",
+      `1. ลงแอป Telegram ก่อน (ถ้ายังไม่มี)`,
+      `2. กดลิงก์นี้ 👉 ${link}`,
+      `3. กด "Start" (เริ่ม) ในแชทบอท`,
+      "",
+      "ผูกแล้วแจ้งเตือนงานทั้งหมดจะไปที่ Telegram แทน LINE",
+      "ห้ามส่งลิงก์นี้ให้คนอื่น",
+    ].join("\n"),
+  );
+}
+
+async function announceReply(ctx: Ctx, person: LinePerson, message: string): Promise<LineMessage> {
+  const res = await createAnnouncement(ctx.admin, { text: message, personId: person.id, authorName: person.displayName, source: "line" });
+  return text(res.ok ? announceDoneText(res.message, res.endsAt) : res.error);
+}
+
+function avatarReply(person: LinePerson): LineMessage[] {
+  if (!hasAvatar(person.id)) return [text(`ยังไม่มีรูปการ์ตูนของคุณ${person.displayName}ครับ ตอนนี้จอใช้รูปมาสคอตแทน รอแอดมินวาดให้`)];
+  const url = appUrl(avatarUrl(person.id));
+  return [
+    {
+      type: "image",
+      originalContentUrl: url,
+      previewImageUrl: url,
+      quickReply: {
+        items: [
+          { type: "action", action: { type: "postback", label: "👍 ใช้รูปนี้", data: "a=avok", displayText: "ใช้รูปนี้" } },
+          { type: "action", action: { type: "postback", label: "✏️ ขอแก้", data: "a=avedit", displayText: "ขอแก้รูป" } },
+        ],
+      },
+    },
+  ];
 }

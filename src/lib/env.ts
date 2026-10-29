@@ -32,6 +32,11 @@ export const env = {
   // Optional: the bot's LINE ID (e.g. @749bsqwt) for "เพิ่มเพื่อน" links. When
   // empty it is read once from LINE's /v2/bot/info.
   lineBotBasicId: (process.env.LINE_BOT_BASIC_ID ?? "").trim(),
+  // Telegram bot (owner, 29 Oct 2026: free notifications, LINE stays as the
+  // fallback for people who have not linked Telegram). Made with @BotFather.
+  // The webhook secret is derived from this token (lib/telegram/api.ts), so
+  // this is the only Telegram variable to set.
+  telegramBotToken: (process.env.TELEGRAM_BOT_TOKEN ?? "").trim(),
   // Email fallback via Resend.
   resendApiKey: process.env.RESEND_API_KEY ?? "",
   resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "PR-OS <onboarding@resend.dev>",
@@ -63,6 +68,10 @@ export function isLineMessagingConfigured(): boolean {
 
 export function isLineWebhookConfigured(): boolean {
   return isLineMessagingConfigured() && env.lineMessagingChannelSecret.length > 0;
+}
+
+export function isTelegramConfigured(): boolean {
+  return env.telegramBotToken.length > 0;
 }
 
 export function isEmailConfigured(): boolean {

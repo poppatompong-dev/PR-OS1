@@ -15,7 +15,8 @@ const DATA_API = "https://api-data.line.me/v2/bot";
 // Minimal message shapes. Flex contents are plain JSON built in messages.ts.
 export type LineMessage =
   | { type: "text"; text: string; quickReply?: QuickReply }
-  | { type: "flex"; altText: string; contents: Record<string, unknown>; quickReply?: QuickReply };
+  | { type: "flex"; altText: string; contents: Record<string, unknown>; quickReply?: QuickReply }
+  | { type: "image"; originalContentUrl: string; previewImageUrl: string; quickReply?: QuickReply };
 
 export type QuickReply = { items: Array<{ type: "action"; action: LineAction }> };
 

@@ -22,9 +22,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/server";
 import { LAST_RUN_KEY, RETRY_TAG, isTransientFailure } from "@/lib/notifications/health";
 import { budgetAllows, priorityOf, type BudgetState, type Priority } from "@/lib/notifications/budget";
-import { isLineMessagingConfigured } from "@/lib/env";
+import { isLineMessagingConfigured, isTelegramConfigured } from "@/lib/env";
 import { addDays } from "@/lib/date";
-import { getQuotaStatus, pushMessages, type LineMessage } from "@/lib/line/api";
+import { getQuotaStatus, pushMessages, type LineMessage, type SendResult } from "@/lib/line/api";
+import { sendTelegram, type TgMessage } from "@/lib/telegram/api";
+import { tgAdminReport, tgCancellation, tgDailySummary, tgPostponed, tgRemoved, tgTask } from "@/lib/telegram/messages";
 import {
   claimRun,
   getAdminRecipientIds,
@@ -39,6 +41,7 @@ import {
 } from "@/lib/line/data";
 import { loadChangeInfo, type FieldChange } from "@/lib/line/change-diff";
 import {
+  type BubbleKind,
   adminReportMessage,
   cancellationMessage,
   dailySummaryMessage,
@@ -177,46 +180,85 @@ export function eventStart(task: TaskItem): Date {
   return new Date(`${task.event.eventDate}T${task.event.startTime || "09:00"}:00+07:00`);
 }
 
+/** What a queue row should say, before choosing LINE or Telegram. */
+export type RowPlan =
+  | { kind: "task"; mode: BubbleKind; changes: FieldChange[]; reason: string | null }
+  | { kind: "cancel" }
+  | { kind: "postponed"; reason: string | null }
+  | { kind: "removed" };
+
+export function planForRow(
+  type: string,
+  task: TaskItem | null,
+  changes: FieldChange[] = [],
+  opts: { now?: Date; scheduledFor?: string; reason?: string | null } = {},
+): { plan: RowPlan | null; skipReason?: string } {
+  if (!task) return { plan: null, skipReason: "นำชื่อออกจากงานแล้ว หรือไม่พบงาน" };
+  if (type === "cancellation") {
+    // One queue type, three situations (no schema change): the job was
+    // canceled, put on hold without a new date, or this person was taken off it.
+    if (task.event.status === "canceled") return { plan: { kind: "cancel" } };
+    if (task.event.status === "draft") return { plan: { kind: "postponed", reason: opts.reason ?? null } };
+    if (task.removed && task.event.status === "published") return { plan: { kind: "removed" } };
+    return { plan: null, skipReason: "งานกลับมาเผยแพร่แล้ว ไม่ต้องแจ้ง" };
+  }
+  if (task.removed) return { plan: null, skipReason: "นำชื่อออกจากงานแล้ว" };
+  if (task.event.status !== "published") return { plan: null, skipReason: "งานไม่ได้อยู่ในสถานะเผยแพร่แล้ว" };
+  if (type === "reminder") {
+    const start = eventStart(task);
+    const now = opts.now ?? new Date();
+    // The cron sleeps 20:00–06:00, so a reminder for a late-evening start would
+    // otherwise arrive the next morning, after the event.
+    if (start.getTime() <= now.getTime()) return { plan: null, skipReason: "เลยเวลาเริ่มงานแล้ว" };
+    // Timed off an old start (the event was moved): the new one is queued separately.
+    if (opts.scheduledFor) {
+      const due = start.getTime() - 90 * 60 * 1000;
+      if (Math.abs(new Date(opts.scheduledFor).getTime() - due) > 60 * 1000) {
+        return { plan: null, skipReason: "เวลางานเปลี่ยนแล้ว (ใช้การเตือนรอบใหม่)" };
+      }
+    }
+    if (task.acknowledged) return { plan: null, skipReason: "รับทราบแล้ว ไม่ต้องเตือน" };
+    if (task.unavailable) return { plan: null, skipReason: "แจ้งไม่สะดวกแล้ว" };
+    return { plan: { kind: "task", mode: "reminder", changes: [], reason: null } };
+  }
+  if (type === "change") return { plan: { kind: "task", mode: "change", changes, reason: opts.reason ?? null } };
+  if (type === "assignment") {
+    if (task.acknowledged) return { plan: null, skipReason: "รับทราบไปแล้ว" };
+    return { plan: { kind: "task", mode: "assignment", changes: [], reason: null } };
+  }
+  return { plan: null, skipReason: `ไม่รู้จักประเภท ${type}` };
+}
+
+export function renderLine(plan: RowPlan, task: TaskItem): LineMessage {
+  if (plan.kind === "cancel") return cancellationMessage(task);
+  if (plan.kind === "postponed") return postponedMessage(task, plan.reason);
+  if (plan.kind === "removed") return removedMessage(task);
+  return taskMessage(task, plan.mode, plan.changes, plan.reason);
+}
+
+export function renderTelegram(plan: RowPlan, task: TaskItem): TgMessage {
+  if (plan.kind === "cancel") return tgCancellation(task);
+  if (plan.kind === "postponed") return tgPostponed(task, plan.reason);
+  if (plan.kind === "removed") return tgRemoved(task);
+  return tgTask(task, plan.mode, plan.changes, plan.reason);
+}
+
+/** The LINE message for a queue row (kept for the tests and the web preview). */
 export function messageForRow(
   type: string,
   task: TaskItem | null,
   changes: FieldChange[] = [],
   opts: { now?: Date; scheduledFor?: string; reason?: string | null } = {},
 ): { message: LineMessage | null; skipReason?: string } {
-  if (!task) return { message: null, skipReason: "นำชื่อออกจากงานแล้ว หรือไม่พบงาน" };
-  if (type === "cancellation") {
-    // One queue type, three situations (no schema change): the job was
-    // canceled, put on hold without a new date, or this person was taken off it.
-    if (task.event.status === "canceled") return { message: cancellationMessage(task) };
-    if (task.event.status === "draft") return { message: postponedMessage(task, opts.reason ?? null) };
-    if (task.removed && task.event.status === "published") return { message: removedMessage(task) };
-    return { message: null, skipReason: "งานกลับมาเผยแพร่แล้ว ไม่ต้องแจ้ง" };
-  }
-  if (task.removed) return { message: null, skipReason: "นำชื่อออกจากงานแล้ว" };
-  if (task.event.status !== "published") return { message: null, skipReason: "งานไม่ได้อยู่ในสถานะเผยแพร่แล้ว" };
-  if (type === "reminder") {
-    const start = eventStart(task);
-    const now = opts.now ?? new Date();
-    // The cron sleeps 20:00–06:00, so a reminder for a late-evening start would
-    // otherwise arrive the next morning, after the event.
-    if (start.getTime() <= now.getTime()) return { message: null, skipReason: "เลยเวลาเริ่มงานแล้ว" };
-    // Timed off an old start (the event was moved): the new one is queued separately.
-    if (opts.scheduledFor) {
-      const due = start.getTime() - 90 * 60 * 1000;
-      if (Math.abs(new Date(opts.scheduledFor).getTime() - due) > 60 * 1000) {
-        return { message: null, skipReason: "เวลางานเปลี่ยนแล้ว (ใช้การเตือนรอบใหม่)" };
-      }
-    }
-    if (task.acknowledged) return { message: null, skipReason: "รับทราบแล้ว ไม่ต้องเตือน" };
-    if (task.unavailable) return { message: null, skipReason: "แจ้งไม่สะดวกแล้ว" };
-    return { message: taskMessage(task, "reminder") };
-  }
-  if (type === "change") return { message: taskMessage(task, "change", changes, opts.reason ?? null) };
-  if (type === "assignment") {
-    if (task.acknowledged) return { message: null, skipReason: "รับทราบไปแล้ว" };
-    return { message: taskMessage(task, "assignment") };
-  }
-  return { message: null, skipReason: `ไม่รู้จักประเภท ${type}` };
+  const { plan, skipReason } = planForRow(type, task, changes, opts);
+  return plan && task ? { message: renderLine(plan, task) } : { message: null, skipReason };
+}
+
+/** Telegram when the person linked it (free), else LINE. */
+function telegramFor(chatId: unknown): number | null {
+  if (!isTelegramConfigured() || chatId === null || chatId === undefined || chatId === "") return null;
+  const n = Number(chatId);
+  return Number.isFinite(n) ? n : null;
 }
 
 async function processQueue(
@@ -228,7 +270,7 @@ async function processQueue(
 ) {
   const { data, error } = await admin
     .from("notifications")
-    .select("id, event_id, assignment_id, notification_type, scheduled_for, error_message, person:people(display_name, line_user_id)")
+    .select("id, event_id, assignment_id, notification_type, scheduled_for, error_message, person:people(display_name, line_user_id, telegram_chat_id)")
     .eq("status", "queued")
     .lte("scheduled_for", new Date().toISOString())
     .order("scheduled_for", { ascending: true })
@@ -239,14 +281,15 @@ async function processQueue(
   for (const row of (data ?? []) as any[]) {
     summary.processed += 1;
     const person = one(row.person);
+    const tgChat = telegramFor(person?.telegram_chat_id);
 
-    if (!settings.lineEnabled) {
+    if (!tgChat && !settings.lineEnabled) {
       await mark(admin, row.id, "skipped", { error_message: "ปิดการส่ง LINE ในหน้าตั้งค่า" });
       summary.skipped += 1;
       continue;
     }
-    if (!person?.line_user_id) {
-      await mark(admin, row.id, "skipped", { error_message: "ยังไม่ผูก LINE" });
+    if (!tgChat && (!person?.line_user_id || !isLineMessagingConfigured())) {
+      await mark(admin, row.id, "skipped", { error_message: "ยังไม่ผูก LINE หรือ Telegram" });
       summary.skipped += 1;
       continue;
     }
@@ -261,28 +304,33 @@ async function processQueue(
       const hold = await latestEventAudit(admin, row.event_id, ["postpone"]);
       reason = typeof hold?.new_values?.reason === "string" ? hold.new_values.reason : null;
     }
-    const { message, skipReason } = messageForRow(row.notification_type, task, changes, {
+    const { plan, skipReason } = planForRow(row.notification_type, task, changes, {
       scheduledFor: row.scheduled_for,
       reason,
     });
-    if (!message) {
+    if (!plan || !task) {
       await mark(admin, row.id, "skipped", { error_message: skipReason });
       summary.skipped += 1;
       continue;
     }
-    const budget = quota.allows(row.notification_type);
-    if (!budget.ok) {
-      await mark(admin, row.id, "skipped", { error_message: budget.reason });
-      summary.skipped += 1;
-      summary.budgetHeld += 1;
-      continue;
+    let res: SendResult;
+    if (tgChat) {
+      // Free: no budget check (owner, 29 Oct 2026).
+      res = await sendTelegram(tgChat, renderTelegram(plan, task));
+    } else {
+      const budget = quota.allows(row.notification_type);
+      if (!budget.ok) {
+        await mark(admin, row.id, "skipped", { error_message: budget.reason });
+        summary.skipped += 1;
+        summary.budgetHeld += 1;
+        continue;
+      }
+      res = await pushMessages(person.line_user_id, [renderLine(plan, task)], row.id);
     }
-
-    const res = await pushMessages(person.line_user_id, [message], row.id);
     if (res.ok) {
-      quota.record(row.notification_type);
+      if (!tgChat) quota.record(row.notification_type);
       await mark(admin, row.id, "sent", {
-        channel: "line",
+        channel: tgChat ? "telegram" : "line",
         provider_message_id: res.providerMessageId ?? null,
         quota_month: month,
       });
@@ -313,22 +361,28 @@ async function pushToAdmins(
   message: LineMessage,
   month: string,
   claimPrefix?: string,
+  tgMessage?: TgMessage,
+  lineEnabled = true,
 ): Promise<number> {
   const admins = await getPeopleByIds(admin, await getAdminRecipientIds(admin));
   let sent = 0;
   for (const a of admins) {
-    if (!a.lineUserId) continue;
-    if (!quota.allows(type).ok) {
-      summary.budgetHeld += 1;
-      continue;
+    const tgChat = tgMessage ? telegramFor(a.telegramChatId) : null;
+    if (!tgChat) {
+      if (!a.lineUserId || !lineEnabled || !isLineMessagingConfigured()) continue;
+      if (!quota.allows(type).ok) {
+        summary.budgetHeld += 1;
+        continue;
+      }
     }
     if (claimPrefix && !(await claimRun(admin, `${claimPrefix}:${a.id}`))) continue;
-    const res = await pushMessages(a.lineUserId, [message]);
+    const res = tgChat && tgMessage ? await sendTelegram(tgChat, tgMessage) : await pushMessages(a.lineUserId!, [message]);
     if (res.ok) {
-      quota.record(type);
+      if (!tgChat) quota.record(type);
       sent += 1;
     }
     await logPush(admin, {
+      channel: tgChat ? "telegram" : "line",
       personId: a.id,
       type,
       ok: res.ok,
@@ -346,6 +400,7 @@ async function sendDailySummaries(
   summary: ProcessSummary,
   today: string,
   month: string,
+  lineEnabled = true,
 ) {
   const tomorrow = addDays(today, 1);
   const tasks = await loadTasks(admin, { from: today, to: tomorrow });
@@ -359,25 +414,28 @@ async function sendDailySummaries(
   let sent = 0;
   for (const [personId, mine] of ordered) {
     const lineUserId = mine[0].lineUserId;
-    if (!lineUserId) continue;
-    if (!quota.allows("daily_summary").ok) {
-      summary.budgetHeld += 1;
-      continue;
+    const tgChat = telegramFor(mine[0].telegramChatId);
+    if (!tgChat) {
+      if (!lineUserId || !lineEnabled || !isLineMessagingConfigured()) continue;
+      if (!quota.allows("daily_summary").ok) {
+        summary.budgetHeld += 1;
+        continue;
+      }
     }
     // Claimed per person, right before the push: a run that dies half way
     // leaves the rest for the next run instead of losing the whole morning.
     if (!(await claimRun(admin, `daily:${today}:${personId}`))) continue;
-    const message = dailySummaryMessage(
-      mine[0].personName,
-      mine.filter((t) => t.event.eventDate === today),
-      mine.filter((t) => t.event.eventDate === tomorrow),
-    );
-    const res = await pushMessages(lineUserId, [message]);
+    const todays = mine.filter((t) => t.event.eventDate === today);
+    const tomorrows = mine.filter((t) => t.event.eventDate === tomorrow);
+    const res = tgChat
+      ? await sendTelegram(tgChat, tgDailySummary(mine[0].personName, todays, tomorrows))
+      : await pushMessages(lineUserId!, [dailySummaryMessage(mine[0].personName, todays, tomorrows)]);
     if (res.ok) {
-      quota.record("daily_summary");
+      if (!tgChat) quota.record("daily_summary");
       sent += 1;
     }
     await logPush(admin, {
+      channel: tgChat ? "telegram" : "line",
       personId,
       type: "daily_summary",
       ok: res.ok,
@@ -395,6 +453,7 @@ async function sendAdminReport(
   summary: ProcessSummary,
   today: string,
   month: string,
+  lineEnabled = true,
 ) {
   const tomorrow = addDays(today, 1);
   const tasks = await loadTasks(admin, { from: tomorrow, to: tomorrow });
@@ -416,6 +475,8 @@ async function sendAdminReport(
     adminReportMessage(tomorrow, pending, unavailable, failedToday ?? 0),
     month,
     `admin17:${today}`,
+    tgAdminReport(tomorrow, pending, unavailable, failedToday ?? 0),
+    lineEnabled,
   );
 }
 
@@ -436,7 +497,7 @@ export async function processDueNotifications(now = new Date()): Promise<Process
     quotaRemaining: null,
   };
 
-  if (!isLineMessagingConfigured()) {
+  if (!isLineMessagingConfigured() && !isTelegramConfigured()) {
     // Simulation: no LINE channel yet. Retire due rows so they do not all
     // fire at once the moment credentials appear.
     const { data } = await admin
@@ -509,13 +570,14 @@ async function runLocked(
 
   await processQueue(admin, settings, quota, summary, clock.month);
 
-  if (settings.lineEnabled) {
-    if (clock.minutes >= WINDOWS.daily.from && clock.minutes < WINDOWS.daily.to) {
-      summary.dailySummaries = await sendDailySummaries(admin, quota, summary, clock.date, clock.month);
-    }
-    if (clock.minutes >= WINDOWS.adminReport.from && clock.minutes < WINDOWS.adminReport.to) {
-      summary.adminReports = await sendAdminReport(admin, quota, summary, clock.date, clock.month);
-    }
+  // Telegram people get the summary and the report even when LINE is switched off.
+  if (clock.minutes >= WINDOWS.daily.from && clock.minutes < WINDOWS.daily.to) {
+    summary.dailySummaries = await sendDailySummaries(admin, quota, summary, clock.date, clock.month, settings.lineEnabled);
+  }
+  if (clock.minutes >= WINDOWS.adminReport.from && clock.minutes < WINDOWS.adminReport.to) {
+    summary.adminReports = await sendAdminReport(admin, quota, summary, clock.date, clock.month, settings.lineEnabled);
+  }
+  if (settings.lineEnabled && isLineMessagingConfigured()) {
     if (quota.remaining <= QUOTA_WARNING_REMAINING && quota.remaining > 0) {
       if (await claimRun(admin, `quota:${clock.month}`, { used: quota.used, limit: quota.limit })) {
         summary.quotaWarning =
@@ -532,7 +594,7 @@ async function runLocked(
     .delete()
     .like("run_key", "rl:%")
     .lt("created_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString());
-  for (const prefix of ["webhook:%", "daily:%", "admin17:%"]) {
+  for (const prefix of ["webhook:%", "tgu:%", "daily:%", "admin17:%"]) {
     await admin.from("notification_runs").delete().like("run_key", prefix).lt("created_at", weekAgo);
   }
 
