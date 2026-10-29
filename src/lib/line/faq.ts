@@ -11,7 +11,7 @@ import { LIFF_ADD_EVENT_URL } from "@/lib/liff/config";
 import { env } from "@/lib/env";
 import type { LineMessage } from "@/lib/line/api";
 
-export type FaqTopic = "add" | "attach" | "edit" | "monitor";
+export type FaqTopic = "start" | "telegram" | "add" | "attach" | "edit" | "monitor";
 
 /** Longer than this is a conversation, not a question for the bot. */
 export const FAQ_MAX_CHARS = 60;
@@ -20,6 +20,7 @@ export const FAQ_GROUP_COOLDOWN_MIN = 30;
 
 // Words a message STARTS with (after removing spaces).
 const STARTS: Array<[FaqTopic, string[]]> = [
+  ["start", ["เริ่มต้น", "เริ่มใช้", "วิธีเริ่ม", "เริ่มยังไง", "เริ่มไง", "สมัคร", "มาใหม่", "สมาชิกใหม่", "เริ่มตรงไหน"]],
   ["add", ["เพิ่มงาน", "สร้างงาน", "ลงงาน", "สั่งงาน", "มอบหมายงาน", "บันทึกงาน", "วิธีเพิ่มงาน", "จะเพิ่มงาน"]],
   ["edit", ["แก้งาน", "แก้ไขงาน", "เลื่อนงาน", "ยกเลิกงาน", "ลบงาน", "วิธีแก้งาน", "จะแก้งาน"]],
 ];
@@ -27,6 +28,7 @@ const STARTS: Array<[FaqTopic, string[]]> = [
 const CONTAINS: Array<[FaqTopic, string[]]> = [
   ["attach", ["แนบรูป", "แนบไฟล์", "แนบเอกสาร", "แนบภาพ", "ไฟล์แนบ"]],
   ["monitor", ["จอทีวี", "มอนิเตอร์", "จอมอนิเตอร์"]],
+  ["telegram", ["telegram", "เทเลแกรม", "เทเลแกม"]],
 ];
 
 export function matchFaq(raw: string): FaqTopic | null {
@@ -49,6 +51,27 @@ function webUrl(path = ""): string {
 export function faqText(topic: FaqTopic, inGroup: boolean): string {
   const where = inGroup ? 'ในแชทส่วนตัวกับ "ผู้ช่วยงาน ปชส."' : "ที่เมนูด้านล่าง";
   switch (topic) {
+    case "start":
+      return [
+        "🚀 เริ่มใช้ PR-OS · 4 ขั้น (ทำครั้งเดียว)",
+        "",
+        '1️⃣ พิมพ์ "ลงทะเบียน" ในกลุ่ม → กดปุ่ม → รอแอดมินยืนยันชื่อ',
+        '2️⃣ กด "เพิ่มเพื่อน" บอท "ผู้ช่วยงาน ปชส."',
+        '3️⃣ ในแชทส่วนตัวกับบอท พิมพ์ "ผูก Telegram" → กดลิงก์ → Start',
+        "4️⃣ เสร็จ! งานเด้งใน Telegram → กด ✅ รับทราบ",
+        "",
+        "❓ ติดขั้นไหน พิมพ์ถามในกลุ่มได้เลย",
+      ].join("\n");
+    case "telegram":
+      return [
+        "✈️ ย้ายแจ้งเตือนไป Telegram (ฟรี)",
+        "",
+        "1️⃣ ลงแอป Telegram (ถ้ายังไม่มี)",
+        `2️⃣ ${inGroup ? 'ในแชทส่วนตัวกับ "ผู้ช่วยงาน ปชส." ' : ""}พิมพ์ "ผูก Telegram"`,
+        "3️⃣ กดลิงก์ที่ได้ → กด Start",
+        "",
+        "⚠️ ต้องลงทะเบียนและแอดมินยืนยันชื่อก่อน",
+      ].join("\n");
     case "add":
       return [
         "📝 วิธีเพิ่มงาน",
@@ -79,10 +102,10 @@ export function faqText(topic: FaqTopic, inGroup: boolean): string {
       ].join("\n");
     case "monitor":
       return [
-        "📺 จอมอนิเตอร์งาน ปชส.",
+        "📺 จอทีวีงาน ปชส.",
         `ดูได้ทั้งทีวีและมือถือ 👉 ${webUrl("/tv")}`,
-        "การ์ดใหญ่ = งานถัดไป · ✓ รับทราบ · ! ยังไม่รับทราบ · ✕ ไม่สะดวก",
-        "จอเปลี่ยนเองทุก 1 นาที",
+        "🔄 อัปเดตเองทุก 1 นาที",
+        '📢 ขึ้นข้อความวิ่ง: พิมพ์ "ประกาศ ข้อความ"',
       ].join("\n");
   }
 }

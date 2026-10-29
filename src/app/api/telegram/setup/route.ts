@@ -1,16 +1,18 @@
 // One-time setup after TELEGRAM_BOT_TOKEN is set in Vercel: an admin opens
 // /api/telegram/setup while signed in. Points the bot at our webhook (with the
-// derived secret) and registers the command menu. Safe to run again.
+// derived secret), registers the command menu and the profile texts. Safe to run again.
+// ?photo=a|b|c also uploads that profile picture (each run adds one, so only on purpose).
 
 import { NextResponse } from "next/server";
 import { env, isSupabaseConfigured, isTelegramConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { can, getSessionUser } from "@/lib/auth/roles";
-import { getBotUsername, setCommands, setMenuButton, setWebhook } from "@/lib/telegram/api";
+import { getBotUsername, setCommands, setMenuButton, setProfilePhoto, setProfileTexts, setWebhook } from "@/lib/telegram/api";
+import { BOT_COMMANDS, BOT_DESCRIPTION, BOT_PHOTOS, BOT_SHORT_DESCRIPTION, type BotPhoto } from "@/lib/telegram/profile";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
   if (!isSupabaseConfigured()) return NextResponse.json({ error: "supabase not configured" }, { status: 503 });
   const user = await getSessionUser(await createClient()).catch(() => null);
   if (!user || !can.manageSettings(user.role)) {
@@ -21,14 +23,22 @@ export async function GET() {
   }
   const url = new URL("/api/telegram/webhook", env.appBaseUrl).toString();
   const hook = await setWebhook(url);
-  await setCommands([
-    { command: "add", description: "เพิ่มงาน" },
-    { command: "my", description: "งานของฉัน" },
-    { command: "today", description: "งานของทีมวันนี้" },
-    { command: "help", description: "วิธีใช้" },
-    { command: "stop", description: "เลิกรับแจ้งทาง Telegram (กลับไปใช้ LINE)" },
-  ]);
+  await setCommands(BOT_COMMANDS);
+  const profile = await setProfileTexts(BOT_DESCRIPTION, BOT_SHORT_DESCRIPTION);
+  const pick = new URL(req.url).searchParams.get("photo") as BotPhoto | null;
+  let photo: { ok: boolean; error?: string } | null = null;
+  if (pick && pick in BOT_PHOTOS) {
+    const file = await fetch(new URL(BOT_PHOTOS[pick], env.appBaseUrl), { cache: "no-store" }).catch(() => null);
+    photo = file?.ok ? await setProfilePhoto(await file.arrayBuffer()) : { ok: false, error: "อ่านไฟล์รูปไม่ได้" };
+  }
   await setMenuButton("เพิ่มงาน", new URL("/liff/add-event?tg=1", env.appBaseUrl).toString());
   const username = await getBotUsername();
-  return NextResponse.json({ ok: hook.ok, webhook: url, bot: username ? `@${username}` : null, error: hook.error ?? null });
+  return NextResponse.json({
+    ok: hook.ok,
+    webhook: url,
+    bot: username ? `@${username}` : null,
+    profile: profile.ok ? "ok" : profile.error,
+    photo: photo ? (photo.ok ? `ok (${pick})` : photo.error) : "ไม่เปลี่ยน (ใส่ ?photo=a|b|c)",
+    error: hook.error ?? null,
+  });
 }

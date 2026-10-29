@@ -46,8 +46,5 @@ export function pickRows(events: MonitorEvent[], today: string, now: number, lim
     });
 }
 
-/** "นางสาวณัฏฐ์ จิรจีรังชัย" → "ณัฏฐ์": a row has room for first names only. */
-export function shortName(full: string): string {
-  const t = full.trim().replace(/^(นางสาว|นาย|นาง|น\.ส\.|ว่าที่ร้อยตรี|ว่าที่ ร\.ต\.)\s*/u, "");
-  return t.split(/\s+/)[0] || full.trim();
-}
+/** First names only on the TV; lives in lib/names so the bots use the same rule. */
+export { shortName } from "@/lib/names";

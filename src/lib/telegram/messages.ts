@@ -9,6 +9,30 @@ import type { TaskItem } from "@/lib/line/data";
 import { ackLabelFor, type FieldChange } from "@/lib/line/change-diff";
 import { COMMANDS, UNAVAILABLE_PRESETS, appUrl, bangkokHhmm, type BubbleKind, type StatusKind } from "@/lib/line/messages";
 import { esc, type TgButton, type TgMessage } from "@/lib/telegram/api";
+import { callName, shortName } from "@/lib/names";
+
+/** "พฤ. 30 ต.ค." — lists have no room for the year. */
+function dayShort(iso: string): string {
+  return new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", weekday: "short", day: "numeric", month: "short" }).format(new Date(`${iso}T00:00:00+07:00`));
+}
+
+/** Adds blocks until Telegram's limit is near, never cutting through an HTML tag. */
+function fit(head: string[], blocks: string[][], tail: string[] = []): string {
+  const out = [...head];
+  let used = head.join("\n").length + tail.join("\n").length + 40;
+  let shown = 0;
+  for (const b of blocks) {
+    const add = b.join("\n").length + 1;
+    if (used + add > 3900) break;
+    out.push(...b);
+    used += add;
+    shown++;
+  }
+  if (shown < blocks.length) out.push("", `… และอีก ${blocks.length - shown} งาน`);
+  return [...out, ...tail].join("\n");
+}
+
+const MARK_LEGEND = "<i>✅ รับทราบ · ⏳ รอ · ⛔ ไม่สะดวก</i>";
 
 /** Callback data, under Telegram's 64-byte limit (a UUID is 36). */
 export const cb = {
@@ -34,7 +58,7 @@ export function addEventButton(): TgButton {
 
 export function tgAddEvent(): TgMessage {
   return {
-    text: "📝 <b>เพิ่มงาน</b>\nกดปุ่มด้านล่างเพื่อเปิดฟอร์ม กรอกชื่องาน วัน เวลา สถานที่ เลือกคนและหน้าที่ แนบรูปได้ แล้วกดบันทึก",
+    text: "📝 <b>เพิ่มงาน</b>\nกดปุ่มด้านล่าง กรอกแล้วกดบันทึก 👇",
     buttons: [[addEventButton()]],
   };
 }
@@ -53,9 +77,9 @@ function when(t: TaskItem): string {
 
 const HEADINGS: Record<BubbleKind, string> = {
   assignment: "🟣 <b>มอบหมายงานใหม่</b>",
-  change: "🟠 <b>งานเปลี่ยน · ข้อความนี้แทนข้อความก่อนหน้า</b>",
-  reminder: "🔴 <b>อีกประมาณ 1 ชม. 30 นาที เริ่มงาน</b>",
-  list: "🟣 <b>งานของคุณ</b>",
+  change: "🟠 <b>งานเปลี่ยน</b> · ใช้ข้อความนี้แทนอันเก่า",
+  reminder: "⏰ <b>อีก 1 ชม. 30 นาที เริ่มงาน</b>",
+  list: "",
 };
 
 function statusText(t: TaskItem): string {
@@ -70,7 +94,7 @@ function details(t: TaskItem, skip: Set<string> = new Set()): string[] {
   else if (!skip.has("date")) lines.push(`🗓 ${esc(formatThaiDate(t.event.eventDate))}`);
   else if (!skip.has("start") && !skip.has("end")) lines.push(`🕘 ${esc(t.event.endTime ? `${t.event.startTime}–${t.event.endTime}` : t.event.startTime)} น.`);
   if (!skip.has("location")) lines.push(`📍 ${esc(t.event.locationName)}`);
-  if (!skip.has("role")) lines.push(`👤 หน้าที่: ${esc(t.roleName)}`);
+  if (!skip.has("role")) lines.push(`👤 ${esc(t.roleName)}`);
   if (t.event.shortNote) lines.push(`📝 ${esc(t.event.shortNote)}`);
   return lines;
 }
@@ -78,13 +102,13 @@ function details(t: TaskItem, skip: Set<string> = new Set()): string[] {
 /** The job card with รับทราบ / ไม่สะดวก, or (after a tap) the same card with its new status and no buttons. */
 export function tgTask(t: TaskItem, kind: BubbleKind, changes: FieldChange[] = [], reason: string | null = null, savedAt?: Date): TgMessage {
   const changed = new Set(kind === "change" ? changes.map((c) => c.field) : []);
-  const lines = [HEADINGS[kind], "", `<b>${esc(t.event.title)}</b>`];
+  const lines = HEADINGS[kind] ? [HEADINGS[kind], ""] : [];
+  lines.push(`<b>${esc(t.event.title)}</b>`);
   if (kind === "change" && (changes.length || reason)) {
-    lines.push("");
-    for (const c of changes) lines.push(`${esc(c.label)}: <s>${esc(c.from)}</s> → <b>${esc(c.to)}</b>`);
-    if (reason) lines.push(`เหตุผล: ${esc(reason)}`);
+    for (const c of changes) lines.push(`✏️ ${esc(c.label)}: <s>${esc(c.from)}</s> → <b>${esc(c.to)}</b>`);
+    if (reason) lines.push(`💬 ${esc(reason)}`);
   }
-  lines.push("", ...details(t, changed));
+  lines.push(...details(t, changed));
   if (kind === "list" || t.acknowledged || t.unavailable) {
     lines.push("", statusText(t) + (savedAt ? ` · บันทึกเมื่อ ${bangkokHhmm(savedAt)} น.` : ""));
   }
@@ -96,14 +120,13 @@ export function tgTask(t: TaskItem, kind: BubbleKind, changes: FieldChange[] = [
   }
   const files = t.event.attachmentCount ?? 0;
   if (files > 0) buttons.push([{ text: `📎 ไฟล์แนบ (${files})`, url: appUrl(`/events/${t.event.id}`) }]);
-  if (kind === "change") lines.push("", "<i>ข้อความเก่าของงานนี้ใช้ไม่ได้แล้ว</i>");
   return { text: lines.join("\n"), buttons };
 }
 
 /** "ไม่สะดวก" tapped: the same card now asks why. */
 export function tgReasonPrompt(t: TaskItem): TgMessage {
   return {
-    text: [`⛔ <b>แจ้งไม่สะดวก</b>`, "", `<b>${esc(t.event.title)}</b>`, `🗓 ${esc(when(t))}`, "", "เลือกเหตุผล หรือกด \"พิมพ์เหตุผลเอง\""].join("\n"),
+    text: [`⛔ <b>แจ้งไม่สะดวก</b>`, "", `<b>${esc(t.event.title)}</b>`, `🗓 ${esc(when(t))}`, "", "เลือกเหตุผล 👇"].join("\n"),
     buttons: [
       ...UNAVAILABLE_PRESETS.map((label, i) => [{ text: label, callback_data: cb.reason(t.assignmentId, i) }]),
       [{ text: "✏️ พิมพ์เหตุผลเอง", callback_data: cb.typeReason(t.assignmentId) }],
@@ -114,25 +137,24 @@ export function tgReasonPrompt(t: TaskItem): TgMessage {
 
 function notice(head: string, t: TaskItem, lines: string[]): TgMessage {
   return {
-    text: [head, "", `<s>${esc(t.event.title)}</s>`, `🗓 เดิม ${esc(when(t))}`, `📍 ${esc(t.event.locationName)}`, "", ...lines.map(esc)].join("\n"),
+    text: [head, "", `<s>${esc(t.event.title)}</s>`, `🗓 ${esc(when(t))}`, `📍 ${esc(t.event.locationName)}`, "", ...lines.map(esc)].join("\n"),
   };
 }
 
 export function tgCancellation(t: TaskItem): TgMessage {
-  return notice("❌ <b>ยกเลิกงาน</b>", t, [`เหตุผล: ${t.event.cancellationReason ?? "ไม่ระบุ"}`, "ไม่ต้องไปปฏิบัติงานนี้แล้ว"]);
+  return notice("❌ <b>ยกเลิกงาน</b>", t, [`💬 ${t.event.cancellationReason ?? "ไม่ระบุเหตุผล"}`, "🙅 ไม่ต้องไปแล้ว"]);
 }
 
 export function tgPostponed(t: TaskItem, reason: string | null): TgMessage {
-  return notice("⏸ <b>งานเลื่อนออกไปก่อน · ยังไม่มีวันใหม่</b>", t, [
-    `เหตุผล: ${reason ?? "ไม่ระบุ"}`,
-    "ยังไม่ต้องไปตามวันเวลาเดิม เมื่อได้วันใหม่ ระบบจะส่งข้อความสีส้มให้กดรับทราบอีกครั้ง",
+  return notice("⏸ <b>เลื่อนงาน</b> · ยังไม่มีวันใหม่", t, [
+    `💬 ${reason ?? "ไม่ระบุเหตุผล"}`,
+    "🙅 ยังไม่ต้องไป · ได้วันใหม่จะแจ้งอีกครั้ง",
   ]);
 }
 
 export function tgRemoved(t: TaskItem): TgMessage {
-  return notice("➖ <b>ถอนชื่อคุณออกจากงานนี้แล้ว</b>", t, [
-    "งานนี้ยังมีอยู่ แต่ไม่ต้องไปปฏิบัติแล้ว (หัวหน้าปรับคนรับผิดชอบ)",
-    "การเตือนก่อนงานของงานนี้จะไม่ส่งถึงคุณอีก",
+  return notice("➖ <b>ถอนชื่อคุณออกจากงานนี้</b>", t, [
+    "🙅 ไม่ต้องไปแล้ว · จะไม่มีเตือนก่อนงานนี้",
   ]);
 }
 
@@ -142,49 +164,49 @@ function mark(t: TaskItem) {
 
 export function tgDailySummary(personName: string, today: TaskItem[], tomorrow: TaskItem[]): TgMessage {
   const pending = [...today, ...tomorrow].filter((t) => !t.acknowledged && !t.unavailable).length;
-  const day = (ts: TaskItem[]) => ts.map((t) => `${mark(t)} ${t.event.startTime} ${esc(t.event.title)} (${esc(t.roleName)}) · ${esc(t.event.locationName)}`);
-  const lines = [`☀️ สวัสดีตอนเช้าครับ คุณ${esc(personName)}`];
-  if (today.length) lines.push("", `📌 <b>วันนี้</b> (${esc(formatThaiDate(today[0].event.eventDate))})`, ...day(today));
-  if (tomorrow.length) lines.push("", `🗓 <b>พรุ่งนี้</b> (${esc(formatThaiDate(tomorrow[0].event.eventDate))})`, ...day(tomorrow));
-  lines.push("", pending > 0 ? `ยังไม่รับทราบ ${pending} งาน — กด "${COMMANDS.mine}" เพื่อรับทราบ` : "รับทราบครบทุกงานแล้ว ขอบคุณครับ");
+  const day = (ts: TaskItem[]) => ts.map((t) => `${mark(t)} <b>${t.event.startTime}</b> ${esc(t.event.title)}\n      📍 ${esc(t.event.locationName)} · 👤 ${esc(t.roleName)}`);
+  const lines = [`☀️ อรุณสวัสดิ์ครับ ${esc(callName(personName))}`];
+  if (today.length) lines.push("", `📌 <b>วันนี้</b> · ${esc(dayShort(today[0].event.eventDate))}`, ...day(today));
+  if (tomorrow.length) lines.push("", `🗓 <b>พรุ่งนี้</b> · ${esc(dayShort(tomorrow[0].event.eventDate))}`, ...day(tomorrow));
+  lines.push("", pending > 0 ? `⏳ ยังไม่รับทราบ ${pending} งาน → กด "${COMMANDS.mine}"` : "✅ รับทราบครบแล้ว ขอบคุณครับ 🙏");
   return { text: lines.join("\n"), keyboard: KEYBOARD };
 }
 
 export function tgAdminReport(date: string, pending: TaskItem[], unavailable: TaskItem[], failedToday = 0): TgMessage {
-  const lines = [`📋 <b>งานพรุ่งนี้ ${esc(formatThaiDate(date))}</b>`];
+  const lines = [`📋 <b>รายงานงานพรุ่งนี้</b> · ${esc(dayShort(date))}`];
   if (pending.length) {
     lines.push("", `⏳ ยังไม่รับทราบ ${pending.length} รายการ`);
     for (const t of pending) {
       const where = t.telegramChatId ? "" : t.lineUserId ? " (LINE)" : " (ยังไม่ผูกแชท)";
-      lines.push(`• ${esc(t.personName)}${where} — ${t.event.startTime} ${esc(t.event.title)}`);
+      lines.push(`• ${esc(shortName(t.personName))}${where} — ${t.event.startTime} ${esc(t.event.title)}`);
     }
   }
   if (unavailable.length) {
-    lines.push("", `⛔ แจ้งไม่สะดวก ยังไม่ได้หาคนแทน ${unavailable.length} รายการ`);
-    for (const t of unavailable) lines.push(`• ${esc(t.personName)} — ${t.event.startTime} ${esc(t.event.title)} (${esc(t.unavailableReason ?? "ไม่ระบุ")})`);
+    lines.push("", `⛔ ไม่สะดวก ยังไม่มีคนแทน ${unavailable.length} รายการ`);
+    for (const t of unavailable) lines.push(`• ${esc(shortName(t.personName))} — ${t.event.startTime} ${esc(t.event.title)} (${esc(t.unavailableReason ?? "ไม่ระบุ")})`);
   }
-  if (failedToday > 0) lines.push("", `⚠️ วันนี้ส่งแจ้งเตือนไม่สำเร็จ ${failedToday} ข้อความ (ลองซ้ำแล้ว) — ดูที่หน้าตั้งค่า`);
+  if (failedToday > 0) lines.push("", `⚠️ ส่งแจ้งเตือนไม่สำเร็จวันนี้ ${failedToday} ข้อความ → ดูหน้าตั้งค่า`);
   return { text: lines.join("\n") };
 }
 
 export function tgUnavailableAlert(t: TaskItem): TgMessage {
   return {
     text: [
-      "🚨 <b>แจ้งไม่สะดวก — ต้องหาคนแทน</b>",
+      "🚨 <b>ไม่สะดวก · ต้องหาคนแทน</b>",
       "",
       `<b>${esc(t.event.title)}</b>`,
-      `ผู้แจ้ง: ${esc(t.personName)} (${esc(t.roleName)})`,
       `🗓 ${esc(when(t))}`,
-      `เหตุผล: ${esc(t.unavailableReason ?? "ไม่ระบุ")}`,
+      `👤 ${esc(shortName(t.personName))} · ${esc(t.roleName)}`,
+      `💬 ${esc(t.unavailableReason ?? "ไม่ระบุเหตุผล")}`,
     ].join("\n"),
-    buttons: [[{ text: "เปิดงานในระบบ", url: appUrl(`/events/${t.event.id}`) }]],
+    buttons: [[{ text: "🔎 เปิดงานในระบบ", url: appUrl(`/events/${t.event.id}`) }]],
   };
 }
 
 export const STATUS_TOAST: Record<StatusKind, string> = {
-  acked: "✅ รับทราบแล้ว บันทึกในระบบเรียบร้อย",
+  acked: "✅ รับทราบแล้ว",
   already_acked: "✅ งานนี้รับทราบไว้แล้ว",
-  unavailable: "⛔ แจ้งไม่สะดวกแล้ว ส่งถึงแอดมินแล้ว",
+  unavailable: "⛔ แจ้งไม่สะดวกแล้ว · ส่งถึงแอดมินแล้ว",
   already_unavailable: "⛔ งานนี้แจ้งไม่สะดวกไว้แล้ว",
 };
 
@@ -193,37 +215,34 @@ export function tgFromLineText(text: string): TgMessage {
   return { text: esc(text), keyboard: KEYBOARD };
 }
 
+function helpLines(): string[] {
+  return [
+    `➕ <b>เพิ่มงาน</b> → ปุ่ม "เพิ่มงาน" ซ้ายล่าง`,
+    `📋 <b>${COMMANDS.mine}</b> → รับทราบ / ไม่สะดวก`,
+    `👥 <b>${COMMANDS.today}</b> · <b>${COMMANDS.tomorrow}</b> · <b>${COMMANDS.pending}</b>`,
+    `🖼 <b>รูปของฉัน</b> → ดูรูปการ์ตูนบนจอ`,
+    `📢 <b>ประกาศ</b> ข้อความ → ขึ้นจอทีวี`,
+    `      เช่น <code>ประกาศ ประชุม 9 โมง ห้อง 1</code>`,
+    "",
+    `🌐 แก้งาน · แนบไฟล์ → <a href="${esc(appUrl("/"))}">เว็บ PR-OS</a>`,
+  ];
+}
+
 export function tgHelp(): TgMessage {
   return {
-    text: [
-      "🤖 <b>ผู้ช่วยงาน ปชส.</b> ตอบได้ตามนี้ครับ",
-      "",
-      `➕ <b>เพิ่มงาน</b>: กดปุ่ม "เพิ่มงาน" ด้านล่าง หรือปุ่มเมนูข้างช่องพิมพ์`,
-      "",
-      `👤 <b>ของฉัน</b>`,
-      `• "${COMMANDS.mine}" — งานของคุณ 7 วันข้างหน้า พร้อมปุ่มรับทราบ / ไม่สะดวก`,
-      `• "รูปของฉัน" — ดูรูปการ์ตูนของคุณที่ใช้บนจอ`,
-      "",
-      `👥 <b>ของทีม</b>`,
-      `• "${COMMANDS.today}" / "${COMMANDS.tomorrow}" — ใครไปงานไหน`,
-      `• "${COMMANDS.pending}" — ใครยังไม่กดรับทราบ`,
-      "",
-      `📢 <b>ประกาศบนจอทีวี</b>: พิมพ์ "ประกาศ ข้อความ" เช่น ประกาศ พรุ่งนี้ประชุม 9 โมง ห้อง 1`,
-      "",
-      `แก้ไขงาน แนบไฟล์ และดูรายงาน ทำในเว็บ PR-OS 👉 ${esc(appUrl("/"))}`,
-      `เลิกรับแจ้งทาง Telegram (กลับไปใช้ LINE): พิมพ์ /stop`,
-    ].join("\n"),
-    buttons: [[addEventButton()]],
+    text: ["🤖 <b>ใช้งานผู้ช่วยงาน ปชส.</b>", "", ...helpLines(), `🔕 กลับไปใช้ LINE → /stop`].join("\n"),
+    keyboard: KEYBOARD,
   };
 }
 
+/** One message on linking: hello + what to tap. */
 export function tgLinked(name: string): TgMessage {
   return {
     text: [
-      `✅ ผูก Telegram กับ PR-OS แล้วครับ คุณ${esc(name)}`,
+      `✅ <b>ผูกสำเร็จ</b> · สวัสดีครับ ${esc(callName(name))}`,
+      "🔔 จากนี้แจ้งเตือนงานมาที่นี่แทน LINE",
       "",
-      "จากนี้แจ้งเตือนงานทั้งหมดจะมาที่นี่แทน LINE",
-      "กดปุ่มด้านล่าง หรือพิมพ์ \"วิธีใช้\" ดูคำสั่งได้",
+      ...helpLines(),
     ].join("\n"),
     keyboard: KEYBOARD,
   };
@@ -232,10 +251,45 @@ export function tgLinked(name: string): TgMessage {
 export function tgNotLinked(): TgMessage {
   return {
     text: [
-      "ยังไม่ได้ผูก Telegram นี้กับ PR-OS ครับ",
+      "👋 <b>ยังไม่ได้ผูก Telegram กับ PR-OS</b>",
       "",
-      "วิธีผูก: ในแชท LINE \"ผู้ช่วยงาน ปชส.\" พิมพ์ <b>ผูก Telegram</b>",
-      "บอทจะส่งลิงก์มา กดลิงก์แล้วกด Start ครั้งเดียวก็เสร็จ",
+      `1️⃣ เปิดแชท LINE "ผู้ช่วยงาน ปชส."`,
+      "2️⃣ พิมพ์ <b>ผูก Telegram</b>",
+      "3️⃣ กดลิงก์ที่ได้ → กด Start",
     ].join("\n"),
   };
+}
+
+/** Team view of one day, grouped by job; first names only. */
+export function tgTeamDay(label: string, date: string, tasks: TaskItem[]): TgMessage {
+  const head = `👥 <b>${esc(label)}</b> · ${esc(dayShort(date))}`;
+  if (tasks.length === 0) return { text: `${head}\n\n🌤 ยังไม่มีงาน`, keyboard: KEYBOARD };
+  const byEvent = new Map<string, TaskItem[]>();
+  for (const t of tasks) byEvent.set(t.event.id, [...(byEvent.get(t.event.id) ?? []), t]);
+  const blocks = [...byEvent.values()].map((group) => {
+    const e = group[0].event;
+    return [
+      "",
+      `🕘 <b>${e.startTime}${e.endTime ? `–${e.endTime}` : ""}</b> ${esc(e.title)}`,
+      `📍 ${esc(e.locationName)}`,
+      ...group.map((t) => `      ${mark(t)} ${esc(shortName(t.personName))} · ${esc(t.roleName)}`),
+    ];
+  });
+  return { text: fit([`${head} · ${byEvent.size} งาน`], blocks, ["", MARK_LEGEND]), keyboard: KEYBOARD };
+}
+
+/** Who has not tapped รับทราบ yet, by job. */
+export function tgPendingTeam(tasks: TaskItem[]): TgMessage {
+  if (tasks.length === 0) return { text: "✅ ทุกคนรับทราบงาน 7 วันข้างหน้าครบแล้ว 👍", keyboard: KEYBOARD };
+  const byEvent = new Map<string, TaskItem[]>();
+  for (const t of tasks) byEvent.set(t.event.id, [...(byEvent.get(t.event.id) ?? []), t]);
+  const blocks = [...byEvent.values()].map((group) => {
+    const e = group[0].event;
+    return [
+      "",
+      `🗓 <b>${esc(dayShort(e.eventDate))} ${e.startTime}</b> ${esc(e.title)}`,
+      `      ${group.map((t) => `${esc(shortName(t.personName))}${t.unavailable ? " ⛔" : ""}`).join(", ")}`,
+    ];
+  });
+  return { text: fit([`⏳ <b>ยังไม่รับทราบ</b> · 7 วันข้างหน้า · ${tasks.length} รายการ`], blocks), keyboard: KEYBOARD };
 }

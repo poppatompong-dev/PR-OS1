@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { TaskItem } from "@/lib/line/data";
-import { cb, parseCb, tgReasonPrompt, tgTask, tgCancellation } from "@/lib/telegram/messages";
+import { cb, parseCb, tgReasonPrompt, tgTask, tgCancellation, tgLinked, tgTeamDay, tgPendingTeam } from "@/lib/telegram/messages";
 import { esc } from "@/lib/telegram/api";
 import { isWellFormedToken, newLinkToken } from "@/lib/telegram/link";
 import { isLinkTelegramCommand } from "@/lib/line/webhook";
@@ -88,4 +88,14 @@ test("Mini App initData: right signature in, wrong or old out", async () => {
   assert.equal(verifyTelegramInitData(initData, "999:WRONG", now), null);
   assert.equal(verifyTelegramInitData(initData.replace("4242", "4243"), token, now), null);
   assert.equal(verifyTelegramInitData(initData, token, now + 2 * 86400 * 1000), null);
+});
+
+test("messages call people by first name and stay inside Telegram's 4096 characters", () => {
+  assert.match(tgLinked("นายปฐมพงษ์ หล้ามหศักดิ์").text, /คุณปฐมพงษ์(?! หล้า)/);
+  const many = Array.from({ length: 300 }, (_, i) => task({ assignmentId: `a${i}`, personName: `นางสาวคน${i} นามสกุล` , event: { ...task().event, id: `e${i}` } }));
+  const day = tgTeamDay("งานวันนี้", "2026-10-30", many);
+  assert.ok(day.text.length <= 4096);
+  assert.ok(!day.text.includes("นามสกุล"));
+  assert.ok(tgPendingTeam(many).text.length <= 4096);
+  assert.match(tgTeamDay("งานวันนี้", "2026-10-30", []).text, /ยังไม่มีงาน/);
 });

@@ -59,5 +59,5 @@ export async function createAnnouncement(
 
 export function announceDoneText(message: string, endsAt: Date): string {
   const d = new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short" }).format(new Date(endsAt.getTime() - 1));
-  return `📢 ขึ้นจอทีวีแล้วครับ (ภายใน 1 นาที)\n"${message}"\nแสดงถึงสิ้นวันที่ ${d} · แอดมินลบได้ที่เว็บ หน้า "ประกาศบนจอ"`;
+  return `📢 ขึ้นจอทีวีแล้ว (ภายใน 1 นาที)\n"${message}"\n⏱ ถึงสิ้นวัน ${d} · ลบได้ที่เว็บ หน้า "ประกาศบนจอ"`;
 }

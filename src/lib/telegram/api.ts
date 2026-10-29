@@ -133,6 +133,26 @@ export async function setCommands(commands: Array<{ command: string; description
   await call("setMyCommands", { commands });
 }
 
+export async function setProfileTexts(description: string, shortDescription: string): Promise<{ ok: boolean; error?: string }> {
+  const d = await call("setMyDescription", { description: description.slice(0, 512) });
+  const sd = await call("setMyShortDescription", { short_description: shortDescription.slice(0, 120) });
+  return { ok: d.ok && sd.ok, error: d.error ?? sd.error };
+}
+
+/** Bot API 9.4+: the bot sets its own picture (a new upload each time, so run only on purpose). */
+export async function setProfilePhoto(jpeg: ArrayBuffer): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const form = new FormData();
+    form.set("photo", JSON.stringify({ type: "static", photo: "attach://pic" }));
+    form.set("pic", new Blob([jpeg], { type: "image/jpeg" }), "bot.jpg");
+    const res = await fetch(apiUrl("setMyProfilePhoto"), { method: "POST", body: form, cache: "no-store" });
+    const json = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string };
+    return json.ok ? { ok: true } : { ok: false, error: scrub(`Telegram ${res.status}: ${json.description ?? "error"}`).slice(0, 300) };
+  } catch (err) {
+    return { ok: false, error: scrub(err instanceof Error ? err.message : "Telegram request error") };
+  }
+}
+
 /** Text that goes inside Telegram HTML. */
 export function esc(s: string | null | undefined): string {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

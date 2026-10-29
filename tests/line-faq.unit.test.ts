@@ -13,6 +13,9 @@ test("Kook's real message and other ways to ask", () => {
   assert.equal(matchFaq("ขอดูไฟล์แนบหน่อย"), "attach");
   assert.equal(matchFaq("เลื่อนงานพรุ่งนี้ได้ไหม"), "edit");
   assert.equal(matchFaq("จอทีวีดูยังไง"), "monitor");
+  assert.equal(matchFaq("เริ่มใช้ยังไงครับ"), "start");
+  assert.equal(matchFaq("มาใหม่ครับ ต้องทำอะไรบ้าง"), "start");
+  assert.equal(matchFaq("Telegram ใช้ยังไง"), "telegram");
 });
 
 test("ordinary chat stays quiet", () => {

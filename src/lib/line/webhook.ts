@@ -38,6 +38,7 @@ import { faqCooldownKey, faqMessage, matchFaq } from "@/lib/line/faq";
 import { announceDoneText, createAnnouncement, parseAnnounceCommand } from "@/lib/announcements";
 import { avatarUrl, hasAvatar } from "@/lib/avatars";
 import { isTelegramConfigured } from "@/lib/env";
+import { callName } from "@/lib/names";
 import { getBotUsername } from "@/lib/telegram/api";
 import { LINK_TOKEN_MINUTES, createLinkToken } from "@/lib/telegram/link";
 import {
@@ -393,14 +394,14 @@ async function telegramLinkReply(ctx: Ctx, person: LinePerson): Promise<LineMess
   const link = `https://t.me/${username}?start=${token}`;
   return text(
     [
-      `ลิงก์ผูก Telegram ของคุณ${person.displayName} (ใช้ได้ครั้งเดียว ภายใน ${LINK_TOKEN_MINUTES} นาที)`,
+      `✈️ ลิงก์ผูก Telegram ของ${callName(person.displayName)}`,
+      `🔒 ใช้ได้ครั้งเดียว · ${LINK_TOKEN_MINUTES} นาที · ห้ามส่งต่อ`,
       "",
-      `1. ลงแอป Telegram ก่อน (ถ้ายังไม่มี)`,
-      `2. กดลิงก์นี้ 👉 ${link}`,
-      `3. กด "Start" (เริ่ม) ในแชทบอท`,
+      "1️⃣ ลงแอป Telegram (ถ้ายังไม่มี)",
+      `2️⃣ กดลิงก์ 👉 ${link}`,
+      '3️⃣ กด "Start" (เริ่ม)',
       "",
-      "ผูกแล้วแจ้งเตือนงานทั้งหมดจะไปที่ Telegram แทน LINE",
-      "ห้ามส่งลิงก์นี้ให้คนอื่น",
+      "✅ เสร็จแล้ว แจ้งเตือนงานจะไปที่ Telegram แทน LINE",
     ].join("\n"),
   );
 }
@@ -411,15 +412,15 @@ async function announceReply(ctx: Ctx, person: LinePerson, message: string): Pro
 }
 
 export const PHOTO_PROMPT = [
-  "📷 ส่งรูปถ่ายของคุณ 1 รูปมาในแชทนี้ได้เลยครับ (ภายใน 15 นาที)",
-  "• หน้าตรง เห็นหน้าชัด ไม่ใส่แว่นดำ มีคนเดียวในรูป",
-  "• รูปจะใช้เพื่อวาดการ์ตูนเท่านั้น เปิดดูได้เฉพาะแอดมิน และลบทิ้งเมื่อวาดเสร็จ",
+  "📷 ส่งรูปถ่าย 1 รูปมาได้เลย (ภายใน 15 นาที)",
+  "✔️ หน้าตรง ชัด ไม่ใส่แว่นดำ อยู่คนเดียว",
+  "🔒 ใช้วาดการ์ตูนเท่านั้น · แอดมินเห็นคนเดียว · ลบทิ้งเมื่อวาดเสร็จ",
 ].join("\n");
 
 async function avatarReply(ctx: Ctx, person: LinePerson): Promise<LineMessage[]> {
   const photo = { type: "action" as const, action: { type: "postback" as const, label: "📷 ส่งรูปให้ทำใหม่", data: "a=avphoto", displayText: "ส่งรูปให้ทำการ์ตูนใหม่" } };
   if (!hasAvatar(person.id)) {
-    return [{ type: "text", text: `ยังไม่มีรูปการ์ตูนของคุณ${person.displayName}ครับ ตอนนี้จอแสดงแค่ชื่อ\nอยากได้รูปการ์ตูน กด "ส่งรูปให้ทำใหม่" แล้วส่งรูปถ่ายมา`, quickReply: { items: [photo] } }];
+    return [{ type: "text", text: '🖼 ยังไม่มีรูปการ์ตูนของคุณ\nตอนนี้จอโชว์แค่ชื่อ · อยากได้ กด "📷 ส่งรูปให้ทำใหม่"', quickReply: { items: [photo] } }];
   }
   const url = appUrl(avatarUrl(person.id));
   const off = (await getAvatarChoice(ctx.admin, person.id)) === "off";
@@ -428,8 +429,8 @@ async function avatarReply(ctx: Ctx, person: LinePerson): Promise<LineMessage[]>
     {
       type: "text",
       text: off
-        ? `นี่คือรูปการ์ตูนของคุณ${person.displayName} ตอนนี้ตั้งไว้ว่า "ไม่ใช้รูป" (จอแสดงแค่ชื่อ)`
-        : `นี่คือรูปการ์ตูนของคุณ${person.displayName} ที่ใช้บนจอทีวีและในระบบ ชอบไหมครับ?`,
+        ? "🖼 รูปการ์ตูนของคุณ\nตอนนี้ตั้งไว้ 🚫 ไม่ใช้รูป (จอโชว์แค่ชื่อ)"
+        : "🖼 รูปการ์ตูนของคุณบนจอทีวี\nชอบไหมครับ? เลือกด้านล่าง 👇",
       quickReply: {
         items: [
           { type: "action", action: { type: "postback", label: "👍 ใช้รูปนี้", data: "a=avok", displayText: "ใช้รูปนี้" } },
@@ -447,8 +448,8 @@ async function handleImage(ctx: Ctx, ev: LineEvent, person: LinePerson | null): 
   if (!(await takePendingAction(ctx.admin, userId, "avatar_photo"))) return [];
   const file = await getMessageContent(ev.message.id);
   if (!file || !(await saveAvatarSource(ctx.admin, person.id, file.bytes, file.contentType, "line"))) {
-    return [text('รับรูปไม่สำเร็จ (ไฟล์ใหญ่เกิน 10 MB หรือระบบขัดข้อง) พิมพ์ "รูปของฉัน" แล้วลองส่งใหม่อีกครั้งครับ')];
+    return [text('⚠️ รับรูปไม่สำเร็จ (ไฟล์เกิน 10 MB?)\nพิมพ์ "รูปของฉัน" แล้วลองใหม่ครับ')];
   }
   await tellAdminsByTelegram(ctx.admin, `📷 ${person.displayName} ส่งรูปจริงมาให้ทำการ์ตูนใหม่ (ทาง LINE) · ดูได้ใน Supabase Storage › avatar-sources`);
-  return [text("ได้รับรูปแล้วครับ 🙏 วาดเสร็จแล้วจะส่งให้เลือก 2–3 แบบในแชทนี้\n(รูปจริงจะถูกลบทิ้งเมื่อวาดเสร็จ)")];
+  return [text("🙏 ได้รับรูปแล้ว\n🎨 วาดเสร็จจะส่ง 2–3 แบบให้เลือกที่นี่\n🔒 รูปจริงลบทิ้งเมื่อวาดเสร็จ")];
 }

@@ -26,7 +26,7 @@ import {
 } from "@/lib/line/data";
 import { matchCommand } from "@/lib/line/webhook";
 import { faqText, matchFaq } from "@/lib/line/faq";
-import { UNAVAILABLE_PRESETS, pendingListMessage, teamDayMessage, appUrl } from "@/lib/line/messages";
+import { UNAVAILABLE_PRESETS, appUrl } from "@/lib/line/messages";
 import { announceDoneText, createAnnouncement, parseAnnounceCommand } from "@/lib/announcements";
 import { avatarUrl, hasAvatar } from "@/lib/avatars";
 import { answerCallback, downloadTelegramFile, editTelegram, esc, sendTelegram, type TgMessage } from "@/lib/telegram/api";
@@ -36,7 +36,8 @@ import {
   STATUS_TOAST,
   cb,
   parseCb,
-  tgFromLineText,
+  tgPendingTeam,
+  tgTeamDay,
   tgHelp,
   tgLinked,
   tgNotLinked,
@@ -96,19 +97,19 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
       return [p ? tgHelp() : tgNotLinked()];
     }
     const res = await consumeLinkToken(ctx.admin, token, chatId);
-    if (res.ok) return [tgLinked(res.displayName), tgHelp()];
+    if (res.ok) return [tgLinked(res.displayName)];
     const why = {
       invalid: "ลิงก์นี้ใช้ไม่ได้",
       expired: "ลิงก์หมดอายุแล้ว (30 นาที)",
-      used: "ลิงก์นี้ถูกใช้ไปแล้ว",
-      inactive: "บัญชีนี้ถูกระงับอยู่ ติดต่อแอดมิน",
+      used: "ลิงก์นี้ใช้ไปแล้ว",
+      inactive: "บัญชีนี้ถูกระงับ · ติดต่อแอดมิน",
       taken: "ผูกไม่สำเร็จ ลองใหม่อีกครั้ง",
     }[res.reason];
-    return [{ text: `⚠️ ${why}\n\nขอลิงก์ใหม่: ในแชท LINE "ผู้ช่วยงาน ปชส." พิมพ์ <b>ผูก Telegram</b>` }];
+    return [{ text: `⚠️ <b>${why}</b>\n\n🔁 ขอลิงก์ใหม่: ใน LINE "ผู้ช่วยงาน ปชส." พิมพ์ <b>ผูก Telegram</b>` }];
   }
   if (raw === "/stop") {
     const name = await unlinkTelegram(ctx.admin, chatId);
-    return [{ text: name ? `เลิกรับแจ้งทาง Telegram แล้วครับ คุณ${esc(name)}\nจากนี้แจ้งเตือนจะกลับไปทาง LINE ผูกใหม่ได้ทุกเมื่อ` : "Telegram นี้ไม่ได้ผูกกับใครอยู่ครับ" }];
+    return [{ text: name ? `🔕 <b>เลิกรับแจ้งทาง Telegram แล้ว</b>\nแจ้งเตือนกลับไปทาง LINE · ผูกใหม่ได้ทุกเมื่อ` : "ℹ️ Telegram นี้ยังไม่ได้ผูกกับใคร" }];
   }
 
   const person = await findPersonByTelegramChatId(ctx.admin, chatId);
@@ -131,42 +132,40 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
     case "help":
       return [tgHelp()];
     case "today":
-      return [lineTextToTg(teamDayMessage("งานของทีมวันนี้", today, await loadTasks(ctx.admin, { from: today, to: today })))];
+      return [tgTeamDay("งานวันนี้", today, await loadTasks(ctx.admin, { from: today, to: today }))];
     case "tomorrow": {
       const d = addDays(today, 1);
-      return [lineTextToTg(teamDayMessage("งานของทีมพรุ่งนี้", d, await loadTasks(ctx.admin, { from: d, to: d })))];
+      return [tgTeamDay("งานพรุ่งนี้", d, await loadTasks(ctx.admin, { from: d, to: d }))];
     }
     case "pending": {
       const tasks = (await loadTasks(ctx.admin, { from: today, to: addDays(today, 7) })).filter((t) => !t.acknowledged);
-      return [lineTextToTg(pendingListMessage(tasks, "team"))];
+      return [tgPendingTeam(tasks)];
     }
     case "mine": {
       const tasks = await loadTasks(ctx.admin, { from: today, to: addDays(today, 7), personId: person.id });
-      if (tasks.length === 0) return [{ text: `คุณ${esc(person.displayName)} ไม่มีงานใน 7 วันข้างหน้าครับ`, keyboard: KEYBOARD }];
-      return [{ text: `📋 งานของคุณ ${tasks.length} งาน (7 วันข้างหน้า)`, keyboard: KEYBOARD }, ...tasks.slice(0, 10).map((t) => tgTask(t, "list"))];
+      if (tasks.length === 0) return [{ text: "🎉 ไม่มีงานใน 7 วันข้างหน้า", keyboard: KEYBOARD }];
+      return [{ text: `📋 <b>งานของฉัน</b> · 7 วันข้างหน้า · ${tasks.length} งาน`, keyboard: KEYBOARD }, ...tasks.slice(0, 10).map((t) => tgTask(t, "list"))];
     }
   }
   if (/^(เพิ่มงาน|สร้างงาน|\/add)/.test(text.replace(/\s+/g, ""))) return [tgAddEvent()];
   const faq = matchFaq(text);
+  if (faq === "start" || faq === "telegram") return [tgHelp()];
   if (faq) return [{ text: esc(faqText(faq, false).replace("ที่เมนูด้านล่าง", "ในแชท LINE หรือที่เว็บ")) }];
   return [tgHelp()];
 }
 
-function lineTextToTg(m: { type: string; text?: string }): TgMessage {
-  return tgFromLineText(m.type === "text" && m.text ? m.text : "");
-}
 
 async function avatarMessage(ctx: Ctx, person: LinePerson): Promise<TgMessage> {
   const photoBtn = { text: "📷 ส่งรูปให้ทำใหม่", callback_data: cb.avatarPhoto };
   if (!hasAvatar(person.id)) {
-    return { text: `ยังไม่มีรูปการ์ตูนของคุณ${esc(person.displayName)}ครับ ตอนนี้จอแสดงแค่ชื่อ\nอยากได้รูปการ์ตูน กดปุ่มด้านล่างแล้วส่งรูปถ่ายมา`, buttons: [[photoBtn]] };
+    return { text: "🖼 <b>ยังไม่มีรูปการ์ตูนของคุณ</b>\nตอนนี้จอโชว์แค่ชื่อ · อยากได้ กด 📷 แล้วส่งรูปมา", buttons: [[photoBtn]] };
   }
   const off = (await getAvatarChoice(ctx.admin, person.id)) === "off";
   return {
     photo: appUrl(avatarUrl(person.id)),
     text: off
-      ? `รูปการ์ตูนของคุณ${esc(person.displayName)} · ตอนนี้ตั้งไว้ว่า "ไม่ใช้รูป" (จอแสดงแค่ชื่อ)`
-      : `รูปการ์ตูนของคุณ${esc(person.displayName)} ที่ใช้บนจอทีวีและในระบบ ชอบไหมครับ?`,
+      ? "🖼 <b>รูปการ์ตูนของคุณ</b>\nตอนนี้ตั้งไว้ 🚫 ไม่ใช้รูป (จอโชว์แค่ชื่อ)"
+      : "🖼 <b>รูปการ์ตูนของคุณ</b> บนจอทีวี\nชอบไหมครับ? 👇",
     buttons: [
       [{ text: "👍 ใช้รูปนี้", callback_data: cb.avatarOk }, { text: "🚫 ไม่ใช้รูป", callback_data: cb.avatarOff }],
       [photoBtn],
@@ -178,14 +177,14 @@ async function handlePhoto(ctx: Ctx, chatId: number, fileId: string): Promise<Tg
   const person = await findPersonByTelegramChatId(ctx.admin, chatId);
   if (!person) return [tgNotLinked()];
   if (!(await takePendingAction(ctx.admin, stateKey(chatId), "avatar_photo"))) {
-    return [{ text: 'ถ้าจะส่งรูปให้ทำการ์ตูนใหม่ พิมพ์ "รูปของฉัน" แล้วกด "📷 ส่งรูปให้ทำใหม่" ก่อนนะครับ' }];
+    return [{ text: '📷 จะส่งรูปให้ทำการ์ตูนใหม่?\nพิมพ์ "รูปของฉัน" → กด "📷 ส่งรูปให้ทำใหม่" ก่อนนะครับ' }];
   }
   const file = await downloadTelegramFile(fileId);
   if (!file || !(await saveAvatarSource(ctx.admin, person.id, file.bytes, file.contentType, "telegram"))) {
-    return [{ text: 'รับรูปไม่สำเร็จ (ไฟล์ใหญ่เกิน 10 MB หรือระบบขัดข้อง) พิมพ์ "รูปของฉัน" แล้วลองใหม่อีกครั้งครับ' }];
+    return [{ text: '⚠️ รับรูปไม่สำเร็จ (ไฟล์เกิน 10 MB?)\nพิมพ์ "รูปของฉัน" แล้วลองใหม่ครับ' }];
   }
   await tellAdminsByTelegram(ctx.admin, `📷 ${esc(person.displayName)} ส่งรูปจริงมาให้ทำการ์ตูนใหม่ (ทาง Telegram) · ดูได้ใน Supabase Storage › avatar-sources`);
-  return [{ text: "ได้รับรูปแล้วครับ 🙏 วาดเสร็จแล้วจะส่งให้เลือก 2–3 แบบในแชทนี้\n(รูปจริงจะถูกลบทิ้งเมื่อวาดเสร็จ)" }];
+  return [{ text: "🙏 <b>ได้รับรูปแล้ว</b>\n🎨 วาดเสร็จจะส่ง 2–3 แบบให้เลือกที่นี่\n🔒 รูปจริงลบทิ้งเมื่อวาดเสร็จ" }];
 }
 
 async function finishUnavailable(ctx: Ctx, person: LinePerson, assignmentId: string, reason: string): Promise<TgMessage[]> {
@@ -269,7 +268,7 @@ async function handleCallback(ctx: Ctx, q: NonNullable<TgUpdate["callback_query"
   if (p.a === "rt" && p.id) {
     await setPendingReason(ctx.admin, stateKey(chatId), p.id);
     await answerCallback(q.id);
-    await sendTelegram(chatId, { text: "✏️ พิมพ์เหตุผลสั้น ๆ แล้วส่งมาได้เลยครับ (ภายใน 10 นาที)" });
+    await sendTelegram(chatId, { text: "✏️ พิมพ์เหตุผลสั้น ๆ ส่งมาได้เลย (ภายใน 10 นาที)" });
     return;
   }
 
@@ -290,8 +289,8 @@ async function handleCallback(ctx: Ctx, q: NonNullable<TgUpdate["callback_query"
     }
     const choice = p.id === "off" ? "off" : "on";
     await setAvatarChoice(ctx.admin, person.id, choice, "telegram");
-    await answerCallback(q.id, choice === "on" ? "ขอบคุณครับ 👍 ใช้รูปนี้" : "รับทราบ จอจะแสดงแค่ชื่อ");
-    if (choice === "off") await sendTelegram(chatId, { text: 'ตั้งเป็น "ไม่ใช้รูป" แล้วครับ จอทีวีและในระบบจะแสดงแค่ชื่อของคุณ\nเปลี่ยนใจเมื่อไหร่ พิมพ์ "รูปของฉัน" แล้วกด "ใช้รูปนี้" ได้' });
+    await answerCallback(q.id, choice === "on" ? "👍 ใช้รูปนี้ ขอบคุณครับ" : "🚫 ไม่ใช้รูป · จอโชว์แค่ชื่อ");
+    if (choice === "off") await sendTelegram(chatId, { text: '🚫 <b>ไม่ใช้รูปแล้ว</b> · จอโชว์แค่ชื่อ\nเปลี่ยนใจ: พิมพ์ "รูปของฉัน" → 👍' });
     return;
   }
   await answerCallback(q.id);

@@ -475,21 +475,19 @@ export function helpMessage(): LineMessage {
   return {
     type: "text",
     text: [
-      "ผู้ช่วยงาน ปชส. ตอบได้ตามนี้ครับ",
-      "เมนูด้านล่างแบ่งเป็น 2 ฝั่ง",
+      "🤖 ใช้งานผู้ช่วยงาน ปชส.",
       "",
-      "👤 ของฉัน (ซ้าย สีม่วง)",
-      `• "${COMMANDS.mine}" — งานของคุณ 7 วันข้างหน้า พร้อมปุ่มรับทราบ / ไม่สะดวก`,
-      "   ถ้าการ์ดในแชทเยอะจนงง ให้กดปุ่มนี้ = สถานะล่าสุดเสมอ",
-      `• "เพิ่มงาน" — กรอกงานใหม่ในไลน์ได้เลย`,
+      "👤 ของฉัน (เมนูซ้าย)",
+      `📋 "${COMMANDS.mine}" → รับทราบ / ไม่สะดวก`,
+      `➕ "เพิ่มงาน" → กรอกงานใหม่`,
+      `🖼 "รูปของฉัน" → ดูรูปการ์ตูนบนจอ`,
       "",
-      "👥 ของทีม (ขวา)",
-      `• "${COMMANDS.today}" / "${COMMANDS.tomorrow}" — ใครไปงานไหน`,
-      `• "${COMMANDS.pending}" — ทั้งทีม ใครยังไม่กดรับทราบ`,
+      "👥 ของทีม (เมนูขวา)",
+      `🗓 "${COMMANDS.today}" · "${COMMANDS.tomorrow}" · "${COMMANDS.pending}"`,
       "",
-      "การ์ดสีส้ม \"ใบนี้แทนใบก่อนหน้า\" = งานถูกแก้ ให้ใช้ใบใหม่ ใบเก่ากดไม่ได้แล้ว",
-      "แก้ไขงาน แนบรูป และดูรายงาน ทำในเว็บ PR-OS",
-      'สงสัยวิธีใช้ พิมพ์ถามสั้น ๆ เช่น "เพิ่มงาน" "แนบรูป" "แก้งาน" บอทตอบวิธีให้',
+      `📢 "ประกาศ ข้อความ" → ขึ้นจอทีวี`,
+      `✈️ "ผูก Telegram" → ย้ายแจ้งเตือนไป Telegram`,
+      "🟠 การ์ดส้ม = งานถูกแก้ ใช้ใบใหม่",
     ].join("\n"),
     quickReply: commandQuickReply(),
   };
@@ -575,7 +573,7 @@ export function registerCardMessage(): LineMessage {
 
 /** Answer to a tap on the card: next step is adding the bot as a friend. */
 export function registerReceivedMessage(displayName: string, addFriendUri: string | null): LineMessage {
-  const body = `รับทราบครับ คุณ${displayName} แอดมินจะยืนยันชื่อให้ จากนั้นกดเพิ่มเพื่อนผมเพื่อรับแจ้งงานส่วนตัว (LINE ส่งข้อความส่วนตัวได้เฉพาะคนที่เป็นเพื่อน)`;
+  const body = `✋ รับเรื่องแล้วครับ คุณ${displayName}\n1️⃣ แอดมินยืนยันชื่อให้\n2️⃣ กด "เพิ่มเพื่อน" บอท 👇 (รับงานส่วนตัว)\n3️⃣ ในแชทบอท พิมพ์ "ผูก Telegram"`;
   if (!addFriendUri) return { type: "text", text: body };
   return {
     type: "flex",
@@ -593,5 +591,5 @@ export function registerReceivedMessage(displayName: string, addFriendUri: strin
 }
 
 export function pendingApprovalMessage(): LineMessage {
-  return { type: "text", text: "รอแอดมินยืนยันชื่ออยู่ครับ ยืนยันแล้วจะได้รับแจ้งงานที่นี่" };
+  return { type: "text", text: "⏳ รอแอดมินยืนยันชื่ออยู่ครับ\nยืนยันแล้ว พิมพ์ \"ผูก Telegram\" ได้เลย" };
 }
