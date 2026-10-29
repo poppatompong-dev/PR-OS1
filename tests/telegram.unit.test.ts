@@ -99,3 +99,25 @@ test("messages call people by first name and stay inside Telegram's 4096 charact
   assert.ok(tgPendingTeam(many).text.length <= 4096);
   assert.match(tgTeamDay("งานวันนี้", "2026-10-30", []).text, /ยังไม่มีงาน/);
 });
+
+test("the welcome tour turns pages inside one message and fits Telegram", async () => {
+  const { TOUR_PAGES, tgTour, tgTourDone } = await import("@/lib/telegram/messages");
+  for (let i = 0; i < TOUR_PAGES.length; i++) {
+    const m = tgTour(i);
+    assert.ok(m.text.length < 4096);
+    const datas = (m.buttons ?? []).flat().map((b) => ("callback_data" in b ? b.callback_data : ""));
+    for (const d of datas) assert.ok(Buffer.byteLength(d) <= 64 && d.startsWith("t|"), d);
+    if (i === TOUR_PAGES.length - 1) assert.ok(datas.includes("t|done"));
+    else assert.ok(datas.includes(`t|${i + 1}`));
+  }
+  assert.equal(tgTour(99).text, TOUR_PAGES[TOUR_PAGES.length - 1]);
+  assert.match(tgTourDone().text, /ทัวร์/);
+});
+
+test("the LINE invite names the person and carries their own link", async () => {
+  const { inviteText } = await import("@/lib/telegram/invite");
+  const t = inviteText("นางสาวณัฏฐ์ จิรจีรังชัย", "https://t.me/x?start=abc");
+  assert.match(t, /คุณณัฏฐ์/);
+  assert.match(t, /https:\/\/t\.me\/x\?start=abc/);
+  assert.ok(t.length < 5000);
+});

@@ -6,6 +6,8 @@ import { randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const LINK_TOKEN_MINUTES = 30;
+/** Links the bot pushes on its own (after the admin confirms a name) wait longer for the tap. */
+export const INVITE_TOKEN_MINUTES = 7 * 24 * 60;
 
 /** Telegram /start payloads allow A–Z a–z 0–9 _ - up to 64 characters. */
 export function newLinkToken(): string {
@@ -16,12 +18,12 @@ export function isWellFormedToken(t: string): boolean {
   return /^[A-Za-z0-9_-]{16,64}$/.test(t);
 }
 
-export async function createLinkToken(admin: SupabaseClient, personId: string, now = new Date()): Promise<string> {
+export async function createLinkToken(admin: SupabaseClient, personId: string, now = new Date(), minutes = LINK_TOKEN_MINUTES): Promise<string> {
   const token = newLinkToken();
   const { error } = await admin.from("telegram_link_tokens").insert({
     token,
     person_id: personId,
-    expires_at: new Date(now.getTime() + LINK_TOKEN_MINUTES * 60 * 1000).toISOString(),
+    expires_at: new Date(now.getTime() + minutes * 60 * 1000).toISOString(),
   });
   if (error) throw new Error(`createLinkToken: ${error.message}`);
   return token;

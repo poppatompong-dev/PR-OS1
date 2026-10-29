@@ -573,7 +573,7 @@ export function registerCardMessage(): LineMessage {
 
 /** Answer to a tap on the card: next step is adding the bot as a friend. */
 export function registerReceivedMessage(displayName: string, addFriendUri: string | null): LineMessage {
-  const body = `✋ รับเรื่องแล้วครับ คุณ${displayName}\n1️⃣ แอดมินยืนยันชื่อให้\n2️⃣ กด "เพิ่มเพื่อน" บอท 👇 (รับงานส่วนตัว)\n3️⃣ ในแชทบอท พิมพ์ "ผูก Telegram"`;
+  const body = `✋ รับเรื่องแล้วครับ คุณ${displayName}\n1️⃣ กด "เพิ่มเพื่อน" บอท 👇\n2️⃣ รอแอดมินยืนยันชื่อ → บอทส่งลิงก์ Telegram ให้ในแชทส่วนตัว`;
   if (!addFriendUri) return { type: "text", text: body };
   return {
     type: "flex",
@@ -591,5 +591,5 @@ export function registerReceivedMessage(displayName: string, addFriendUri: strin
 }
 
 export function pendingApprovalMessage(): LineMessage {
-  return { type: "text", text: "⏳ รอแอดมินยืนยันชื่ออยู่ครับ\nยืนยันแล้ว พิมพ์ \"ผูก Telegram\" ได้เลย" };
+  return { type: "text", text: "⏳ รอแอดมินยืนยันชื่ออยู่ครับ\nยืนยันแล้วบอทจะส่งลิงก์ Telegram ให้ที่นี่" };
 }

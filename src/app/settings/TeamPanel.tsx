@@ -18,6 +18,7 @@ import {
   changeAccountPassword,
   changeAccountRole,
   confirmLineRegistration,
+  inviteAllToTelegram,
   createAccount,
   dismissLineRegistration,
   setAccountSuspended,
@@ -266,6 +267,14 @@ export function TeamPanel({
           <h2>ทีมงาน ({people.length} คน)</h2>
           <p>ทุกอย่างของแต่ละคนอยู่ในแถวเดียว — กด ⋯ เพื่อเปลี่ยนรหัส เปลี่ยนสิทธิ์ ยกเลิก LINE หรือระงับบัญชี</p>
         </div>
+        <form action={inviteAllToTelegram}>
+          <ConfirmSubmit
+            className="button secondary"
+            message="ส่งลิงก์ Telegram ส่วนตัวทาง LINE ให้ทุกคนที่ผูก LINE แล้วแต่ยังไม่ย้ายไป Telegram? (1 ข้อความต่อคน · ส่งซ้ำได้วันละครั้ง)"
+          >
+            ✈️ ส่งลิงก์ Telegram
+          </ConfirmSubmit>
+        </form>
       </div>
 
       {addedMember && addedAccount ? (

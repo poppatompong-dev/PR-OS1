@@ -234,7 +234,7 @@ function helpLines(): string[] {
 
 export function tgHelp(): TgMessage {
   return {
-    text: ["🤖 <b>ใช้งานผู้ช่วยงาน ปชส.</b>", "", ...helpLines(), `🔕 กลับไปใช้ LINE → /stop`].join("\n"),
+    text: ["🤖 <b>ใช้งานผู้ช่วยงาน ปชส.</b>", "", ...helpLines(), "🧭 ดูทีละเรื่อง → พิมพ์ <b>ทัวร์</b>", `🔕 กลับไปใช้ LINE → /stop`].join("\n"),
     keyboard: KEYBOARD,
   };
 }
@@ -242,12 +242,7 @@ export function tgHelp(): TgMessage {
 /** One message on linking: hello + what to tap. */
 export function tgLinked(name: string): TgMessage {
   return {
-    text: [
-      `✅ <b>ผูกสำเร็จ</b> · สวัสดีครับ ${esc(callName(name))}`,
-      "🔔 จากนี้แจ้งเตือนงานมาที่นี่แทน LINE",
-      "",
-      ...helpLines(),
-    ].join("\n"),
+    text: [`✅ <b>ผูกสำเร็จ</b> · สวัสดีครับ ${esc(callName(name))}`, "🔔 จากนี้แจ้งเตือนงานมาที่นี่แทน LINE"].join("\n"),
     keyboard: KEYBOARD,
   };
 }
@@ -296,4 +291,85 @@ export function tgPendingTeam(tasks: TaskItem[]): TgMessage {
     ];
   });
   return { text: fit([`⏳ <b>ยังไม่รับทราบ</b> · 7 วันข้างหน้า · ${tasks.length} รายการ`], blocks), keyboard: KEYBOARD };
+}
+
+// ---- Welcome tour (owner, 29 Oct 2026: "ทำความเข้าใจในเทเลแกรมอีกรอบ") ----------
+// One message that turns its own pages (editMessageText), so the chat does not
+// fill up. Page 2 has a sample card whose buttons only answer with a toast.
+
+const DEMO_CARD = [
+  "┈┈┈┈ ตัวอย่าง ┈┈┈┈",
+  "🟣 <b>มอบหมายงานใหม่</b>",
+  "",
+  "🚴 <b>ปั่นจักรยานรอบบึงบอระเพ็ด</b>",
+  "🗓 ส. 1 พ.ย. 2569 · 07:00 น.",
+  "📍 สวนสาธารณะบึงบอระเพ็ด",
+  "👤 ถ่ายภาพนิ่ง",
+  "┈┈┈┈┈┈┈┈┈┈┈┈┈┈",
+];
+
+export const TOUR_PAGES: string[] = [
+  [
+    "👋 <b>ยินดีต้อนรับสู่ PR-OS</b>",
+    "",
+    "✈️ Telegram นี้คือช่องทางหลักของทีม ปชส.",
+    "📩 งานที่ได้รับมอบหมายจะเด้งมาที่นี่",
+    "🧪 ช่วงทดลองใช้: งานในระบบเป็นงานจริง ไม่แน่ใจถามแอดมินได้",
+    "",
+    "มี 4 เรื่องสั้น ๆ กด <b>ต่อไป ▶</b>",
+  ].join("\n"),
+  [
+    "📩 <b>1/4 · รับงาน</b>",
+    "",
+    ...DEMO_CARD,
+    "",
+    "👤 = หน้าที่ของคุณในงานนั้น",
+    "✅ ได้งาน → กด <b>รับทราบ</b> ให้เร็วที่สุด",
+    "⛔ ไปไม่ได้ → กด <b>ไม่สะดวก</b> + เหตุผล → แอดมินหาคนแทน",
+    "",
+    "👇 ลองกดปุ่มตัวอย่างดูได้ (ไม่บันทึกจริง)",
+  ].join("\n"),
+  [
+    "🔔 <b>2/4 · ข้อความที่จะได้รับ</b>",
+    "",
+    "🟣 งานใหม่ → กดรับทราบ",
+    "🟠 งานเปลี่ยน → กดรับทราบใหม่",
+    "❌ ยกเลิกงาน → ไม่ต้องไป",
+    "⏰ เตือนก่อนเริ่มงาน 1 ชม. 30 นาที",
+    "☀️ สรุปงานตอน 07:00 (เฉพาะวันที่มีงาน)",
+  ].join("\n"),
+  [
+    "➕ <b>3/4 · ทำเองได้ในแชทนี้</b>",
+    "",
+    "➕ ปุ่ม <b>เพิ่มงาน</b> ซ้ายล่าง → กรอก → บันทึก",
+    "📢 พิมพ์ <code>ประกาศ ข้อความ</code> → ขึ้นจอทีวีถึงเที่ยงคืน",
+    "🖼 พิมพ์ <b>รูปของฉัน</b> → ดูรูปการ์ตูนบนจอ",
+    "",
+    "⌨️ ปุ่มใต้ช่องพิมพ์: งานของฉัน · ทีมวันนี้ · ทีมพรุ่งนี้ · ใครยังไม่รับทราบ",
+  ].join("\n"),
+  [
+    "🧭 <b>4/4 · ช่องทางอื่น</b>",
+    "",
+    "✈️ Telegram (ที่นี่) → รับงาน กดรับทราบ เพิ่มงาน",
+    "👥 กลุ่ม LINE → ถามตอบเท่านั้น",
+    "📺 จอทีวีห้อง ปชส. → ภาพรวมงานของทีม",
+    "🌐 เว็บ PR-OS → แก้งาน แนบไฟล์ (คนที่มีบัญชี)",
+    "",
+    "🔕 งานจะมาที่ Telegram ที่เดียว ไม่ซ้ำใน LINE",
+  ].join("\n"),
+];
+
+export function tgTour(page: number): TgMessage {
+  const i = Math.max(0, Math.min(TOUR_PAGES.length - 1, Math.trunc(page) || 0));
+  const nav: TgButton[] = [];
+  if (i > 0) nav.push({ text: "◀ ย้อน", callback_data: `t|${i - 1}` });
+  nav.push(i < TOUR_PAGES.length - 1 ? { text: "ต่อไป ▶", callback_data: `t|${i + 1}` } : { text: "✅ เข้าใจแล้ว", callback_data: "t|done" });
+  const buttons: TgButton[][] = [];
+  if (i === 1) buttons.push([{ text: "✅ รับทราบ", callback_data: "t|demo" }, { text: "⛔ ไม่สะดวก", callback_data: "t|demo" }]);
+  buttons.push(nav);
+  return { text: TOUR_PAGES[i], buttons };
+}
+
+export function tgTourDone(): TgMessage {
+  return { text: "🎉 <b>พร้อมใช้งานแล้ว</b>\nงานใหม่จะเด้งมาที่นี่ · ดูอีกครั้งพิมพ์ <b>ทัวร์</b> · ติดขัดพิมพ์ <b>วิธีใช้</b>" };
 }

@@ -40,6 +40,8 @@ import {
   tgTeamDay,
   tgHelp,
   tgLinked,
+  tgTour,
+  tgTourDone,
   tgNotLinked,
   tgReasonPrompt,
   tgTask,
@@ -97,7 +99,7 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
       return [p ? tgHelp() : tgNotLinked()];
     }
     const res = await consumeLinkToken(ctx.admin, token, chatId);
-    if (res.ok) return [tgLinked(res.displayName)];
+    if (res.ok) return [tgLinked(res.displayName), tgTour(0)];
     const why = {
       invalid: "ลิงก์นี้ใช้ไม่ได้",
       expired: "ลิงก์หมดอายุแล้ว (30 นาที)",
@@ -125,6 +127,7 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
     return [{ text: esc(res.ok ? announceDoneText(res.message, res.endsAt) : res.error) }];
   }
   if (/^(รูปของฉัน|รูปฉัน|avatar)$/i.test(text.replace(/\s+/g, ""))) return [await avatarMessage(ctx, person)];
+  if (/^(ทัวร์|ทัวร|tour|\/tour)$/i.test(text.replace(/\s+/g, ""))) return [tgTour(0)];
 
   const cmd = matchCommand(text);
   const today = todayInBangkok();
@@ -221,6 +224,13 @@ async function handleCallback(ctx: Ctx, q: NonNullable<TgUpdate["callback_query"
     if (messageId) await editTelegram(chatId, messageId, m);
     else await sendTelegram(chatId, m);
   };
+
+  if (p.a === "t") {
+    if (p.id === "demo") return void (await answerCallback(q.id, "👍 แบบนี้แหละ · ของจริงจะบันทึกในระบบทันที"));
+    await answerCallback(q.id);
+    await edit(p.id === "done" ? tgTourDone() : tgTour(Number(p.id)));
+    return;
+  }
 
   if (p.a === "a" && p.id) {
     const { outcome, task } = await recordAck(ctx.admin, { assignmentId: p.id, version: Number(p.v), personId: person.id, channel: "telegram" });

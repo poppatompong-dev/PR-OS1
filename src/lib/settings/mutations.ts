@@ -19,6 +19,7 @@ import {
 } from "@/lib/line/api";
 import { getPendingRegistrations, savePendingRegistrations } from "@/lib/line/data";
 import { removePendingRegistration } from "@/lib/line/registrations";
+import { sendTelegramInvite } from "@/lib/telegram/invite";
 import { RICH_MENU_IMAGE_PATH, richMenuDefinition } from "@/lib/line/rich-menu";
 
 function emptyToNull(value: FormDataEntryValue | null): string | null {
@@ -592,10 +593,17 @@ export async function confirmLineRegistration(formData: FormData) {
   });
 
   const friend = isLineMessagingConfigured() ? await getFriendStatus(lineUserId) : "unknown";
+  // Bridge to Telegram: the person gets their own link right away (one push).
+  const invite =
+    friend === "not_friend"
+      ? "skipped"
+      : await sendTelegramInvite(admin, { id: personId, displayName: person.display_name, lineUserId }).catch(() => "failed" as const);
   revalidatePath("/settings");
   done(
     undefined,
-    friend === "not_friend"
+    invite === "sent"
+      ? `ผูก LINE "${entry.displayName}" กับ ${person.display_name} แล้ว — บอทส่งลิงก์ Telegram ให้เจ้าตัวในแชท LINE แล้ว`
+      : friend === "not_friend"
       ? `ผูก LINE "${entry.displayName}" กับ ${person.display_name} แล้ว — เจ้าตัวยังไม่ได้เพิ่มเพื่อนบอท ให้กดเพิ่มเพื่อนก่อนจึงจะได้รับแจ้งงานส่วนตัว`
       : `ผูก LINE "${entry.displayName}" กับ ${person.display_name} แล้ว — จากนี้จะได้รับแจ้งงานทาง LINE`,
   );
@@ -614,4 +622,47 @@ export async function dismissLineRegistration(formData: FormData) {
   await savePendingRegistrations(admin, removePendingRegistration(pending, lineUserId), user.id);
   revalidatePath("/settings");
   done(undefined, entry ? `ลบ "${entry.displayName}" ออกจากรายการรอยืนยันแล้ว` : "ลบแล้ว");
+}
+
+
+/**
+ * "ส่งลิงก์ Telegram": everyone already on LINE but not yet on Telegram gets
+ * their own link once (owner, 29 Oct 2026). One LINE push each.
+ */
+export async function inviteAllToTelegram() {
+  await blockWritesInDemoMode();
+  const { user } = await requireAdmin();
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("people")
+    .select("id, display_name, line_user_id, telegram_chat_id")
+    .eq("is_active", true)
+    .not("line_user_id", "is", null)
+    .is("telegram_chat_id", null);
+  if (error) done(error.message);
+  const sent: string[] = [];
+  let failed = 0;
+  for (const p of data ?? []) {
+    const r = await sendTelegramInvite(admin, { id: p.id, displayName: p.display_name, lineUserId: p.line_user_id, telegramChatId: p.telegram_chat_id }).catch(() => "failed" as const);
+    if (r === "sent") sent.push(p.display_name);
+    if (r === "failed") failed++;
+  }
+  await admin.from("audit_logs").insert({
+    entity_type: "settings",
+    entity_id: user.id,
+    action: "telegram_invite",
+    changed_by: user.id,
+    summary: `ส่งลิงก์ Telegram ทาง LINE ${sent.length} คน`,
+    new_values: { sent, failed },
+  });
+  revalidatePath("/settings");
+  done(
+    undefined,
+    sent.length
+      ? `ส่งลิงก์ Telegram แล้ว ${sent.length} คน${failed ? ` · ส่งไม่ได้ ${failed} คน (ยังไม่ได้เพิ่มเพื่อนบอท?)` : ""}`
+      : failed
+        ? `ส่งไม่ได้ ${failed} คน (ยังไม่ได้เพิ่มเพื่อนบอท?)`
+        : "ไม่มีใครต้องส่ง (ส่งไปแล้ววันนี้ หรือย้ายไป Telegram ครบแล้ว)",
+  );
 }
