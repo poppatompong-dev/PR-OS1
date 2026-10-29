@@ -15,6 +15,8 @@ import { parseStagedList, type StagedAttachment } from "@/lib/attachments/rules"
 import { attachStaged } from "@/lib/attachments/staging";
 import { mergeAssignees, normalizeRoleIds, roleColumns } from "@/lib/assignments/roles";
 import { cleanPlace, resolveLocationId } from "@/lib/locations/resolve";
+import { cleanScreenTitle } from "@/lib/events/screen-title";
+import { createAnnouncement } from "@/lib/announcements";
 
 export type LiffEventInput = {
   title: string;
@@ -25,6 +27,10 @@ export type LiffEventInput = {
   /** Place typed in the form (0016); wins over locationId. */
   locationText: string | null;
   shortNote: string | null;
+  /** "ชื่อสั้นบนจอ" (0017). */
+  screenTitle: string | null;
+  /** "ประกาศบนจอ": a ticker line until midnight. */
+  announce: string | null;
   /** One row per person, every duty they hold on this job (0016). */
   assignees: Array<{ personId: string; roleIds: string[] }>;
   /** Files already uploaded to staging from the form (max 5). */
@@ -77,6 +83,8 @@ export function parseLiffEventInput(body: unknown): { ok: true; input: LiffEvent
       locationId,
       locationText: cleanPlace(b.locationText),
       shortNote: optional(b.shortNote, 500),
+      screenTitle: cleanScreenTitle(typeof b.screenTitle === "string" ? b.screenTitle : null),
+      announce: optional(b.announce, 140),
       assignees,
       attachments: parseStagedList(b.attachments),
       publish: b.publish === true,
@@ -131,6 +139,7 @@ export async function createEventFromLiff(
       intake_channel: "อื่นๆ", // the edit page offers only its fixed list; "via LINE" is in metadata
       urgency: "normal",
       short_note: input.shortNote,
+      screen_title: input.screenTitle,
       status: input.publish ? "published" : "draft",
       published_at: input.publish ? nowIso : null,
       created_by: caller.userId,
@@ -158,6 +167,10 @@ export async function createEventFromLiff(
       .select("id, person_id");
     if (asgError) return { ok: false, error: `บันทึกงานแล้ว แต่บันทึกผู้ปฏิบัติงานไม่สำเร็จ: ${asgError.message}` };
     assignmentIds = rows ?? [];
+  }
+
+  if (input.announce) {
+    await createAnnouncement(admin, { text: input.announce, personId: caller.personId, authorName: caller.displayName, source: "event_form", eventId: created.id });
   }
 
   // Before the cards go out, so the card can offer "ดูไฟล์แนบ".

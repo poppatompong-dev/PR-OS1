@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 import { env, isSupabaseConfigured, isTelegramConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { can, getSessionUser } from "@/lib/auth/roles";
-import { getBotUsername, setCommands, setWebhook } from "@/lib/telegram/api";
+import { getBotUsername, setCommands, setMenuButton, setWebhook } from "@/lib/telegram/api";
 
 export const dynamic = "force-dynamic";
 
@@ -22,11 +22,13 @@ export async function GET() {
   const url = new URL("/api/telegram/webhook", env.appBaseUrl).toString();
   const hook = await setWebhook(url);
   await setCommands([
+    { command: "add", description: "เพิ่มงาน" },
     { command: "my", description: "งานของฉัน" },
     { command: "today", description: "งานของทีมวันนี้" },
     { command: "help", description: "วิธีใช้" },
     { command: "stop", description: "เลิกรับแจ้งทาง Telegram (กลับไปใช้ LINE)" },
   ]);
+  await setMenuButton("เพิ่มงาน", new URL("/liff/add-event?tg=1", env.appBaseUrl).toString());
   const username = await getBotUsername();
   return NextResponse.json({ ok: hook.ok, webhook: url, bot: username ? `@${username}` : null, error: hook.error ?? null });
 }

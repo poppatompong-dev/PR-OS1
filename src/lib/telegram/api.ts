@@ -124,6 +124,11 @@ export async function setWebhook(url: string): Promise<{ ok: boolean; error?: st
   return { ok: res.ok, error: res.error };
 }
 
+/** The button left of the typing box: opens the add-job form. */
+export async function setMenuButton(text: string, url: string): Promise<void> {
+  await call("setChatMenuButton", { menu_button: { type: "web_app", text, web_app: { url } } });
+}
+
 export async function setCommands(commands: Array<{ command: string; description: string }>): Promise<void> {
   await call("setMyCommands", { commands });
 }

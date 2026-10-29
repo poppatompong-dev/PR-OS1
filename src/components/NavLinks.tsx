@@ -7,6 +7,7 @@ import {
   CalendarDays,
   ClipboardList,
   LayoutDashboard,
+  Megaphone,
   Monitor,
   PlusCircle,
   Settings,
@@ -19,6 +20,7 @@ import {
 const railItems = [
   { href: "/", label: "วันนี้", icon: LayoutDashboard },
   { href: "/monitor", label: "จอมอนิเตอร์", icon: Monitor },
+  { href: "/announcements", label: "ประกาศบนจอ", icon: Megaphone },
   { href: "/schedule", label: "ตารางงาน / ปฏิทิน", icon: CalendarDays },
   { href: "/events/new", label: "เพิ่มงานใหม่", icon: PlusCircle },
   { href: "/mobile/my-tasks", label: "งานของฉัน", icon: Smartphone },

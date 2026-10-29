@@ -42,6 +42,7 @@ import {
   tgNotLinked,
   tgReasonPrompt,
   tgTask,
+  tgAddEvent,
 } from "@/lib/telegram/messages";
 
 export type TgUpdate = {
@@ -95,7 +96,7 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
       return [p ? tgHelp() : tgNotLinked()];
     }
     const res = await consumeLinkToken(ctx.admin, token, chatId);
-    if (res.ok) return [tgLinked(res.displayName)];
+    if (res.ok) return [tgLinked(res.displayName), tgHelp()];
     const why = {
       invalid: "ลิงก์นี้ใช้ไม่ได้",
       expired: "ลิงก์หมดอายุแล้ว (30 นาที)",
@@ -145,6 +146,7 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
       return [{ text: `📋 งานของคุณ ${tasks.length} งาน (7 วันข้างหน้า)`, keyboard: KEYBOARD }, ...tasks.slice(0, 10).map((t) => tgTask(t, "list"))];
     }
   }
+  if (/^(เพิ่มงาน|สร้างงาน|\/add)/.test(text.replace(/\s+/g, ""))) return [tgAddEvent()];
   const faq = matchFaq(text);
   if (faq) return [{ text: esc(faqText(faq, false).replace("ที่เมนูด้านล่าง", "ในแชท LINE หรือที่เว็บ")) }];
   return [tgHelp()];

@@ -11,6 +11,8 @@ import { parseStagedFormValues } from "@/lib/attachments/rules";
 import { attachStaged } from "@/lib/attachments/staging";
 import { normalizeRoleIds, roleColumns } from "@/lib/assignments/roles";
 import { resolveLocationId } from "@/lib/locations/resolve";
+import { cleanScreenTitle } from "@/lib/events/screen-title";
+import { createAnnouncement } from "@/lib/announcements";
 
 function emptyToNull(value: FormDataEntryValue | null): string | null {
   const text = String(value ?? "").trim();
@@ -70,6 +72,7 @@ export async function createEvent(formData: FormData) {
       intake_channel: emptyToNull(formData.get("intakeChannel")) ?? "อื่นๆ",
       urgency: String(formData.get("urgency") ?? "normal"),
       short_note: emptyToNull(formData.get("shortNote")),
+      screen_title: cleanScreenTitle(formData.get("screenTitle")),
       internal_note: emptyToNull(formData.get("internalNote")),
       status: publish ? "published" : "draft",
       published_at: publish ? new Date().toISOString() : null,
@@ -100,6 +103,18 @@ export async function createEvent(formData: FormData) {
   // put them on the job before the team's card goes out (the card shows them).
   const staged = parseStagedFormValues(formData.getAll("stagedAttachment"));
   if (staged.length > 0) await attachStaged(createAdminClient(), created.id, staged, user.id);
+
+  // "ประกาศบนจอ" typed in the form: on the TV ticker until midnight.
+  const announce = String(formData.get("announce") ?? "").trim();
+  if (announce) {
+    await createAnnouncement(createAdminClient(), {
+      text: announce,
+      personId: user.personId,
+      authorName: user.displayName ?? "เจ้าหน้าที่",
+      source: "event_form",
+      eventId: created.id,
+    });
+  }
 
   // Audit log — append-only record of the create/publish action.
   await supabase.from("audit_logs").insert({
@@ -222,6 +237,7 @@ export async function editEvent(formData: FormData) {
     intake_channel: emptyToNull(formData.get("intakeChannel")) ?? "อื่นๆ",
     urgency: String(formData.get("urgency") ?? "normal"),
     short_note: emptyToNull(formData.get("shortNote")),
+    screen_title: cleanScreenTitle(formData.get("screenTitle")),
     internal_note: emptyToNull(formData.get("internalNote")),
     updated_by: user.id,
   };

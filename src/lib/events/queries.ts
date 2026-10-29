@@ -29,7 +29,7 @@ export type ScheduleFilters = {
 const EVENT_SELECT = `
   id, title, description, event_date, start_time, end_time,
   intake_channel, status, urgency, short_note, internal_note, has_changes,
-  cancellation_reason, updated_at,
+  cancellation_reason, updated_at, screen_title,
   location:locations(id, name, description),
   owner_department:departments(id, name, short_name),
   event_type:event_types(id, name, color),
@@ -267,6 +267,7 @@ function mapEvent(row: any): PrEvent {
     status: row.status,
     urgency: row.urgency,
     shortNote: row.short_note ?? undefined,
+    screenTitle: row.screen_title ?? undefined,
     internalNote: row.internal_note ?? undefined,
     hasChanges: Boolean(row.has_changes),
     assignments,

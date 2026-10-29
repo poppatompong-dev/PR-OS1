@@ -10,6 +10,8 @@ export type MonitorAssignee = {
   ack: boolean;
   /** Pressed "ไม่สะดวก" — still on the job until an admin swaps them out. */
   unavailable: boolean;
+  /** people.id (0017), for the cartoon. */
+  personId?: string;
 };
 
 export type MonitorEvent = {
@@ -31,7 +33,11 @@ export type MonitorEvent = {
    *  to an event that was called off. */
   status: string;
   cancellationReason: string;
+  /** "ชื่อสั้นบนจอ" (0017), shown instead of the title when set. */
+  screenTitle?: string;
 };
+
+export type MonitorAnnouncement = { id: string; message: string; authorName: string; endsAt: string };
 
 export type MonitorPerson = {
   id: string;

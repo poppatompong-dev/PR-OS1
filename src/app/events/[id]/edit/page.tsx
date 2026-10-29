@@ -48,6 +48,10 @@ export default async function EditEventPage({
           ชื่องาน *
           <input className="input" name="title" required defaultValue={event.title} />
         </label>
+        <label className="form-field full">
+          ชื่อสั้นบนจอทีวี (ไม่บังคับ)
+          <input className="input" name="screenTitle" maxLength={60} defaultValue={event.screenTitle ?? ""} placeholder="ใส่เมื่อชื่องานยาว" />
+        </label>
         <label className="form-field">
           วันที่ *
           <input className="input" type="date" name="eventDate" required defaultValue={event.eventDate} />

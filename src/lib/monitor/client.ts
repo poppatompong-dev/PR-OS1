@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/env";
 import { events as mockEvents, people as mockPeople } from "@/data/mock-data";
 import { todayInBangkok, addDays } from "@/lib/date";
-import type { MonitorEvent, MonitorPerson } from "./types";
+import type { MonitorAnnouncement, MonitorEvent, MonitorPerson } from "./types";
 
 export async function fetchMonitorEvents(): Promise<MonitorEvent[]> {
   if (!isSupabaseConfigured()) {
@@ -78,12 +78,23 @@ export async function fetchMonitorEvents(): Promise<MonitorEvent[]> {
       role: String(p?.role ?? ""),
       ack: Boolean(p?.ack),
       unavailable: Boolean(p?.unavailable),
+      personId: p?.personId ? String(p.personId) : undefined,
     })),
     allAck: r.total_assignments > 0 && r.acknowledged_assignments >= r.total_assignments,
     hasChanges: Boolean(r.has_changes),
     status: r.status ?? "published",
     cancellationReason: r.cancellation_reason ?? "",
+    screenTitle: r.screen_title ?? "",
   }));
+}
+
+/** ประกาศบนจอ (0017): typed by anyone on the team, gone at midnight. */
+export async function fetchMonitorAnnouncements(): Promise<MonitorAnnouncement[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("get_monitor_announcements");
+  if (error || !data) return [];
+  return (data as any[]).map((r) => ({ id: r.id, message: r.message, authorName: r.author_name ?? "", endsAt: r.ends_at }));
 }
 
 export async function fetchMonitorTeam(): Promise<MonitorPerson[]> {

@@ -58,6 +58,8 @@ export type PrEvent = {
   status: EventStatus;
   urgency: Urgency;
   shortNote?: string;
+  /** "ชื่อสั้นบนจอ" (0017): shown on the TV instead of the title. */
+  screenTitle?: string;
   internalNote?: string;
   hasChanges: boolean;
   assignments: Assignment[];

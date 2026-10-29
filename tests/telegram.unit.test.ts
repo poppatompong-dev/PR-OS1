@@ -73,3 +73,19 @@ test("link tokens and the LINE command", () => {
   assert.ok(isLinkTelegramCommand("ย้ายไป telegram"));
   assert.equal(isLinkTelegramCommand("telegram คืออะไร"), false);
 });
+
+test("Mini App initData: right signature in, wrong or old out", async () => {
+  const { createHmac } = await import("node:crypto");
+  const { verifyTelegramInitData } = await import("@/lib/liff/auth");
+  const token = "123:ABC";
+  const now = Date.UTC(2026, 9, 29, 8, 0) ;
+  const fields: Record<string, string> = { auth_date: String(Math.floor(now / 1000) - 60), query_id: "q1", user: JSON.stringify({ id: 4242, first_name: "Kook" }) };
+  const check = Object.keys(fields).sort().map((k) => `${k}=${fields[k]}`).join("\n");
+  const secret = createHmac("sha256", "WebAppData").update(token).digest();
+  const hash = createHmac("sha256", secret).update(check).digest("hex");
+  const initData = new URLSearchParams({ ...fields, hash }).toString();
+  assert.equal(verifyTelegramInitData(initData, token, now), 4242);
+  assert.equal(verifyTelegramInitData(initData, "999:WRONG", now), null);
+  assert.equal(verifyTelegramInitData(initData.replace("4242", "4243"), token, now), null);
+  assert.equal(verifyTelegramInitData(initData, token, now + 2 * 86400 * 1000), null);
+});

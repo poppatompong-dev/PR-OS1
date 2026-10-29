@@ -25,10 +25,37 @@ type Liff = {
   isInClient(): boolean;
   closeWindow(): void;
 };
+type TgWebApp = { initData: string; ready(): void; expand(): void; close(): void };
 declare global {
   interface Window {
     liff?: Liff;
+    Telegram?: { WebApp?: TgWebApp };
   }
+}
+
+/** Where the form runs: inside LINE (LIFF) or inside Telegram (Mini App, owner 29 Oct 2026). */
+type Host = { auth: () => string; inClient: boolean; close: () => void };
+
+const TG_SDK = "https://telegram.org/js/telegram-web-app.js";
+
+function inTelegram(): boolean {
+  return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tg") === "1";
+}
+
+function loadTelegram(): Promise<TgWebApp> {
+  if (window.Telegram?.WebApp?.initData) return Promise.resolve(window.Telegram.WebApp);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = TG_SDK;
+    s.async = true;
+    s.onload = () => {
+      const app = window.Telegram?.WebApp;
+      if (app?.initData) resolve(app);
+      else reject(new Error("เปิดฟอร์มนี้จากปุ่ม \"➕ เพิ่มงาน\" ในแชท Telegram ของบอทครับ"));
+    };
+    s.onerror = () => reject(new Error("โหลด Telegram ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่"));
+    document.head.appendChild(s);
+  });
 }
 
 const SDK = "https://static.line-scdn.net/liff/edge/2/sdk.js";
@@ -58,7 +85,7 @@ type Phase =
 
 export function AddEventForm({ liffId }: { liffId: string }) {
   const [phase, setPhase] = useState<Phase>({ kind: "loading", text: "กำลังเปิดฟอร์ม…" });
-  const [liff, setLiff] = useState<Liff | null>(null);
+  const [host, setHost] = useState<Host | null>(null);
   const [lists, setLists] = useState<Lists | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<"draft" | "publish" | null>(null);
@@ -69,26 +96,37 @@ export function AddEventForm({ liffId }: { liffId: string }) {
   const [endTime, setEndTime] = useState("");
   const [place, setPlace] = useState("");
   const [shortNote, setShortNote] = useState("");
+  const [screenTitle, setScreenTitle] = useState("");
+  const [announce, setAnnounce] = useState("");
   const [rows, setRows] = useState<Row[]>([{ personId: "", roleIds: [] }]);
   const [files, setFiles] = useState<{ staged: StagedAttachment[]; busy: boolean }>({ staged: [], busy: false });
   const [pickerKey, setPickerKey] = useState(0);
 
-  const token = useCallback(() => liff?.getIDToken() ?? "", [liff]);
+  const auth = useCallback(() => host?.auth() ?? "", [host]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const sdk = await loadSdk();
-        await sdk.init({ liffId });
-        if (!sdk.isLoggedIn()) {
-          sdk.login({ redirectUri: window.location.href });
-          return;
+        let h: Host;
+        if (inTelegram()) {
+          const app = await loadTelegram();
+          app.ready();
+          app.expand();
+          h = { auth: () => `tma ${app.initData}`, inClient: true, close: () => app.close() };
+        } else {
+          const sdk = await loadSdk();
+          await sdk.init({ liffId });
+          if (!sdk.isLoggedIn()) {
+            sdk.login({ redirectUri: window.location.href });
+            return;
+          }
+          h = { auth: () => `Bearer ${sdk.getIDToken() ?? ""}`, inClient: sdk.isInClient(), close: () => sdk.closeWindow() };
         }
         if (cancelled) return;
-        setLiff(sdk);
+        setHost(h);
         setPhase({ kind: "loading", text: "กำลังโหลดรายชื่อทีมงาน…" });
-        const res = await fetch("/api/liff/options", { headers: { Authorization: `Bearer ${sdk.getIDToken() ?? ""}` } });
+        const res = await fetch("/api/liff/options", { headers: { Authorization: h.auth() } });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "โหลดข้อมูลไม่สำเร็จ");
         if (cancelled) return;
@@ -114,6 +152,8 @@ export function AddEventForm({ liffId }: { liffId: string }) {
     setTitle("");
     setEndTime("");
     setShortNote("");
+    setScreenTitle("");
+    setAnnounce("");
     setRows([{ personId: "", roleIds: [] }]);
     setFiles({ staged: [], busy: false });
     setPickerKey((k) => k + 1);
@@ -132,8 +172,8 @@ export function AddEventForm({ liffId }: { liffId: string }) {
     try {
       const res = await fetch("/api/liff/events", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ title, eventDate, startTime, endTime: endTime || null, locationText: place.trim() || null, shortNote, assignees: filled, attachments: files.staged, publish }),
+        headers: { "Content-Type": "application/json", Authorization: auth() },
+        body: JSON.stringify({ title, eventDate, startTime, endTime: endTime || null, locationText: place.trim() || null, shortNote, screenTitle, announce, assignees: filled, attachments: files.staged, publish }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "บันทึกไม่สำเร็จ");
@@ -180,8 +220,8 @@ export function AddEventForm({ liffId }: { liffId: string }) {
             <button type="button" className={styles.secondary} onClick={reset}>
               เพิ่มงานอีก
             </button>
-            {liff?.isInClient() ? (
-              <button type="button" className={styles.primary} onClick={() => liff.closeWindow()}>
+            {host?.inClient ? (
+              <button type="button" className={styles.primary} onClick={() => host.close()}>
                 ปิด
               </button>
             ) : null}
@@ -203,6 +243,15 @@ export function AddEventForm({ liffId }: { liffId: string }) {
         <label className={styles.field}>
           <span>ชื่องาน *</span>
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="เช่น ถ่ายภาพประชุมสภา" maxLength={200} />
+          {title.trim().length > 28 ? (
+            <input
+              value={screenTitle}
+              onChange={(e) => setScreenTitle(e.target.value)}
+              placeholder="ชื่อยาว ใส่ชื่อสั้นบนจอทีวีได้ (ไม่บังคับ)"
+              maxLength={60}
+              style={{ marginTop: 8 }}
+            />
+          ) : null}
         </label>
 
         <div className={styles.field}>
@@ -270,12 +319,16 @@ export function AddEventForm({ liffId }: { liffId: string }) {
           <span>หมายเหตุบนจอทีวี</span>
           <textarea value={shortNote} onChange={(e) => setShortNote(e.target.value)} rows={2} maxLength={500} placeholder="ไม่บังคับ" />
         </label>
+        <label className={styles.field}>
+          <span>📢 ประกาศบนจอทีวี (ตัววิ่ง ถึงเที่ยงคืน)</span>
+          <input value={announce} onChange={(e) => setAnnounce(e.target.value)} maxLength={140} placeholder="ไม่บังคับ" />
+        </label>
       </section>
 
       <section className={styles.card}>
         <AttachmentPicker
           key={pickerKey}
-          authHeader={() => `Bearer ${token()}`}
+          authHeader={auth}
           onChange={(staged, busy) => setFiles({ staged, busy })}
         />
       </section>

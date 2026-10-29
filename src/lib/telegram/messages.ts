@@ -27,6 +27,18 @@ export function parseCb(data: string): { a: string; id?: string; v?: string } {
   return { a, id, v };
 }
 
+/** Opens the add-job form inside Telegram (Mini App); the form checks Telegram's signature. */
+export function addEventButton(): TgButton {
+  return { text: "➕ เพิ่มงาน", web_app: { url: appUrl("/liff/add-event?tg=1") } };
+}
+
+export function tgAddEvent(): TgMessage {
+  return {
+    text: "📝 <b>เพิ่มงาน</b>\nกดปุ่มด้านล่างเพื่อเปิดฟอร์ม กรอกชื่องาน วัน เวลา สถานที่ เลือกคนและหน้าที่ แนบรูปได้ แล้วกดบันทึก",
+    buttons: [[addEventButton()]],
+  };
+}
+
 /** The buttons under the typing box. */
 export const KEYBOARD: string[][] = [
   [COMMANDS.mine, COMMANDS.today],
@@ -186,6 +198,8 @@ export function tgHelp(): TgMessage {
     text: [
       "🤖 <b>ผู้ช่วยงาน ปชส.</b> ตอบได้ตามนี้ครับ",
       "",
+      `➕ <b>เพิ่มงาน</b>: กดปุ่ม "เพิ่มงาน" ด้านล่าง หรือปุ่มเมนูข้างช่องพิมพ์`,
+      "",
       `👤 <b>ของฉัน</b>`,
       `• "${COMMANDS.mine}" — งานของคุณ 7 วันข้างหน้า พร้อมปุ่มรับทราบ / ไม่สะดวก`,
       `• "รูปของฉัน" — ดูรูปการ์ตูนของคุณที่ใช้บนจอ`,
@@ -199,7 +213,7 @@ export function tgHelp(): TgMessage {
       `แก้ไขงาน แนบไฟล์ และดูรายงาน ทำในเว็บ PR-OS 👉 ${esc(appUrl("/"))}`,
       `เลิกรับแจ้งทาง Telegram (กลับไปใช้ LINE): พิมพ์ /stop`,
     ].join("\n"),
-    keyboard: KEYBOARD,
+    buttons: [[addEventButton()]],
   };
 }
 

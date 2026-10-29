@@ -63,6 +63,16 @@ export default async function NewEventPage({
                 placeholder="เช่น พิธีเปิดโครงการ..."
               />
             </label>
+            <label className="form-field full">
+              ชื่อสั้นบนจอทีวี (ไม่บังคับ)
+              <input
+                className="input"
+                name="screenTitle"
+                maxLength={60}
+                defaultValue={clone?.screenTitle ?? ""}
+                placeholder="ใส่เมื่อชื่องานยาว เช่น ซ้อมดับเพลิง รร.วัดปากน้ำโพ"
+              />
+            </label>
             <label className="form-field">
               วันที่ *
               <input
@@ -188,6 +198,10 @@ export default async function NewEventPage({
                 defaultValue={clone?.shortNote ?? ""}
                 placeholder="ข้อความสั้นที่แสดงบนจอมอนิเตอร์"
               />
+            </label>
+            <label className="form-field full">
+              ประกาศบนจอทีวี (ไม่บังคับ)
+              <input className="input" name="announce" maxLength={140} placeholder="ขึ้นตัววิ่งบนจอทันที หายเองตอนเที่ยงคืน" />
             </label>
             <label className="form-field full">
               หมายเหตุภายใน
