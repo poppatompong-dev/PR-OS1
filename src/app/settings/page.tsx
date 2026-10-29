@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { QuotaBar } from "@/components/QuotaBar";
 import { createClient } from "@/lib/supabase/server";
+import { getAvatarOffIds } from "@/lib/avatar-choice";
 import { getSessionUser } from "@/lib/auth/roles";
 import { buildTeam } from "@/lib/settings/team";
 import { TeamPanel } from "./TeamPanel";
@@ -145,7 +146,7 @@ export default async function SettingsPage({
         </div>
       ) : null}
 
-      <TeamPanel team={team} currentUserId={user?.id ?? null} added={added ?? null} pending={pendingLine} />
+      <TeamPanel team={team} currentUserId={user?.id ?? null} added={added ?? null} pending={pendingLine} avatarOff={supabase ? await getAvatarOffIds(supabase) : new Set()} />
 
       {/* ---- TV short link ---- */}
       <section className="panel tv-link-panel">

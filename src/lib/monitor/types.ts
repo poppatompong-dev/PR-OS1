@@ -37,4 +37,6 @@ export type MonitorPerson = {
   id: string;
   displayName: string;
   position: string;
+  /** Chose "no cartoon" (0018): screens show the name only. */
+  avatarOff?: boolean;
 };

@@ -51,3 +51,16 @@ export async function alertAdminsUnavailable(admin: SupabaseClient, task: TaskIt
   }
   return sent;
 }
+
+/** FYI notes for admins (e.g. "a photo came in for a redraw"): Telegram only, so they never cost LINE quota. */
+export async function tellAdminsByTelegram(admin: SupabaseClient, text: string): Promise<number> {
+  if (!isTelegramConfigured()) return 0;
+  const admins = await getPeopleByIds(admin, await getAdminRecipientIds(admin));
+  let sent = 0;
+  for (const a of admins) {
+    if (!a.telegramChatId) continue;
+    const res = await sendTelegram(a.telegramChatId, { text });
+    if (res.ok) sent += 1;
+  }
+  return sent;
+}

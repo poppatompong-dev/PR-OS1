@@ -18,7 +18,8 @@ export const cb = {
   typeReason: (assignmentId: string) => `rt|${assignmentId}`,
   cancelReason: (assignmentId: string) => `rc|${assignmentId}`,
   avatarOk: "av|ok",
-  avatarEdit: "av|edit",
+  avatarOff: "av|off",
+  avatarPhoto: "av|photo",
 };
 
 export function parseCb(data: string): { a: string; id?: string; v?: string } {

@@ -12,6 +12,7 @@ import { conflictLevel } from "@/lib/assignments/conflict";
 import { getEventAttachments } from "@/lib/attachments/queries";
 import { deleteAttachment, uploadAttachment } from "@/lib/attachments/mutations";
 import { createClient } from "@/lib/supabase/server";
+import { getAvatarOffIds } from "@/lib/avatar-choice";
 import { can, getSessionUser, type AppRole } from "@/lib/auth/roles";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
@@ -64,10 +65,12 @@ export default async function EventDetailPage({
   // office actually works in; with Supabase connected the real role decides,
   // and RLS still has the final say on every write.
   let role: AppRole = isSupabaseConfigured() ? "assignee" : "staff";
+  let avatarOff = new Set<string>();
   if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const user = await getSessionUser(supabase);
     role = user?.role ?? "assignee";
+    avatarOff = await getAvatarOffIds(supabase);
   }
   const audit = await getEventAuditLog(id);
   // Newest of "postpone" / "publish" decides whether the job is on hold right now.
@@ -136,7 +139,7 @@ export default async function EventDetailPage({
                 <div className="assignment-row" key={assignment.id} style={{ flexDirection: "column", alignItems: "stretch" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%" }}>
                     <div className="assignment-main">
-                      <Avatar personId={assignment.person.id} name={assignment.person.displayName} size={30} />{" "}
+                      <Avatar personId={assignment.person.id} name={assignment.person.displayName} size={30} off={avatarOff.has(assignment.person.id)} />{" "}
                       <strong>{assignment.role.name}</strong>: {assignment.person.displayName}{" "}
                       {assignment.unavailableReason && assignment.ackStatus !== "acknowledged" ? (
                         <span className="ack-tag status-unavailable">— ⛔ ไม่สะดวก: {assignment.unavailableReason}</span>

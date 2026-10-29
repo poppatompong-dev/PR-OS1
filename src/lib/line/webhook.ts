@@ -10,8 +10,9 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, todayInBangkok } from "@/lib/date";
-import { addFriendUrl, getBotBasicId, getGroupMemberProfile, replyMessages, startLoading, type LineMessage } from "@/lib/line/api";
-import { alertAdminsUnavailable } from "@/lib/line/alerts";
+import { addFriendUrl, getBotBasicId, getGroupMemberProfile, getMessageContent, replyMessages, startLoading, type LineMessage } from "@/lib/line/api";
+import { alertAdminsUnavailable, tellAdminsByTelegram } from "@/lib/line/alerts";
+import { getAvatarChoice, saveAvatarSource, setAvatarChoice } from "@/lib/avatar-choice";
 import {
   claimRun,
   clearPending,
@@ -26,6 +27,8 @@ import {
   recordAck,
   recordUnavailable,
   setPendingReason,
+  setPendingAction,
+  takePendingAction,
   takePendingReason,
   withinRateLimit,
   type LinePerson,
@@ -65,7 +68,7 @@ export type LineEvent = {
   source: LineSource;
   webhookEventId?: string;
   deliveryContext?: { isRedelivery?: boolean };
-  message?: { type: string; text?: string };
+  message?: { type: string; text?: string; id?: string };
   postback?: { data: string };
 };
 
@@ -232,17 +235,15 @@ async function handlePostback(ctx: Ctx, ev: LineEvent, person: LinePerson | null
       await clearPending(ctx.admin, userId);
       return [text("ยกเลิกแล้วครับ งานยังอยู่ในชื่อของคุณตามเดิม", true)];
     case "avok":
-    case "avedit": {
-      const ok = p.a === "avok";
-      await ctx.admin.from("audit_logs").insert({
-        entity_type: "person",
-        entity_id: person.id,
-        action: ok ? "avatar_ok" : "avatar_change_request",
-        changed_by: null,
-        summary: ok ? "เจ้าตัวยืนยันรูปการ์ตูน (LINE)" : "เจ้าตัวขอแก้รูปการ์ตูน (LINE)",
-      });
-      return [text(ok ? "ขอบคุณครับ 👍 ใช้รูปนี้ต่อ" : "รับเรื่องแล้วครับ บอกได้เลยว่าอยากแก้ตรงไหน หรือส่งรูปถ่ายใหม่ให้แอดมิน (แอดมินเห็นคำขอนี้แล้ว)")];
-    }
+      await setAvatarChoice(ctx.admin, person.id, "on", "line");
+      return [text("ขอบคุณครับ 👍 ใช้รูปการ์ตูนนี้บนจอทีวีและในระบบ")];
+    case "avoff":
+      await setAvatarChoice(ctx.admin, person.id, "off", "line");
+      return [text('รับทราบครับ จอทีวีและในระบบจะแสดงแค่ชื่อของคุณ ไม่แสดงรูป\nเปลี่ยนใจเมื่อไหร่ พิมพ์ "รูปของฉัน" แล้วกด "ใช้รูปนี้" ได้')];
+    case "avedit":
+    case "avphoto":
+      await setPendingAction(ctx.admin, userId, "avatar_photo");
+      return [text(PHOTO_PROMPT)];
     default:
       return [helpMessage()];
   }
@@ -305,7 +306,7 @@ async function handleText(ctx: Ctx, ev: LineEvent, person: LinePerson | null): P
   if (isLinkTelegramCommand(raw)) return [await telegramLinkReply(ctx, person)];
   const announce = parseAnnounceCommand(raw);
   if (announce !== null) return [await announceReply(ctx, person, announce)];
-  if (/^(รูปของฉัน|รูปฉัน)$/.test(raw.replace(/\s+/g, ""))) return avatarReply(person);
+  if (/^(รูปของฉัน|รูปฉัน)$/.test(raw.replace(/\s+/g, ""))) return avatarReply(ctx, person);
   const faq = matchFaq(raw);
   if (faq) return [faqMessage(faq, false)];
   return [helpMessage()];
@@ -350,6 +351,10 @@ export async function handleLineEvent(ctx: Ctx, ev: LineEvent): Promise<void> {
       ]);
       return;
     case "message":
+      if (ev.message?.type === "image") {
+        await reply(ev, await handleImage(ctx, ev, person));
+        return;
+      }
       if (ev.message?.type !== "text") return;
       await reply(ev, await handleText(ctx, ev, person));
       return;
@@ -392,20 +397,45 @@ async function announceReply(ctx: Ctx, person: LinePerson, message: string): Pro
   return text(res.ok ? announceDoneText(res.message, res.endsAt) : res.error);
 }
 
-function avatarReply(person: LinePerson): LineMessage[] {
-  if (!hasAvatar(person.id)) return [text(`ยังไม่มีรูปการ์ตูนของคุณ${person.displayName}ครับ ตอนนี้จอใช้รูปมาสคอตแทน รอแอดมินวาดให้`)];
+export const PHOTO_PROMPT = [
+  "📷 ส่งรูปถ่ายของคุณ 1 รูปมาในแชทนี้ได้เลยครับ (ภายใน 15 นาที)",
+  "• หน้าตรง เห็นหน้าชัด ไม่ใส่แว่นดำ มีคนเดียวในรูป",
+  "• รูปจะใช้เพื่อวาดการ์ตูนเท่านั้น เปิดดูได้เฉพาะแอดมิน และลบทิ้งเมื่อวาดเสร็จ",
+].join("\n");
+
+async function avatarReply(ctx: Ctx, person: LinePerson): Promise<LineMessage[]> {
+  const photo = { type: "action" as const, action: { type: "postback" as const, label: "📷 ส่งรูปให้ทำใหม่", data: "a=avphoto", displayText: "ส่งรูปให้ทำการ์ตูนใหม่" } };
+  if (!hasAvatar(person.id)) {
+    return [{ type: "text", text: `ยังไม่มีรูปการ์ตูนของคุณ${person.displayName}ครับ ตอนนี้จอแสดงแค่ชื่อ\nอยากได้รูปการ์ตูน กด "ส่งรูปให้ทำใหม่" แล้วส่งรูปถ่ายมา`, quickReply: { items: [photo] } }];
+  }
   const url = appUrl(avatarUrl(person.id));
+  const off = (await getAvatarChoice(ctx.admin, person.id)) === "off";
   return [
+    { type: "image", originalContentUrl: url, previewImageUrl: url },
     {
-      type: "image",
-      originalContentUrl: url,
-      previewImageUrl: url,
+      type: "text",
+      text: off
+        ? `นี่คือรูปการ์ตูนของคุณ${person.displayName} ตอนนี้ตั้งไว้ว่า "ไม่ใช้รูป" (จอแสดงแค่ชื่อ)`
+        : `นี่คือรูปการ์ตูนของคุณ${person.displayName} ที่ใช้บนจอทีวีและในระบบ ชอบไหมครับ?`,
       quickReply: {
         items: [
           { type: "action", action: { type: "postback", label: "👍 ใช้รูปนี้", data: "a=avok", displayText: "ใช้รูปนี้" } },
-          { type: "action", action: { type: "postback", label: "✏️ ขอแก้", data: "a=avedit", displayText: "ขอแก้รูป" } },
+          { type: "action", action: { type: "postback", label: "🚫 ไม่ใช้รูป", data: "a=avoff", displayText: "ไม่ใช้รูป แสดงแค่ชื่อ" } },
+          photo,
         ],
       },
     },
   ];
+}
+
+async function handleImage(ctx: Ctx, ev: LineEvent, person: LinePerson | null): Promise<LineMessage[]> {
+  const userId = ev.source.userId;
+  if (ev.source.type !== "user" || !userId || !person || !ev.message?.id) return [];
+  if (!(await takePendingAction(ctx.admin, userId, "avatar_photo"))) return [];
+  const file = await getMessageContent(ev.message.id);
+  if (!file || !(await saveAvatarSource(ctx.admin, person.id, file.bytes, file.contentType, "line"))) {
+    return [text('รับรูปไม่สำเร็จ (ไฟล์ใหญ่เกิน 10 MB หรือระบบขัดข้อง) พิมพ์ "รูปของฉัน" แล้วลองส่งใหม่อีกครั้งครับ')];
+  }
+  await tellAdminsByTelegram(ctx.admin, `📷 ${person.displayName} ส่งรูปจริงมาให้ทำการ์ตูนใหม่ (ทาง LINE) · ดูได้ใน Supabase Storage › avatar-sources`);
+  return [text("ได้รับรูปแล้วครับ 🙏 วาดเสร็จแล้วจะส่งให้เลือก 2–3 แบบในแชทนี้\n(รูปจริงจะถูกลบทิ้งเมื่อวาดเสร็จ)")];
 }

@@ -4,7 +4,9 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, todayInBangkok } from "@/lib/date";
-import { alertAdminsUnavailable } from "@/lib/line/alerts";
+import { alertAdminsUnavailable, tellAdminsByTelegram } from "@/lib/line/alerts";
+import { getAvatarChoice, saveAvatarSource, setAvatarChoice } from "@/lib/avatar-choice";
+import { PHOTO_PROMPT } from "@/lib/line/webhook";
 import { loadChangeInfo } from "@/lib/line/change-diff";
 import {
   claimRun,
@@ -15,6 +17,8 @@ import {
   recordAck,
   recordUnavailable,
   setPendingReason,
+  setPendingAction,
+  takePendingAction,
   takePendingReason,
   withinRateLimit,
   type LinePerson,
@@ -25,7 +29,7 @@ import { faqText, matchFaq } from "@/lib/line/faq";
 import { UNAVAILABLE_PRESETS, pendingListMessage, teamDayMessage, appUrl } from "@/lib/line/messages";
 import { announceDoneText, createAnnouncement, parseAnnounceCommand } from "@/lib/announcements";
 import { avatarUrl, hasAvatar } from "@/lib/avatars";
-import { answerCallback, editTelegram, esc, sendTelegram, type TgMessage } from "@/lib/telegram/api";
+import { answerCallback, downloadTelegramFile, editTelegram, esc, sendTelegram, type TgMessage } from "@/lib/telegram/api";
 import { consumeLinkToken, unlinkTelegram } from "@/lib/telegram/link";
 import {
   KEYBOARD,
@@ -42,7 +46,14 @@ import {
 
 export type TgUpdate = {
   update_id: number;
-  message?: { message_id: number; chat: { id: number; type: string }; from?: { id: number; first_name?: string }; text?: string };
+  message?: {
+    message_id: number;
+    chat: { id: number; type: string };
+    from?: { id: number; first_name?: string };
+    text?: string;
+    photo?: Array<{ file_id: string; file_size?: number; width: number; height: number }>;
+    document?: { file_id: string; mime_type?: string; file_size?: number };
+  };
   callback_query?: {
     id: string;
     from: { id: number };
@@ -61,9 +72,16 @@ export async function handleTelegramUpdate(ctx: Ctx, u: TgUpdate): Promise<void>
   if (!(await claimRun(ctx.admin, `tgu:${u.update_id}`))) return;
   if (u.callback_query) return handleCallback(ctx, u.callback_query);
   const m = u.message;
-  if (!m || m.chat.type !== "private" || typeof m.text !== "string") return;
+  if (!m || m.chat.type !== "private") return;
   const chatId = m.chat.id;
   if (!(await withinRateLimit(ctx.admin, stateKey(chatId)))) return;
+  if (m.photo?.length || (m.document && (m.document.mime_type ?? "").startsWith("image/"))) {
+    const fileId = m.photo?.length ? m.photo[m.photo.length - 1].file_id : m.document!.file_id;
+    const out = await handlePhoto(ctx, chatId, fileId);
+    for (const msg of out) await sendTelegram(chatId, msg);
+    return;
+  }
+  if (typeof m.text !== "string") return;
   const out = await handleText(ctx, chatId, m.text.trim());
   for (const msg of out) await sendTelegram(chatId, msg);
 }
@@ -104,7 +122,7 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
     const res = await createAnnouncement(ctx.admin, { text: announce, personId: person.id, authorName: person.displayName, source: "telegram" });
     return [{ text: esc(res.ok ? announceDoneText(res.message, res.endsAt) : res.error) }];
   }
-  if (/^(รูปของฉัน|รูปฉัน|avatar)$/i.test(text.replace(/\s+/g, ""))) return [avatarMessage(person)];
+  if (/^(รูปของฉัน|รูปฉัน|avatar)$/i.test(text.replace(/\s+/g, ""))) return [await avatarMessage(ctx, person)];
 
   const cmd = matchCommand(text);
   const today = todayInBangkok();
@@ -136,15 +154,36 @@ function lineTextToTg(m: { type: string; text?: string }): TgMessage {
   return tgFromLineText(m.type === "text" && m.text ? m.text : "");
 }
 
-function avatarMessage(person: LinePerson): TgMessage {
+async function avatarMessage(ctx: Ctx, person: LinePerson): Promise<TgMessage> {
+  const photoBtn = { text: "📷 ส่งรูปให้ทำใหม่", callback_data: cb.avatarPhoto };
   if (!hasAvatar(person.id)) {
-    return { text: `ยังไม่มีรูปการ์ตูนของคุณ${esc(person.displayName)}ครับ\nตอนนี้จอใช้รูปมาสคอตแทน รอแอดมินวาดให้` };
+    return { text: `ยังไม่มีรูปการ์ตูนของคุณ${esc(person.displayName)}ครับ ตอนนี้จอแสดงแค่ชื่อ\nอยากได้รูปการ์ตูน กดปุ่มด้านล่างแล้วส่งรูปถ่ายมา`, buttons: [[photoBtn]] };
   }
+  const off = (await getAvatarChoice(ctx.admin, person.id)) === "off";
   return {
     photo: appUrl(avatarUrl(person.id)),
-    text: `รูปการ์ตูนของคุณ${esc(person.displayName)} ที่ใช้บนจอทีวีและในระบบ`,
-    buttons: [[{ text: "👍 ใช้รูปนี้", callback_data: cb.avatarOk }, { text: "✏️ ขอแก้", callback_data: cb.avatarEdit }]],
+    text: off
+      ? `รูปการ์ตูนของคุณ${esc(person.displayName)} · ตอนนี้ตั้งไว้ว่า "ไม่ใช้รูป" (จอแสดงแค่ชื่อ)`
+      : `รูปการ์ตูนของคุณ${esc(person.displayName)} ที่ใช้บนจอทีวีและในระบบ ชอบไหมครับ?`,
+    buttons: [
+      [{ text: "👍 ใช้รูปนี้", callback_data: cb.avatarOk }, { text: "🚫 ไม่ใช้รูป", callback_data: cb.avatarOff }],
+      [photoBtn],
+    ],
   };
+}
+
+async function handlePhoto(ctx: Ctx, chatId: number, fileId: string): Promise<TgMessage[]> {
+  const person = await findPersonByTelegramChatId(ctx.admin, chatId);
+  if (!person) return [tgNotLinked()];
+  if (!(await takePendingAction(ctx.admin, stateKey(chatId), "avatar_photo"))) {
+    return [{ text: 'ถ้าจะส่งรูปให้ทำการ์ตูนใหม่ พิมพ์ "รูปของฉัน" แล้วกด "📷 ส่งรูปให้ทำใหม่" ก่อนนะครับ' }];
+  }
+  const file = await downloadTelegramFile(fileId);
+  if (!file || !(await saveAvatarSource(ctx.admin, person.id, file.bytes, file.contentType, "telegram"))) {
+    return [{ text: 'รับรูปไม่สำเร็จ (ไฟล์ใหญ่เกิน 10 MB หรือระบบขัดข้อง) พิมพ์ "รูปของฉัน" แล้วลองใหม่อีกครั้งครับ' }];
+  }
+  await tellAdminsByTelegram(ctx.admin, `📷 ${esc(person.displayName)} ส่งรูปจริงมาให้ทำการ์ตูนใหม่ (ทาง Telegram) · ดูได้ใน Supabase Storage › avatar-sources`);
+  return [{ text: "ได้รับรูปแล้วครับ 🙏 วาดเสร็จแล้วจะส่งให้เลือก 2–3 แบบในแชทนี้\n(รูปจริงจะถูกลบทิ้งเมื่อวาดเสร็จ)" }];
 }
 
 async function finishUnavailable(ctx: Ctx, person: LinePerson, assignmentId: string, reason: string): Promise<TgMessage[]> {
@@ -241,16 +280,16 @@ async function handleCallback(ctx: Ctx, q: NonNullable<TgUpdate["callback_query"
   }
 
   if (p.a === "av") {
-    const ok = p.id === "ok";
-    await ctx.admin.from("audit_logs").insert({
-      entity_type: "person",
-      entity_id: person.id,
-      action: ok ? "avatar_ok" : "avatar_change_request",
-      changed_by: null,
-      summary: ok ? "เจ้าตัวยืนยันรูปการ์ตูน (Telegram)" : "เจ้าตัวขอแก้รูปการ์ตูน (Telegram)",
-    });
-    await answerCallback(q.id, ok ? "ขอบคุณครับ 👍" : "รับเรื่องแล้ว");
-    if (!ok) await sendTelegram(chatId, { text: "บอกได้เลยว่าอยากแก้ตรงไหน หรือส่งรูปถ่ายใหม่ให้แอดมินทาง LINE ครับ\n(แอดมินเห็นคำขอนี้ในประวัติของคุณแล้ว)" });
+    if (p.id === "photo") {
+      await setPendingAction(ctx.admin, stateKey(chatId), "avatar_photo");
+      await answerCallback(q.id);
+      await sendTelegram(chatId, { text: esc(PHOTO_PROMPT) });
+      return;
+    }
+    const choice = p.id === "off" ? "off" : "on";
+    await setAvatarChoice(ctx.admin, person.id, choice, "telegram");
+    await answerCallback(q.id, choice === "on" ? "ขอบคุณครับ 👍 ใช้รูปนี้" : "รับทราบ จอจะแสดงแค่ชื่อ");
+    if (choice === "off") await sendTelegram(chatId, { text: 'ตั้งเป็น "ไม่ใช้รูป" แล้วครับ จอทีวีและในระบบจะแสดงแค่ชื่อของคุณ\nเปลี่ยนใจเมื่อไหร่ พิมพ์ "รูปของฉัน" แล้วกด "ใช้รูปนี้" ได้' });
     return;
   }
   await answerCallback(q.id);

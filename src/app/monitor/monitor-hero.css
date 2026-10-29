@@ -137,3 +137,6 @@
 .hm-title { margin-top: calc(6 * var(--u)) !important; }
 .hm-place { margin-top: calc(6 * var(--u)) !important; }
 .hm-note { margin-top: calc(4 * var(--u)) !important; }
+
+/* "ไม่ใช้รูปการ์ตูน" (0018): two letters of the name in the same ring instead of the picture. */
+.hm-row-p .hm-mini--name { display: inline-grid; place-items: center; color: #3d1f52; font-weight: 700; font-size: calc(18 * var(--u)); }

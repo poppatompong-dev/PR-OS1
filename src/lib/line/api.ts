@@ -225,3 +225,19 @@ export async function getBotBasicId(): Promise<string | null> {
 export function addFriendUrl(basicId: string): string {
   return `https://line.me/R/ti/p/${encodeURIComponent(basicId.startsWith("@") ? basicId : `@${basicId}`)}`;
 }
+
+/** A photo someone sent the bot (free). Null when LINE no longer has it or it is too big. */
+export async function getMessageContent(messageId: string, maxBytes = 10 * 1024 * 1024): Promise<{ bytes: ArrayBuffer; contentType: string } | null> {
+  try {
+    const res = await fetch(`${DATA_API}/message/${encodeURIComponent(messageId)}/content`, {
+      headers: { Authorization: `Bearer ${env.lineMessagingChannelAccessToken}` },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const bytes = await res.arrayBuffer();
+    if (bytes.byteLength > maxBytes) return null;
+    return { bytes, contentType: res.headers.get("content-type") ?? "image/jpeg" };
+  } catch {
+    return null;
+  }
+}

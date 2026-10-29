@@ -132,3 +132,20 @@ export async function setCommands(commands: Array<{ command: string; description
 export function esc(s: string | null | undefined): string {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
+
+/** A photo someone sent the bot: the largest size Telegram kept. Null if it cannot be fetched. */
+export async function downloadTelegramFile(fileId: string, maxBytes = 10 * 1024 * 1024): Promise<{ bytes: ArrayBuffer; contentType: string } | null> {
+  const meta = await call<{ file_path?: string; file_size?: number }>("getFile", { file_id: fileId });
+  const filePath = meta.ok ? meta.result?.file_path : undefined;
+  if (!filePath || (meta.result?.file_size ?? 0) > maxBytes) return null;
+  try {
+    const res = await fetch(`https://api.telegram.org/file/bot${env.telegramBotToken}/${filePath}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const bytes = await res.arrayBuffer();
+    if (bytes.byteLength > maxBytes) return null;
+    const contentType = filePath.endsWith(".png") ? "image/png" : filePath.endsWith(".webp") ? "image/webp" : "image/jpeg";
+    return { bytes, contentType };
+  } catch {
+    return null;
+  }
+}

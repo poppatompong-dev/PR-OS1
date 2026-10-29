@@ -143,10 +143,14 @@ export function TableMonitor({
   // name → people.id, so the TV can put each assignee's cartoon next to them.
   // The monitor feed carries names only; the public team list carries ids.
   const [teamIds, setTeamIds] = useState<Record<string, string>>({});
+  const [offNames, setOffNames] = useState<Set<string>>(new Set());
   useEffect(() => {
     const loadTeam = () =>
       fetchMonitorTeam()
-        .then((team) => setTeamIds(Object.fromEntries(team.map((p) => [p.displayName, p.id]))))
+        .then((team) => {
+          setTeamIds(Object.fromEntries(team.map((p) => [p.displayName, p.id])));
+          setOffNames(new Set(team.filter((p) => p.avatarOff).map((p) => p.displayName)));
+        })
         .catch(() => undefined);
     loadTeam();
     const id = window.setInterval(loadTeam, 10 * 60_000);
@@ -401,13 +405,15 @@ export function TableMonitor({
                     <div className="tv-people">
                       {e.assigneeDetail.map((p, k) => (
                         <i className="tv-person" key={`${e.id}-${k}`}>
-                          <Avatar
-                            personId={teamIds[p.name]}
-                            name={p.name}
-                            size={38}
-                            eager
-                            className={`tv-avatar ${p.ack ? "is-ack" : p.unavailable ? "is-unavailable" : "is-pending"}`}
-                          />
+                          {offNames.has(p.name) ? null : (
+                            <Avatar
+                              personId={teamIds[p.name]}
+                              name={p.name}
+                              size={38}
+                              eager
+                              className={`tv-avatar ${p.ack ? "is-ack" : p.unavailable ? "is-unavailable" : "is-pending"}`}
+                            />
+                          )}
                           <b>{p.name}</b> <small>({p.role})</small>
                           {p.unavailable ? <small className="tv-unavailable"> ไม่สะดวก</small> : null}
                         </i>

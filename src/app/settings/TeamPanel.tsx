@@ -242,8 +242,11 @@ export function TeamPanel({
   currentUserId,
   added,
   pending = [],
+  avatarOff = new Set<string>(),
 }: {
   team: TeamMember[];
+  /** People who chose "no cartoon" (0018). */
+  avatarOff?: Set<string>;
   currentUserId: string | null;
   /** Username from ?added= after "+ เพิ่มคน" / "สร้างบัญชี". */
   added: string | null;
@@ -331,7 +334,7 @@ export function TeamPanel({
                 <tr className={m.suspended ? "is-suspended" : undefined} key={m.key}>
                   <td data-label="ชื่อ">
                     <div className="team-name">
-                      <Avatar personId={m.personId} name={m.displayName} size={36} />
+                      <Avatar personId={m.personId} name={m.displayName} size={36} off={m.personId ? avatarOff.has(m.personId) : false} />
                       <span>
                         <strong>{m.displayName}</strong>
                         {m.position ? <small>{m.position}</small> : null}

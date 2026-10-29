@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { StatusPill } from "@/components/StatusPill";
 import { createClient } from "@/lib/supabase/server";
+import { getAvatarOffIds } from "@/lib/avatar-choice";
 import { getSessionUser, ROLE_LABELS_TH } from "@/lib/auth/roles";
 import { isSupabaseConfigured } from "@/lib/env";
 import { formatThaiDate, formatThaiDateTime } from "@/lib/format";
@@ -50,6 +51,7 @@ export default async function PersonPage({
   const person = await getPersonDetail(id);
   if (!person) redirect(`/settings?error=${encodeURIComponent("ไม่พบบุคลากร")}`);
   const here = `/settings/people/${person.id}`;
+  const avatarOff = (await getAvatarOffIds(supabase)).has(person.id);
 
   return (
     <AppShell>
@@ -59,7 +61,7 @@ export default async function PersonPage({
             <Link href="/settings">← กลับไปหน้าตั้งค่า</Link>
           </p>
           <div className="page-header-person">
-            <Avatar personId={person.id} name={person.displayName} size={56} eager />
+            <Avatar personId={person.id} name={person.displayName} size={56} eager off={avatarOff} />
             <h1 className="page-title">{person.displayName}</h1>
           </div>
           <p className="page-subtitle">

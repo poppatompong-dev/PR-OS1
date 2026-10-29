@@ -8,13 +8,17 @@ export function Avatar({
   size = 32,
   eager = false,
   className = "",
+  off = false,
 }: {
   personId: string | null | undefined;
   name: string;
   size?: number;
   eager?: boolean;
   className?: string;
+  /** The person chose "no cartoon" (0018): show nothing; the name next to it stays. */
+  off?: boolean;
 }) {
+  if (off) return null;
   return (
     <img
       className={`avatar ${className}`.trim()}

@@ -317,6 +317,28 @@ export async function takePendingReason(admin: SupabaseClient, lineUserId: strin
   return data.assignment_id;
 }
 
+/** Other one-step chat waits (e.g. "send your photo"); shares the reason table. */
+export async function setPendingAction(admin: SupabaseClient, chatKey: string, action: "avatar_photo", minutes = 15) {
+  await admin.from("line_chat_state").upsert({
+    line_user_id: chatKey,
+    pending_action: action,
+    assignment_id: null,
+    expires_at: new Date(Date.now() + minutes * 60 * 1000).toISOString(),
+  });
+}
+
+/** True (and cleared) when this chat was waiting for `action`. */
+export async function takePendingAction(admin: SupabaseClient, chatKey: string, action: "avatar_photo"): Promise<boolean> {
+  const { data } = await admin
+    .from("line_chat_state")
+    .select("pending_action, expires_at")
+    .eq("line_user_id", chatKey)
+    .maybeSingle();
+  if (!data || data.pending_action !== action) return false;
+  await admin.from("line_chat_state").delete().eq("line_user_id", chatKey);
+  return new Date(data.expires_at).getTime() >= Date.now();
+}
+
 export async function clearPending(admin: SupabaseClient, lineUserId: string) {
   await admin.from("line_chat_state").delete().eq("line_user_id", lineUserId);
 }

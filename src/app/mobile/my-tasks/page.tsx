@@ -1,11 +1,13 @@
 import { AppShell } from "@/components/AppShell";
+import { createClient } from "@/lib/supabase/server";
+import { getAvatarOffIds } from "@/lib/avatar-choice";
 import { Avatar } from "@/components/Avatar";
 import { StatusPill } from "@/components/StatusPill";
 import { getMyAssignments } from "@/lib/assignments/queries";
 import { acknowledgeAssignment, acknowledgeAssignmentQuietly, markUnavailable } from "@/lib/assignments/mutations";
 import { AckButton } from "@/components/AckButton";
 import { eventStatusLabel, formatThaiDate } from "@/lib/format";
-import { isLineLoginConfigured } from "@/lib/env";
+import { isLineLoginConfigured, isSupabaseConfigured } from "@/lib/env";
 import { Ban, CheckCircle2, Clock3, MapPin, MessageCircle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -17,12 +19,13 @@ export default async function MyTasksPage({
 }) {
   const { error, line, unavailable } = await searchParams;
   const { displayName, personId, personLinked, lineLinked, tasks } = await getMyAssignments();
+  const avatarOff = personId && isSupabaseConfigured() ? (await getAvatarOffIds(await createClient())).has(personId) : false;
 
   return (
     <AppShell>
       <header className="page-header">
         <div className="page-header-person">
-          <Avatar personId={personId} name={displayName ?? "ผู้ใช้งาน"} size={52} eager />
+          <Avatar personId={personId} name={displayName ?? "ผู้ใช้งาน"} size={52} eager off={avatarOff} />
           <div>
             <h1 className="page-title">งานของฉัน</h1>
             <p className="page-subtitle">{displayName ?? "ผู้ใช้งาน"}</p>

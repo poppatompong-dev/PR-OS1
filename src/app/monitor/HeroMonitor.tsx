@@ -54,6 +54,7 @@ function ackClass(p: MonitorAssignee) {
 export function HeroMonitor({ linkable = false, staticMode = false }: { linkable?: boolean; staticMode?: boolean }) {
   const [events, setEvents] = useState<MonitorEvent[]>([]);
   const [teamIds, setTeamIds] = useState<Record<string, string>>({});
+  const [offNames, setOffNames] = useState<Set<string>>(new Set());
   const [clock, setClock] = useState<ReturnType<typeof bangkokNow> | null>(null);
 
   useEffect(() => {
@@ -79,7 +80,10 @@ export function HeroMonitor({ linkable = false, staticMode = false }: { linkable
   useEffect(() => {
     const loadTeam = () =>
       fetchMonitorTeam()
-        .then((team) => setTeamIds(Object.fromEntries(team.map((p) => [p.displayName, p.id]))))
+        .then((team) => {
+          setTeamIds(Object.fromEntries(team.map((p) => [p.displayName, p.id])));
+          setOffNames(new Set(team.filter((p) => p.avatarOff).map((p) => p.displayName)));
+        })
         .catch(() => undefined);
     loadTeam();
     const id = window.setInterval(loadTeam, 10 * 60_000);
@@ -185,7 +189,7 @@ export function HeroMonitor({ linkable = false, staticMode = false }: { linkable
             <div className="hm-people">
               {heroEvent.assigneeDetail.map((p, k) => (
                 <span className={`hm-pp ${ackClass(p)}`} key={`${p.name}-${k}`}>
-                  <Avatar personId={teamIds[p.name]} name={p.name} size={56} eager className="hm-pp-img" />
+                  {offNames.has(p.name) ? null : <Avatar personId={teamIds[p.name]} name={p.name} size={56} eager className="hm-pp-img" />}
                   <b>{p.name}</b>
                   <i>{p.role}</i>
                   <em aria-label={p.ack ? "รับทราบแล้ว" : p.unavailable ? "ไม่สะดวก" : "ยังไม่รับทราบ"}>
@@ -231,9 +235,15 @@ export function HeroMonitor({ linkable = false, staticMode = false }: { linkable
                     <span>📍 {e.locationName || "ไม่ระบุสถานที่"}</span>
                   </div>
                   <div className="hm-row-p">
-                    {e.assigneeDetail.slice(0, 4).map((p, k) => (
-                      <Avatar key={`${p.name}-${k}`} personId={teamIds[p.name]} name={p.name} size={46} eager className={`hm-mini ${ackClass(p)}`} />
-                    ))}
+                    {e.assigneeDetail.slice(0, 4).map((p, k) =>
+                      offNames.has(p.name) ? (
+                        <span key={`${p.name}-${k}`} className={`hm-mini hm-mini--name ${ackClass(p)}`} title={p.name}>
+                          {p.name.replace(/^(นางสาว|นาย|นาง)/u, "").slice(0, 2)}
+                        </span>
+                      ) : (
+                        <Avatar key={`${p.name}-${k}`} personId={teamIds[p.name]} name={p.name} size={46} eager className={`hm-mini ${ackClass(p)}`} />
+                      ),
+                    )}
                   </div>
                 </div>
               );

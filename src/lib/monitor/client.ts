@@ -99,5 +99,6 @@ export async function fetchMonitorTeam(): Promise<MonitorPerson[]> {
     id: r.id,
     displayName: r.display_name,
     position: r.position_title ?? "",
+    avatarOff: r.avatar_off === true,
   }));
 }
