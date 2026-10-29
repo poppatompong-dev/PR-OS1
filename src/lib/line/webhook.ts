@@ -275,6 +275,19 @@ async function handleText(ctx: Ctx, ev: LineEvent, person: LinePerson | null): P
       if (!person || !(await getAllowedGroupIds(ctx.admin)).includes(groupId)) return [];
       return [await announceReply(ctx, person, announce)];
     }
+    if (/^(รูปของฉัน|รูปฉัน)$/.test(raw.replace(/\s+/g, ""))) {
+      if (!(await getAllowedGroupIds(ctx.admin)).includes(groupId)) return [];
+      // Once per person per 10 minutes, so a group asking together is not flooded.
+      const bucket = Math.floor(Date.now() / 600_000);
+      if (!(await claimRun(ctx.admin, `avg:${groupId}:${ev.source.userId ?? "?"}:${bucket}`))) return [];
+      const basicId = await getBotBasicId();
+      return [
+        text(
+          `ดูรูปการ์ตูนของตัวเองได้ในแชทส่วนตัวครับ (เลือกใช้ / ไม่ใช้ / ส่งรูปให้ทำใหม่)\n` +
+            `เปิดแชท "ผู้ช่วยงาน ปชส." แล้วพิมพ์ "รูปของฉัน"${basicId ? `\n👉 ${addFriendUrl(basicId)}` : ""}`,
+        ),
+      ];
+    }
     if (isLinkTelegramCommand(raw)) {
       if (!(await getAllowedGroupIds(ctx.admin)).includes(groupId)) return [];
       return [text('พิมพ์ "ผูก Telegram" ในแชทส่วนตัวกับ "ผู้ช่วยงาน ปชส." นะครับ (ลิงก์ผูกเป็นของแต่ละคน ไม่ส่งในกลุ่ม)')];
