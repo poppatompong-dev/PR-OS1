@@ -16,6 +16,7 @@ import { attachStaged } from "@/lib/attachments/staging";
 import { mergeAssignees, normalizeRoleIds, roleColumns } from "@/lib/assignments/roles";
 import { cleanPlace, resolveLocationId } from "@/lib/locations/resolve";
 import { cleanIcon } from "@/lib/events/job-icon";
+import { markTrial } from "@/lib/trial";
 import { cleanScreenTitle } from "@/lib/events/screen-title";
 import { createAnnouncement } from "@/lib/announcements";
 
@@ -197,6 +198,7 @@ export async function createEventFromLiff(
     },
   });
 
+  if (!input.publish && caller.personId) await markTrial(admin, caller.personId, "draft").catch(() => null);
   if (!input.publish || assignmentIds.length === 0) return { ok: true, eventId: created.id, notified: 0 };
 
   // Same rows enqueue_event_notifications / enqueue_event_reminders would add

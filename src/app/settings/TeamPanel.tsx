@@ -9,6 +9,7 @@ import { Avatar } from "@/components/Avatar";
 import { BellRing, UserPlus } from "lucide-react";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { StatusPill } from "@/components/StatusPill";
+import { TRIAL_STEPS } from "@/lib/trial";
 import { formatThaiDateTime } from "@/lib/format";
 import { ROLE_LABELS_TH, UI_ROLES } from "@/lib/auth/roles";
 import { initialPassword, lineCandidates, suggestPerson, type TeamMember } from "@/lib/settings/team";
@@ -19,6 +20,8 @@ import {
   changeAccountRole,
   confirmLineRegistration,
   inviteAllToTelegram,
+  broadcastTelegram,
+  sendTrialMissions,
   createAccount,
   dismissLineRegistration,
   setAccountSuspended,
@@ -277,6 +280,23 @@ export function TeamPanel({
         </form>
       </div>
 
+      <details className="team-add team-tg">
+        <summary className="button secondary">📣 ส่งถึงทีมทาง Telegram</summary>
+        <form action={broadcastTelegram} className="team-add-form">
+          <label className="form-field">
+            ข้อความ (ถึงทุกคนที่ย้ายไป Telegram แล้ว · ฟรี)
+            <textarea className="input" name="message" rows={3} maxLength={1000} required placeholder="เช่น พรุ่งนี้ 9 โมง ประชุมทีมห้อง ปชส." />
+          </label>
+          <ConfirmSubmit className="button primary" message="ส่งข้อความนี้ถึงทุกคนใน Telegram?">ส่ง</ConfirmSubmit>
+        </form>
+        <form action={sendTrialMissions} className="team-add-form">
+          <ConfirmSubmit className="button secondary" message="ส่งภารกิจทดสอบ 4 ข้อให้ทุกคนใน Telegram ที่ยังทำไม่ครบ?">
+            🧪 ส่งภารกิจทดสอบ
+          </ConfirmSubmit>
+          <small className="team-muted">ความคืบหน้าดูที่คอลัมน์ Telegram (ทดสอบ x/4)</small>
+        </form>
+      </details>
+
       {addedMember && addedAccount ? (
         <div className="team-added">
           <strong>เพิ่ม {addedMember.displayName} แล้ว</strong>
@@ -331,6 +351,7 @@ export function TeamPanel({
               <th>เข้าด้วย</th>
               <th>สิทธิ์</th>
               <th>LINE</th>
+              <th>Telegram</th>
               <th>ใช้ล่าสุด</th>
               <th>สถานะ</th>
               <th aria-label="จัดการ" />
@@ -369,6 +390,20 @@ export function TeamPanel({
                         <StatusPill label="✓ ผูกแล้ว" tone="green" />
                       ) : (
                         <StatusPill label="✗ ยังไม่ผูก" tone="amber" />
+                      )
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td data-label="Telegram">
+                    {m.personId ? (
+                      m.telegramLinked ? (
+                        <>
+                          <StatusPill label="✓ ย้ายแล้ว" tone="green" />
+                          <small className="team-muted"> ทดสอบ {m.trialDone}/{TRIAL_STEPS.length}</small>
+                        </>
+                      ) : (
+                        <StatusPill label="⏳ ยังไม่ย้าย" tone="amber" />
                       )
                     ) : (
                       "—"

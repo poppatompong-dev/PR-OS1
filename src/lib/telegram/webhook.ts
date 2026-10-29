@@ -31,6 +31,7 @@ import { announceDoneText, createAnnouncement, parseAnnounceCommand } from "@/li
 import { avatarUrl, hasAvatar } from "@/lib/avatars";
 import { answerCallback, downloadTelegramFile, editTelegram, esc, sendTelegram, type TgMessage } from "@/lib/telegram/api";
 import { consumeLinkToken, unlinkTelegram } from "@/lib/telegram/link";
+import { TRIAL_STEPS, markTrial, trialDone } from "@/lib/trial";
 import {
   KEYBOARD,
   STATUS_TOAST,
@@ -42,6 +43,8 @@ import {
   tgLinked,
   tgTour,
   tgTourDone,
+  tgTrial,
+  tgTrialComplete,
   tgNotLinked,
   tgReasonPrompt,
   tgTask,
@@ -126,7 +129,16 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
     const res = await createAnnouncement(ctx.admin, { text: announce, personId: person.id, authorName: person.displayName, source: "telegram" });
     return [{ text: esc(res.ok ? announceDoneText(res.message, res.endsAt) : res.error) }];
   }
-  if (/^(รูปของฉัน|รูปฉัน|avatar)$/i.test(text.replace(/\s+/g, ""))) return [await avatarMessage(ctx, person)];
+  if (/^(รูปของฉัน|รูปฉัน|avatar)$/i.test(text.replace(/\s+/g, ""))) {
+    const r = await markTrial(ctx.admin, person.id, "avatar").catch(() => null);
+    const out = [await avatarMessage(ctx, person)];
+    if (r?.first && r.done >= TRIAL_STEPS.length) out.push(tgTrialComplete());
+    return out;
+  }
+  if (/^(ภารกิจ|ภารกิจทดสอบ|\/test)$/i.test(text.replace(/\s+/g, ""))) {
+    const { data } = await ctx.admin.from("people").select("metadata").eq("id", person.id).maybeSingle();
+    return [tgTrial(trialDone(data?.metadata), TRIAL_STEPS)];
+  }
   if (/^(ทัวร์|ทัวร|tour|\/tour)$/i.test(text.replace(/\s+/g, ""))) return [tgTour(0)];
 
   const cmd = matchCommand(text);
@@ -226,9 +238,17 @@ async function handleCallback(ctx: Ctx, q: NonNullable<TgUpdate["callback_query"
   };
 
   if (p.a === "t") {
-    if (p.id === "demo") return void (await answerCallback(q.id, "👍 แบบนี้แหละ · ของจริงจะบันทึกในระบบทันที"));
+    const tick = async (key: "tour" | "demo") => {
+      const r = await markTrial(ctx.admin, person.id, key).catch(() => null);
+      if (r?.first && r.done >= TRIAL_STEPS.length) await sendTelegram(chatId, tgTrialComplete());
+    };
+    if (p.id === "demo") {
+      await answerCallback(q.id, "👍 แบบนี้แหละ · ของจริงจะบันทึกในระบบทันที");
+      return void (await tick("demo"));
+    }
     await answerCallback(q.id);
     await edit(p.id === "done" ? tgTourDone() : tgTour(Number(p.id)));
+    if (p.id === "done") await tick("tour");
     return;
   }
 

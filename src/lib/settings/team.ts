@@ -11,6 +11,8 @@ export type TeamPersonInput = {
   email?: string;
   isActive: boolean;
   lineLinked: boolean;
+  telegramLinked?: boolean;
+  trialDone?: number;
 };
 
 export type TeamAccountInput = {
@@ -37,6 +39,9 @@ export type TeamMember = {
   personActive: boolean;
   lineLinked: boolean;
   lineLinkedAt: string | null;
+  telegramLinked: boolean;
+  /** ภารกิจทดสอบ steps done, 0–4. */
+  trialDone: number;
   /** Gets the admin-side LINE messages (settings line_admin_person_ids). */
   watcher: boolean;
   accounts: TeamAccountInput[];
@@ -80,6 +85,8 @@ export function buildTeam(
       personActive: p.isActive,
       lineLinked: p.lineLinked,
       lineLinkedAt: accs.find((a) => a.lineLinkedAt)?.lineLinkedAt ?? null,
+      telegramLinked: Boolean(p.telegramLinked),
+      trialDone: p.trialDone ?? 0,
       watcher: watchers.has(p.id),
       accounts: accs,
       lastSignInAt: latest(accs),
@@ -97,6 +104,8 @@ export function buildTeam(
       personActive: true,
       lineLinked: false,
       lineLinkedAt: null,
+      telegramLinked: false,
+      trialDone: 0,
       watcher: false,
       accounts: [a],
       lastSignInAt: a.lastSignInAt,

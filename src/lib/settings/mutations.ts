@@ -666,3 +666,66 @@ export async function inviteAllToTelegram() {
         : "ไม่มีใครต้องส่ง (ส่งไปแล้ววันนี้ หรือย้ายไป Telegram ครบแล้ว)",
   );
 }
+
+/** Everyone active who is on Telegram. */
+async function telegramTeam() {
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("people")
+    .select("id, display_name, telegram_chat_id, metadata")
+    .eq("is_active", true)
+    .not("telegram_chat_id", "is", null);
+  if (error) done(error.message);
+  return { admin, people: data ?? [] };
+}
+
+/**
+ * "ส่งข้อความถึงทีม": one message to everyone on Telegram, free (owner, 29 Oct
+ * 2026: LINE as little as possible). Never at night by accident: 21:00–06:59 refuses.
+ */
+export async function broadcastTelegram(formData: FormData) {
+  await blockWritesInDemoMode();
+  const { user } = await requireAdmin();
+  const message = String(formData.get("message") ?? "").trim().slice(0, 1000);
+  if (!message) done("พิมพ์ข้อความก่อนส่ง");
+  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
+  if (hour >= 21 || hour < 7) done("ไม่ส่งช่วง 21:00–07:00 น. เพื่อไม่รบกวนทีม — ส่งใหม่ตอนเช้า");
+  const { sendTelegram, esc } = await import("@/lib/telegram/api");
+  const { admin, people } = await telegramTeam();
+  const text = `📣 <b>แจ้งจากแอดมิน</b>\n\n${esc(message)}`;
+  let sent = 0;
+  for (const p of people) if ((await sendTelegram(Number(p.telegram_chat_id), { text })).ok) sent++;
+  await admin.from("audit_logs").insert({
+    entity_type: "settings",
+    entity_id: user.id,
+    action: "telegram_broadcast",
+    changed_by: user.id,
+    summary: `ส่งข้อความถึงทีมทาง Telegram ${sent} คน`,
+    new_values: { message, sent, total: people.length },
+  });
+  done(undefined, `ส่งทาง Telegram แล้ว ${sent}/${people.length} คน (ฟรี ไม่ใช้โควต้า LINE)`);
+}
+
+/** "ส่งภารกิจทดสอบ": each person on Telegram gets their own checklist (lib/trial.ts). */
+export async function sendTrialMissions() {
+  await blockWritesInDemoMode();
+  await requireAdmin();
+  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
+  if (hour >= 21 || hour < 7) done("ไม่ส่งช่วง 21:00–07:00 น. — ส่งใหม่ตอนเช้า");
+  const { sendTelegram } = await import("@/lib/telegram/api");
+  const { tgTrial } = await import("@/lib/telegram/messages");
+  const { TRIAL_STEPS, trialDone } = await import("@/lib/trial");
+  const { people } = await telegramTeam();
+  let sent = 0;
+  let finished = 0;
+  for (const p of people) {
+    const d = trialDone(p.metadata);
+    if (d.size >= TRIAL_STEPS.length) {
+      finished++;
+      continue;
+    }
+    if ((await sendTelegram(Number(p.telegram_chat_id), tgTrial(d, TRIAL_STEPS))).ok) sent++;
+  }
+  done(undefined, `ส่งภารกิจทดสอบแล้ว ${sent} คน${finished ? ` · ทำครบแล้ว ${finished} คน (ไม่ส่งซ้ำ)` : ""}`);
+}

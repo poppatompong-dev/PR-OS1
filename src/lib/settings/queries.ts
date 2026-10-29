@@ -1,6 +1,7 @@
 // Settings/master-data reads for the admin settings page.
 
 import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { trialDone } from "@/lib/trial";
 import { LAST_RUN_KEY, schedulerHealth, type LastRun, type SchedulerHealth } from "@/lib/notifications/health";
 import { budgetLabel, budgetPlan, priorityOf, type BudgetState, type Priority } from "@/lib/notifications/budget";
 import { isLineMessagingConfigured, isSupabaseConfigured } from "@/lib/env";
@@ -24,6 +25,10 @@ export type StaffPerson = {
   email?: string;
   isActive: boolean;
   lineLinked: boolean;
+  /** Moved to Telegram (people.telegram_chat_id). */
+  telegramLinked?: boolean;
+  /** ภารกิจทดสอบ steps done (lib/trial.ts). */
+  trialDone?: number;
 };
 
 export type Account = {
@@ -105,7 +110,7 @@ export async function getAllPeople(): Promise<StaffPerson[]> {
   const { data, error } = await supabase
     .from("people")
     // "position" is reserved; alias to a safe key.
-    .select("id, display_name, position_title:position, email, is_active, line_user_id")
+    .select("id, display_name, position_title:position, email, is_active, line_user_id, telegram_chat_id, metadata")
     .order("display_name");
   if (error) throw new Error(`getAllPeople: ${error.message}`);
 
@@ -116,6 +121,8 @@ export async function getAllPeople(): Promise<StaffPerson[]> {
     email: (p.email as string) ?? undefined,
     isActive: p.is_active as boolean,
     lineLinked: Boolean(p.line_user_id),
+    telegramLinked: p.telegram_chat_id != null,
+    trialDone: trialDone(p.metadata).size,
   }));
 }
 

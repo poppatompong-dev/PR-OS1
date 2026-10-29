@@ -64,7 +64,7 @@ test("normalizeName strips titles, spaces and emoji but keeps Thai vowels", () =
 });
 
 test("lineCandidates: only active people without LINE", () => {
-  const base = { position: "", email: null, lineLinkedAt: null, watcher: false, lastSignInAt: null };
+  const base = { position: "", email: null, lineLinkedAt: null, telegramLinked: false, trialDone: 0, watcher: false, lastSignInAt: null };
   const team: TeamMember[] = [
     { ...base, key: "1", personId: "1", displayName: "ก", personActive: true, lineLinked: false, accounts: [], suspended: false },
     { ...base, key: "2", personId: "2", displayName: "ข", personActive: true, lineLinked: true, accounts: [], suspended: false },

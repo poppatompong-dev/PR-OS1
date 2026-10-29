@@ -371,5 +371,18 @@ export function tgTour(page: number): TgMessage {
 }
 
 export function tgTourDone(): TgMessage {
-  return { text: "🎉 <b>พร้อมใช้งานแล้ว</b>\nงานใหม่จะเด้งมาที่นี่ · ดูอีกครั้งพิมพ์ <b>ทัวร์</b> · ติดขัดพิมพ์ <b>วิธีใช้</b>" };
+  return { text: "🎉 <b>พร้อมใช้งานแล้ว</b>\nงานใหม่จะเด้งมาที่นี่ · ดูอีกครั้งพิมพ์ <b>ทัวร์</b> · ติดขัดพิมพ์ <b>วิธีใช้</b>\n🧪 ช่วงทดลอง: พิมพ์ <b>ภารกิจ</b> ดูสิ่งที่ควรลอง" };
+}
+
+// ---- ภารกิจทดสอบ (lib/trial.ts) ---------------------------------------------------
+
+export function tgTrial(done: Set<string>, steps: ReadonlyArray<{ key: string; label: string; how: string }>): TgMessage {
+  const lines = [`🧪 <b>ภารกิจทดสอบ</b> · ${done.size}/${steps.length}`, ""];
+  for (const s of steps) lines.push(`${done.has(s.key) ? "✅" : "⬜"} <b>${esc(s.label)}</b>`, `      ${esc(s.how)}`);
+  lines.push("", done.size >= steps.length ? "🎉 ครบแล้ว ขอบคุณครับ!" : "บอทติ๊กให้เอง · ดูความคืบหน้าพิมพ์ <b>ภารกิจ</b>");
+  return { text: lines.join("\n"), buttons: done.size >= steps.length ? [] : [[{ text: "▶ เริ่มทัวร์", callback_data: "t|0" }]] };
+}
+
+export function tgTrialComplete(): TgMessage {
+  return { text: "🎉 <b>ภารกิจทดสอบครบ 4/4</b>\nพร้อมรับงานจริงแล้ว ขอบคุณครับ 🙏" };
 }
