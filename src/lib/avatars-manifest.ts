@@ -12,6 +12,7 @@ export const AVATAR_FILES: Readonly<Record<string, string>> = {
   "00000000-0000-0000-0000-000000000506": "00000000-0000-0000-0000-000000000506.png", // kae
   "dd5a7eb4-d62a-45bc-b11b-33dae93d6b49": "dd5a7eb4-d62a-45bc-b11b-33dae93d6b49.png", // pat
   "c6f31b24-ea1e-4394-9b98-79f26c476ab9": "c6f31b24-ea1e-4394-9b98-79f26c476ab9.png", // poppy (admin)
+  "1b378ad3-73a3-461c-985e-b1d52189dbee": "1b378ad3-73a3-461c-985e-b1d52189dbee.png", // ae (สุรพงษ์) — drawn without a photo; redo via "รูปของฉัน"
   per_001: "00000000-0000-0000-0000-000000000501.png",
   per_002: "00000000-0000-0000-0000-000000000502.png",
   per_003: "00000000-0000-0000-0000-000000000503.png",
