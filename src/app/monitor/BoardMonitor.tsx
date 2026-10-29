@@ -191,12 +191,12 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
                     </div>
                   ) : (
                     <>
-                      {d.events.slice(0, 3).map((e) => (
+                      {d.events.slice(0, d.events.length > 3 ? 2 : 3).map((e) => (
                         <div className="bm-day-line" key={e.id} {...link(e)}>
                           <em>{thaiTime(e.startTime)}</em> <b>{screenTitle(e)}</b> <span>📍 {e.locationName || "—"}</span>
                         </div>
                       ))}
-                      {d.events.length > 3 ? <div className="bm-day-line bm-more">+ อีก {d.events.length - 3} งาน</div> : null}
+                      {d.events.length > 3 ? <div className="bm-day-line bm-more">+ อีก {d.events.length - 2} งาน</div> : null}
                     </>
                   )}
                 </div>
