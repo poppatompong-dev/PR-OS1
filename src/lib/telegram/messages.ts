@@ -60,10 +60,22 @@ export function addEventButton(): TgButton {
   return { text: "➕ เพิ่มงาน", web_app: { url: appUrl("/liff/add-event?tg=1") } };
 }
 
+/** รายการงาน: see / edit / publish / put on hold / cancel / delete (owner, 30 Oct 2026). */
+export function jobsButton(): TgButton {
+  return { text: "📋 รายการงาน · แก้ไข", web_app: { url: appUrl("/liff/add-event/jobs?tg=1") } };
+}
+
 export function tgAddEvent(): TgMessage {
   return {
     text: "📝 <b>เพิ่มงาน</b>\nกดปุ่มด้านล่าง กรอกแล้วกดบันทึก 👇",
-    buttons: [[addEventButton()]],
+    buttons: [[addEventButton()], [jobsButton()]],
+  };
+}
+
+export function tgJobs(): TgMessage {
+  return {
+    text: ["📋 <b>รายการงาน</b>", "ดูงานทั้งหมด · ✏️ แก้ไข · 📢 เผยแพร่ · ⏸ เลื่อน · ✖️ ยกเลิก", "แก้วัน/เวลา/สถานที่ → ทีมได้การ์ดสีส้มเอง 👇"].join("\n"),
+    buttons: [[jobsButton()], [addEventButton()]],
   };
 }
 
@@ -71,7 +83,7 @@ export function tgAddEvent(): TgMessage {
 export const KEYBOARD: string[][] = [
   [COMMANDS.mine, COMMANDS.today],
   [COMMANDS.tomorrow, COMMANDS.pending],
-  ["รูปของฉัน", COMMANDS.help],
+  ["📋 รายการงาน", "รูปของฉัน", COMMANDS.help],
 ];
 
 function when(t: TaskItem): string {
@@ -221,14 +233,14 @@ export function tgFromLineText(text: string): TgMessage {
 
 function helpLines(): string[] {
   return [
-    `➕ <b>เพิ่มงาน</b> → ปุ่ม "เพิ่มงาน" ซ้ายล่าง`,
+    `📋 <b>รายการงาน</b> → ปุ่ม "งาน" ซ้ายล่าง: ดู · เพิ่ม · ✏️ แก้ · ยกเลิก`,
     `📋 <b>${COMMANDS.mine}</b> → รับทราบ / ไม่สะดวก`,
     `👥 <b>${COMMANDS.today}</b> · <b>${COMMANDS.tomorrow}</b> · <b>${COMMANDS.pending}</b>`,
     `🖼 <b>รูปของฉัน</b> → ดูรูปการ์ตูนบนจอ`,
     `📢 <b>ประกาศ</b> ข้อความ → ขึ้นจอทีวี`,
     `      เช่น <code>ประกาศ ประชุม 9 โมง ห้อง 1</code>`,
     "",
-    `🌐 แก้งาน · แนบไฟล์ → <a href="${esc(appUrl("/"))}">เว็บ PR-OS</a>`,
+    `🌐 รายงาน · ตั้งค่า → <a href="${esc(appUrl("/"))}">เว็บ PR-OS</a>`,
   ];
 }
 
@@ -376,8 +388,14 @@ export function tgTourDone(): TgMessage {
 
 // ---- ภารกิจทดสอบ (lib/trial.ts) ---------------------------------------------------
 
-export function tgTrial(done: Set<string>, steps: ReadonlyArray<{ key: string; label: string; how: string }>): TgMessage {
-  const lines = [`🧪 <b>ภารกิจทดสอบ</b> · ${done.size}/${steps.length}`, ""];
+export function tgTrial(done: Set<string>, steps: ReadonlyArray<{ key: string; label: string; how: string }>, greetName?: string): TgMessage {
+  const lines = [
+    ...(greetName
+      ? [`👋 ${esc(callName(greetName))} ย้ายมา Telegram แล้ว ขอบคุณครับ 🙏`, `เหลืออีกนิด ลองให้คล่องก่อนรับงานจริง (~3 นาที)`, ""]
+      : []),
+    `🧪 <b>ภารกิจทดสอบ</b> · ${done.size}/${steps.length}`,
+    "",
+  ];
   for (const s of steps) lines.push(`${done.has(s.key) ? "✅" : "⬜"} <b>${esc(s.label)}</b>`, `      ${esc(s.how)}`);
   lines.push("", done.size >= steps.length ? "🎉 ครบแล้ว ขอบคุณครับ!" : "บอทติ๊กให้เอง · ดูความคืบหน้าพิมพ์ <b>ภารกิจ</b>");
   return { text: lines.join("\n"), buttons: done.size >= steps.length ? [] : [[{ text: "▶ เริ่มทัวร์", callback_data: "t|0" }]] };

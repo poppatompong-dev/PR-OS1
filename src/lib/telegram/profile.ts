@@ -21,6 +21,7 @@ export const BOT_DESCRIPTION = [
 export const BOT_SHORT_DESCRIPTION = "ระบบแจ้งงานอัตโนมัติ งานประชาสัมพันธ์ เทศบาลนครนครสวรรค์ · แจ้งทันที · เชื่อมจอทีวี · ปลอดภัย";
 
 export const BOT_COMMANDS = [
+  { command: "jobs", description: "📋 รายการงาน · แก้ไข · ยกเลิก" },
   { command: "add", description: "➕ เพิ่มงาน" },
   { command: "my", description: "📋 งานของฉัน" },
   { command: "today", description: "👥 งานของทีมวันนี้" },

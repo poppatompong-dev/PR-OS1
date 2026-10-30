@@ -49,6 +49,7 @@ import {
   tgReasonPrompt,
   tgTask,
   tgAddEvent,
+  tgJobs,
 } from "@/lib/telegram/messages";
 
 export type TgUpdate = {
@@ -162,6 +163,7 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
       return [{ text: `📋 <b>งานของฉัน</b> · 7 วันข้างหน้า · ${tasks.length} งาน`, keyboard: KEYBOARD }, ...tasks.slice(0, 10).map((t) => tgTask(t, "list"))];
     }
   }
+  if (/^(📋)?(รายการงาน|แก้งาน|แก้ไขงาน|จัดการงาน|ยกเลิกงาน|เลื่อนงาน|ลบงาน|\/jobs)$/.test(text.replace(/\s+/g, ""))) return [tgJobs()];
   if (/^(เพิ่มงาน|สร้างงาน|\/add)/.test(text.replace(/\s+/g, ""))) return [tgAddEvent()];
   const faq = matchFaq(text);
   if (faq === "start" || faq === "telegram") return [tgHelp()];

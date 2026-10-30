@@ -40,6 +40,7 @@ import { avatarUrl, hasAvatar } from "@/lib/avatars";
 import { isTelegramConfigured } from "@/lib/env";
 import { callName } from "@/lib/names";
 import { getBotUsername } from "@/lib/telegram/api";
+import { LIFF_ADD_EVENT_URL } from "@/lib/liff/config";
 import { LINK_TOKEN_MINUTES, createLinkToken } from "@/lib/telegram/link";
 import {
   COMMANDS,
@@ -89,6 +90,11 @@ export function matchCommand(raw: string): Command | null {
   ];
   for (const [cmd, words] of table) if (words.includes(t.toLowerCase())) return cmd;
   return null;
+}
+
+/** "รายการงาน" / "แก้งาน" in the 1:1 chat: the link to รายการงาน (owner, 30 Oct 2026). */
+export function isJobsCommand(raw: string): boolean {
+  return /^(รายการงาน|แก้งาน|แก้ไขงาน|จัดการงาน)$/.test(raw.replace(/\s+/g, ""));
 }
 
 const REGISTER_WORDS = new Set(["ลงทะเบียน", "ลงทะเบียนรับแจ้งงาน", "ลงทะเบียนรับแจ้งเตือน"]);
@@ -318,6 +324,13 @@ async function handleText(ctx: Ctx, ev: LineEvent, person: LinePerson | null): P
   if (!person) return notLinkedReply(ctx, userId);
   if (cmd) return runCommand(ctx, cmd, person, false);
   if (isLinkTelegramCommand(raw)) return [await telegramLinkReply(ctx, person)];
+  if (isJobsCommand(raw)) {
+    return [
+      text(
+        `📋 รายการงาน · ✏️ แก้ไข · 📢 เผยแพร่ · ⏸ เลื่อน · ✖️ ยกเลิก\n👉 ${LIFF_ADD_EVENT_URL}/jobs\n\nแก้วัน/เวลา/สถานที่ → ทีมได้การ์ดสีส้มเอง`,
+      ),
+    ];
+  }
   const announce = parseAnnounceCommand(raw);
   if (announce !== null) return [await announceReply(ctx, person, announce)];
   if (/^(รูปของฉัน|รูปฉัน)$/.test(raw.replace(/\s+/g, ""))) return avatarReply(ctx, person);

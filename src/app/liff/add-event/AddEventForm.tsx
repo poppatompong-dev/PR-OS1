@@ -1,9 +1,10 @@
 "use client";
 
-// The LINE "add job" form. Flow: load the LIFF SDK → liff.init → (login if
-// needed) → ID token → load lists → fill in → save as draft or publish.
-// Every call to /api/liff/* carries the ID token; the server checks it with
-// LINE and finds the team member by their LINE user id.
+// The phone form for one job, inside Telegram (Mini App) or LINE (LIFF).
+// New job: fill in → save as draft or publish. Edit (owner, 30 Oct 2026):
+// opened from รายการงาน with the job filled in → save; a changed date / time /
+// place sends the team the orange change card. Every call to /api/liff/*
+// carries Telegram's initData or LINE's ID token (src/lib/liff/auth.ts).
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { IconPicker } from "@/components/IconPicker";
@@ -12,81 +13,65 @@ import { AttachmentPicker } from "@/components/AttachmentPicker";
 import { PlaceInput } from "@/components/PlaceInput";
 import { RoleChips } from "@/components/RoleChips";
 import type { StagedAttachment } from "@/lib/attachments/rules";
+import { useMiniApp, type Host } from "./host";
 
 type Option = { id: string; name: string };
 type Person = Option & { position: string | null; avatar: string };
 type Lists = { me: Option; people: Person[]; roles: Option[]; places: string[] };
 type Row = { personId: string; roleIds: string[] };
-
-type Liff = {
-  init(opts: { liffId: string }): Promise<void>;
-  isLoggedIn(): boolean;
-  login(opts?: { redirectUri?: string }): void;
-  getIDToken(): string | null;
-  isInClient(): boolean;
-  closeWindow(): void;
+type Job = {
+  id: string;
+  status: string;
+  onHold: boolean;
+  title: string;
+  eventDate: string;
+  startTime: string;
+  endTime: string | null;
+  place: string;
+  shortNote: string;
+  screenTitle: string;
+  icon: string;
+  assignees: Row[];
+  attachmentCount: number;
 };
-type TgWebApp = { initData: string; ready(): void; expand(): void; close(): void };
-declare global {
-  interface Window {
-    liff?: Liff;
-    Telegram?: { WebApp?: TgWebApp };
-  }
+
+/** รายการงาน in the same app: /liff/add-event/jobs (LIFF maps liff.line.me/<id>/jobs here). */
+function jobsHref(): string {
+  if (typeof window === "undefined") return "jobs";
+  const tg = new URLSearchParams(window.location.search).get("tg") === "1";
+  return `/liff/add-event/jobs${tg ? "?tg=1" : ""}`;
 }
-
-/** Where the form runs: inside LINE (LIFF) or inside Telegram (Mini App, owner 29 Oct 2026). */
-type Host = { auth: () => string; inClient: boolean; close: () => void };
-
-const TG_SDK = "https://telegram.org/js/telegram-web-app.js";
-
-function inTelegram(): boolean {
-  return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tg") === "1";
-}
-
-function loadTelegram(): Promise<TgWebApp> {
-  if (window.Telegram?.WebApp?.initData) return Promise.resolve(window.Telegram.WebApp);
-  return new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = TG_SDK;
-    s.async = true;
-    s.onload = () => {
-      const app = window.Telegram?.WebApp;
-      if (app?.initData) resolve(app);
-      else reject(new Error("เปิดฟอร์มนี้จากปุ่ม \"➕ เพิ่มงาน\" ในแชท Telegram ของบอทครับ"));
-    };
-    s.onerror = () => reject(new Error("โหลด Telegram ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่"));
-    document.head.appendChild(s);
-  });
-}
-
-const SDK = "https://static.line-scdn.net/liff/edge/2/sdk.js";
 
 function bangkokDate(offsetDays = 0): string {
   const d = new Date(Date.now() + 7 * 3600 * 1000 + offsetDays * 86400 * 1000);
   return d.toISOString().slice(0, 10);
 }
 
-function loadSdk(): Promise<Liff> {
-  if (window.liff) return Promise.resolve(window.liff);
-  return new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = SDK;
-    s.async = true;
-    s.onload = () => (window.liff ? resolve(window.liff) : reject(new Error("LIFF SDK ไม่พร้อม")));
-    s.onerror = () => reject(new Error("โหลด LIFF ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่"));
-    document.head.appendChild(s);
-  });
-}
-
 type Phase =
   | { kind: "loading"; text: string }
   | { kind: "error"; text: string }
   | { kind: "form" }
-  | { kind: "done"; published: boolean; notified: number; title: string };
+  | { kind: "done"; published: boolean; notified: number; title: string; edited: boolean; eventId: string | null };
 
-export function AddEventForm({ liffId }: { liffId: string }) {
+export function AddEventForm({
+  liffId = "",
+  host: given,
+  editId,
+  onClose,
+}: {
+  liffId?: string;
+  /** Already started by รายการงาน; otherwise this page starts Telegram / LINE itself. */
+  host?: Host;
+  /** Edit this job instead of adding one. */
+  editId?: string;
+  /** Back to รายการงาน (shown as "← รายการงาน"). */
+  onClose?: (changed: boolean) => void;
+}) {
   const [phase, setPhase] = useState<Phase>({ kind: "loading", text: "กำลังเปิดฟอร์ม…" });
-  const [host, setHost] = useState<Host | null>(null);
+  const started = useMiniApp(liffId, Boolean(given));
+  const host = given ?? started.host;
+  const [job, setJob] = useState<Job | null>(null);
+  const [reason, setReason] = useState("");
   const [lists, setLists] = useState<Lists | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<"draft" | "publish" | null>(null);
@@ -107,30 +92,38 @@ export function AddEventForm({ liffId }: { liffId: string }) {
   const auth = useCallback(() => host?.auth() ?? "", [host]);
 
   useEffect(() => {
+    if (started.error) setPhase({ kind: "error", text: started.error });
+  }, [started.error]);
+
+  useEffect(() => {
+    if (!host) return;
     let cancelled = false;
     (async () => {
       try {
-        let h: Host;
-        if (inTelegram()) {
-          const app = await loadTelegram();
-          app.ready();
-          app.expand();
-          h = { auth: () => `tma ${app.initData}`, inClient: true, close: () => app.close() };
-        } else {
-          const sdk = await loadSdk();
-          await sdk.init({ liffId });
-          if (!sdk.isLoggedIn()) {
-            sdk.login({ redirectUri: window.location.href });
-            return;
-          }
-          h = { auth: () => `Bearer ${sdk.getIDToken() ?? ""}`, inClient: sdk.isInClient(), close: () => sdk.closeWindow() };
-        }
-        if (cancelled) return;
-        setHost(h);
-        setPhase({ kind: "loading", text: "กำลังโหลดรายชื่อทีมงาน…" });
-        const res = await fetch("/api/liff/options", { headers: { Authorization: h.auth() } });
+        setPhase({ kind: "loading", text: editId ? "กำลังโหลดงาน…" : "กำลังโหลดรายชื่อทีมงาน…" });
+        const headers = { Authorization: host.auth() };
+        const [res, jobRes] = await Promise.all([
+          fetch("/api/liff/options", { headers }),
+          editId ? fetch(`/api/liff/events/${editId}`, { headers }) : Promise.resolve(null),
+        ]);
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "โหลดข้อมูลไม่สำเร็จ");
+        if (jobRes) {
+          const j = await jobRes.json();
+          if (!jobRes.ok) throw new Error(j.error ?? "โหลดงานไม่สำเร็จ");
+          if (cancelled) return;
+          const jj = j as Job;
+          setJob(jj);
+          setTitle(jj.title);
+          setEventDate(jj.eventDate);
+          setStartTime(jj.startTime || "09:00");
+          setEndTime(jj.endTime ?? "");
+          setPlace(jj.place);
+          setShortNote(jj.shortNote);
+          setScreenTitle(jj.screenTitle);
+          setIcon(jj.icon);
+          setRows(jj.assignees.length ? jj.assignees : [{ personId: "", roleIds: [] }]);
+        }
         if (cancelled) return;
         setLists(data as Lists);
         setPhase({ kind: "form" });
@@ -141,7 +134,7 @@ export function AddEventForm({ liffId }: { liffId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [liffId]);
+  }, [host, editId]);
 
   const filled = useMemo(() => rows.filter((r) => r.personId && r.roleIds.length > 0), [rows]);
   const halfRow = rows.some((r) => (r.personId && r.roleIds.length === 0) || (!r.personId && r.roleIds.length > 0));
@@ -172,15 +165,17 @@ export function AddEventForm({ liffId }: { liffId: string }) {
     if (files.busy) return setError("กำลังอัปโหลดไฟล์แนบ รอสักครู่แล้วกดอีกครั้ง");
     setSaving(publish ? "publish" : "draft");
     try {
-      const res = await fetch("/api/liff/events", {
-        method: "POST",
+      const res = await fetch(editId ? `/api/liff/events/${editId}` : "/api/liff/events", {
+        method: editId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json", Authorization: auth() },
-        body: JSON.stringify({ title, eventDate, startTime, endTime: endTime || null, locationText: place.trim() || null, shortNote, screenTitle, icon, announce, assignees: filled, attachments: files.staged, publish }),
+        body: JSON.stringify({ title, eventDate, startTime, endTime: endTime || null, locationText: place.trim() || null, shortNote, screenTitle, icon, announce, assignees: filled, attachments: files.staged, publish, reason }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "บันทึกไม่สำเร็จ");
-      setPhase({ kind: "done", published: publish, notified: data.notified ?? 0, title: title.trim() });
+      host?.buzz(true);
+      setPhase({ kind: "done", published: editId ? Boolean(data.published) : publish, notified: data.notified ?? 0, title: title.trim(), edited: Boolean(editId), eventId: editId ?? data.eventId ?? null });
     } catch (e) {
+      host?.buzz(false);
       setError(e instanceof Error ? e.message : "บันทึกไม่สำเร็จ");
     } finally {
       setSaving(null);
@@ -205,29 +200,48 @@ export function AddEventForm({ liffId }: { liffId: string }) {
     );
   }
   if (phase.kind === "done") {
+    const head = phase.edited ? "บันทึกการแก้ไขแล้ว" : phase.published ? "เผยแพร่งานแล้ว" : "บันทึกร่างแล้ว";
+    const note = phase.edited
+      ? phase.notified > 0
+        ? `แจ้งทีม ${phase.notified} คนแล้ว (การ์ดสีส้ม/การ์ดงาน)`
+        : phase.published
+          ? "ไม่มีอะไรที่ต้องแจ้งทีม"
+          : "ยังเป็นร่าง ยังไม่แจ้งใคร"
+      : phase.published
+        ? phase.notified > 0
+          ? `ส่งการ์ดแจ้งงานให้ผู้ปฏิบัติงาน ${phase.notified} คนแล้ว`
+          : "ยังไม่มีผู้ปฏิบัติงาน · เพิ่มคนได้ที่ ✏️ แก้ไข ในรายการงาน"
+        : "ยังไม่แจ้งใคร · เผยแพร่ได้จากรายการงานเมื่อพร้อม";
     return (
       <main className={styles.page}>
         <div className={`${styles.card} ${styles.done}`}>
           <div className={styles.tick}>✓</div>
-          <h1 className={styles.h1}>{phase.published ? "เผยแพร่งานแล้ว" : "บันทึกร่างแล้ว"}</h1>
+          <h1 className={styles.h1}>{head}</h1>
           <p className={styles.doneTitle}>{phase.title}</p>
-          <p className={styles.muted}>
-            {phase.published
-              ? phase.notified > 0
-                ? `ส่งการ์ดแจ้งงานให้ผู้ปฏิบัติงาน ${phase.notified} คนทาง LINE แล้ว`
-                : "ยังไม่มีผู้ปฏิบัติงาน เพิ่มคนได้ในเว็บ PR-OS"
-              : "ยังไม่แจ้งใคร เผยแพร่ได้จากเว็บ PR-OS เมื่อพร้อม"}
-          </p>
+          <p className={styles.muted}>{note}</p>
           <div className={styles.actions}>
-            <button type="button" className={styles.secondary} onClick={reset}>
-              เพิ่มงานอีก
-            </button>
+            {onClose ? (
+              <button type="button" className={styles.secondary} onClick={() => onClose(true)}>
+                📋 รายการงาน
+              </button>
+            ) : (
+              <button type="button" className={styles.secondary} onClick={reset}>
+                เพิ่มงานอีก
+              </button>
+            )}
             {host?.inClient ? (
               <button type="button" className={styles.primary} onClick={() => host.close()}>
                 ปิด
               </button>
             ) : null}
           </div>
+          {!onClose ? (
+            <p className={styles.muted} style={{ marginTop: 14 }}>
+              <a href={jobsHref()} className={styles.link}>
+                📋 ดู / แก้ไข รายการงานทั้งหมด
+              </a>
+            </p>
+          ) : null}
         </div>
       </main>
     );
@@ -237,8 +251,25 @@ export function AddEventForm({ liffId }: { liffId: string }) {
   return (
     <main className={styles.page}>
       <header className={styles.head}>
-        <h1 className={styles.h1}>เพิ่มงานใหม่</h1>
-        <p className={styles.muted}>โดย {L.me.name}</p>
+        {onClose ? (
+          <button type="button" className={styles.back} onClick={() => onClose(false)}>
+            ← รายการงาน
+          </button>
+        ) : (
+          <a href={jobsHref()} className={styles.topLink}>
+            📋 รายการงาน
+          </a>
+        )}
+        <h1 className={styles.h1}>{job ? "✏️ แก้ไขงาน" : "เพิ่มงานใหม่"}</h1>
+        <p className={styles.muted}>
+          {job
+            ? job.status === "published"
+              ? "เผยแพร่แล้ว · แก้วัน เวลา สถานที่ → ทีมได้การ์ดสีส้ม กดรับทราบใหม่"
+              : job.onHold
+                ? "⏸️ เลื่อนออกไปก่อน · ใส่วันใหม่แล้วกด เผยแพร่อีกครั้ง"
+                : "ร่าง · ยังไม่แจ้งใคร"
+            : `โดย ${L.me.name}`}
+        </p>
       </header>
 
       <section className={styles.card}>
@@ -258,7 +289,7 @@ export function AddEventForm({ liffId }: { liffId: string }) {
         {title.trim() ? (
           <div className={styles.field}>
             <span>ไอคอนงาน</span>
-            <IconPicker name="liff-icon" title={title} onChange={setIcon} />
+            <IconPicker name="liff-icon" title={title} defaultValue={icon} onChange={setIcon} />
           </div>
         ) : null}
 
@@ -334,6 +365,7 @@ export function AddEventForm({ liffId }: { liffId: string }) {
       </section>
 
       <section className={styles.card}>
+        {job && job.attachmentCount > 0 ? <p className={styles.hint}>📎 มีไฟล์แนบแล้ว {job.attachmentCount} ไฟล์ · เพิ่มได้อีก</p> : null}
         <AttachmentPicker
           key={pickerKey}
           authHeader={auth}
@@ -341,22 +373,41 @@ export function AddEventForm({ liffId }: { liffId: string }) {
         />
       </section>
 
+      {job?.status === "published" ? (
+        <section className={styles.card}>
+          <label className={styles.field}>
+            <span>เหตุผลที่แก้ (ขึ้นบนการ์ดสีส้มให้ทีมเห็น)</span>
+            <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} placeholder="เช่น ผู้บริหารเลื่อนเวลา · ไม่บังคับ" />
+          </label>
+        </section>
+      ) : null}
+
       <div className={styles.footer}>
         {/* In the fixed footer, so the message is on screen right where the button was tapped. */}
         {error ? <p className={styles.err}>{error}</p> : null}
         <p className={styles.quota}>
-          {filled.length > 0
-            ? `เผยแพร่ = ส่งการ์ดแจ้งงาน ${filled.length} คน (ใช้โควต้า LINE ${filled.length} ข้อความ) · บันทึกร่าง = ยังไม่แจ้งใคร`
-            : "ยังไม่ได้เลือกผู้ปฏิบัติงาน — เผยแพร่ได้ แต่จะไม่มีใครได้รับแจ้ง"}
+          {job?.status === "published"
+            ? "บันทึก = แจ้งเฉพาะคนที่เกี่ยว (เปลี่ยนวัน/เวลา/สถานที่/หน้าที่ · เพิ่มคน · ถอนชื่อ)"
+            : filled.length > 0
+              ? `เผยแพร่ = ส่งการ์ดแจ้งงาน ${filled.length} คน · บันทึกร่าง = ยังไม่แจ้งใคร`
+              : "ยังไม่ได้เลือกผู้ปฏิบัติงาน — เผยแพร่ได้ แต่จะไม่มีใครได้รับแจ้ง"}
         </p>
-        <div className={styles.actions}>
-          <button type="button" className={styles.secondary} disabled={saving !== null} onClick={() => save(false)}>
-            {saving === "draft" ? "กำลังบันทึก…" : "บันทึกร่าง"}
-          </button>
-          <button type="button" className={styles.primary} disabled={saving !== null} onClick={() => save(true)}>
-            {saving === "publish" ? "กำลังเผยแพร่…" : "เผยแพร่"}
-          </button>
-        </div>
+        {job?.status === "published" ? (
+          <div className={styles.actionsOne}>
+            <button type="button" className={styles.primary} disabled={saving !== null} onClick={() => save(true)}>
+              {saving ? "กำลังบันทึก…" : "💾 บันทึกการแก้ไข"}
+            </button>
+          </div>
+        ) : (
+          <div className={styles.actions}>
+            <button type="button" className={styles.secondary} disabled={saving !== null} onClick={() => save(false)}>
+              {saving === "draft" ? "กำลังบันทึก…" : "บันทึกร่าง"}
+            </button>
+            <button type="button" className={styles.primary} disabled={saving !== null} onClick={() => save(true)}>
+              {saving === "publish" ? "กำลังเผยแพร่…" : job?.onHold ? "เผยแพร่อีกครั้ง" : "เผยแพร่"}
+            </button>
+          </div>
+        )}
       </div>
     </main>
   );

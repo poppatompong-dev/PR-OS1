@@ -31,7 +31,8 @@ export async function GET(req: Request) {
     const file = await fetch(new URL(BOT_PHOTOS[pick], env.appBaseUrl), { cache: "no-store" }).catch(() => null);
     photo = file?.ok ? await setProfilePhoto(await file.arrayBuffer()) : { ok: false, error: "อ่านไฟล์รูปไม่ได้" };
   }
-  await setMenuButton("เพิ่มงาน", new URL("/liff/add-event?tg=1", env.appBaseUrl).toString());
+  // "งาน" opens รายการงาน (add / edit / cancel there) — owner, 30 Oct 2026.
+  await setMenuButton("งาน", new URL("/liff/add-event/jobs?tg=1", env.appBaseUrl).toString());
   const username = await getBotUsername();
   return NextResponse.json({
     ok: hook.ok,

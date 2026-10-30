@@ -725,7 +725,7 @@ export async function sendTrialMissions() {
       finished++;
       continue;
     }
-    if ((await sendTelegram(Number(p.telegram_chat_id), tgTrial(d, TRIAL_STEPS))).ok) sent++;
+    if ((await sendTelegram(Number(p.telegram_chat_id), tgTrial(d, TRIAL_STEPS, p.display_name ?? undefined))).ok) sent++;
   }
   done(undefined, `ส่งภารกิจทดสอบแล้ว ${sent} คน${finished ? ` · ทำครบแล้ว ${finished} คน (ไม่ส่งซ้ำ)` : ""}`);
 }
