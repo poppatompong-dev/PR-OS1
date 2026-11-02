@@ -10,6 +10,7 @@ import { BellRing, UserPlus } from "lucide-react";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { StatusPill } from "@/components/StatusPill";
 import { TRIAL_STEPS } from "@/lib/trial";
+import { hasAvatar } from "@/lib/avatars";
 import { formatThaiDateTime } from "@/lib/format";
 import { ROLE_LABELS_TH, UI_ROLES } from "@/lib/auth/roles";
 import { initialPassword, lineCandidates, suggestPerson, type TeamMember } from "@/lib/settings/team";
@@ -26,6 +27,7 @@ import {
   dismissLineRegistration,
   setAccountSuspended,
   setAdminWatcher,
+  notifyAvatarReady,
   setPersonActive,
   unlinkPersonLine,
   updatePerson,
@@ -122,6 +124,16 @@ function MemberMenu({ m, currentUserId }: { m: TeamMember; currentUserId: string
               </button>
               <small>ได้รายงาน 17:00 และแจ้งเมื่อมีคนกด ไม่สะดวก · พิมพ์ อนุญาตกลุ่มนี้ ในกลุ่มไลน์ได้</small>
             </form>
+
+            {m.telegramLinked && hasAvatar(m.personId) ? (
+              <form action={notifyAvatarReady} className="team-menu-form">
+                <input type="hidden" name="personId" value={m.personId ?? ""} />
+                <ConfirmSubmit className="button secondary" message={`ส่งรูปการ์ตูนปัจจุบันให้ ${m.displayName} ดูทาง Telegram พร้อมปุ่ม ใช้ / ไม่ใช้ / ส่งรูปใหม่?`}>
+                  🎨 แจ้งว่ารูปการ์ตูนใหม่เสร็จ
+                </ConfirmSubmit>
+                <small>กดหลังขึ้นรูปที่วาดใหม่แล้ว · ส่งทาง Telegram ฟรี</small>
+              </form>
+            ) : null}
 
             {m.lineLinked ? (
               <form action={unlinkPersonLine} className="team-menu-form">

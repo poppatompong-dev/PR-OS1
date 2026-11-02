@@ -62,3 +62,11 @@ test("the test mission greets the person by name when sent by the admin button",
   assert.match(m.text, /1\/4/);
   assert.doesNotMatch(tgTrial(new Set(), TRIAL_STEPS).text, /👋/);
 });
+
+test("avatar-ready card shows the picture with use / don't use / new photo", async () => {
+  const { tgAvatarReady } = await import("@/lib/telegram/messages");
+  const m = tgAvatarReady("นายธนันธร พันธุ์รอด", "https://pr-os1.vercel.app/avatars/x.png");
+  assert.equal(m.photo, "https://pr-os1.vercel.app/avatars/x.png");
+  assert.match(m.text, /คุณธนันธร/);
+  assert.deepEqual(m.buttons?.flat().map((b) => (b as { callback_data: string }).callback_data), ["av|ok", "av|off", "av|photo"]);
+});

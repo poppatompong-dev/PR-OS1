@@ -401,6 +401,18 @@ export function tgTrial(done: Set<string>, steps: ReadonlyArray<{ key: string; l
   return { text: lines.join("\n"), buttons: done.size >= steps.length ? [] : [[{ text: "▶ เริ่มทัวร์", callback_data: "t|0" }]] };
 }
 
+/** "รูปการ์ตูนใหม่เสร็จแล้ว": sent by the admin's button once a redraw is live (owner, 2 Nov 2026). */
+export function tgAvatarReady(name: string, photoUrl: string): TgMessage {
+  return {
+    photo: photoUrl,
+    text: [`🎨 <b>รูปการ์ตูนใหม่ของ${esc(callName(name))}เสร็จแล้ว</b>`, "ขึ้นจอทีวีและในระบบแล้ว · ชอบไหมครับ? 👇"].join("\n"),
+    buttons: [
+      [{ text: "👍 ใช้รูปนี้", callback_data: cb.avatarOk }, { text: "🚫 ไม่ใช้รูป", callback_data: cb.avatarOff }],
+      [{ text: "📷 ส่งรูปให้ทำใหม่", callback_data: cb.avatarPhoto }],
+    ],
+  };
+}
+
 export function tgTrialComplete(): TgMessage {
   return { text: "🎉 <b>ภารกิจทดสอบครบ 4/4</b>\nพร้อมรับงานจริงแล้ว ขอบคุณครับ 🙏" };
 }

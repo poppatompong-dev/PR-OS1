@@ -729,3 +729,35 @@ export async function sendTrialMissions() {
   }
   done(undefined, `ส่งภารกิจทดสอบแล้ว ${sent} คน${finished ? ` · ทำครบแล้ว ${finished} คน (ไม่ส่งซ้ำ)` : ""}`);
 }
+
+/**
+ * "🎨 แจ้งว่ารูปใหม่เสร็จ" (owner, 2 Nov 2026: how does the owner know their
+ * redraw is done?). Sends the person their cartoon on Telegram with
+ * ใช้ / ไม่ใช้ / ส่งรูปใหม่. Free. Same night rule as the other team messages.
+ */
+export async function notifyAvatarReady(formData: FormData) {
+  await blockWritesInDemoMode();
+  const { user } = await requireAdmin();
+  const personId = String(formData.get("personId") ?? "");
+  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
+  if (hour >= 21 || hour < 7) done("ไม่ส่งช่วง 21:00–07:00 น. — ส่งใหม่ตอนเช้า");
+  const { hasAvatar, avatarUrl } = await import("@/lib/avatars");
+  if (!hasAvatar(personId)) done("คนนี้ยังไม่มีรูปการ์ตูนในระบบ");
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const admin = createAdminClient();
+  const { data: p } = await admin.from("people").select("display_name, telegram_chat_id").eq("id", personId).maybeSingle();
+  if (!p?.telegram_chat_id) done("คนนี้ยังไม่ได้ผูก Telegram");
+  const { sendTelegram } = await import("@/lib/telegram/api");
+  const { tgAvatarReady } = await import("@/lib/telegram/messages");
+  const url = new URL(avatarUrl(personId), env.appBaseUrl).toString();
+  const res = await sendTelegram(Number(p!.telegram_chat_id), tgAvatarReady(p!.display_name, url));
+  if (!res.ok) done(`ส่งไม่สำเร็จ: ${res.error ?? "ไม่ทราบสาเหตุ"}`);
+  await admin.from("audit_logs").insert({
+    entity_type: "person",
+    entity_id: personId,
+    action: "avatar_ready_sent",
+    changed_by: user.id,
+    summary: `แจ้งรูปการ์ตูนใหม่ทาง Telegram: ${p!.display_name}`,
+  });
+  done(undefined, `ส่งรูปใหม่ให้ ${p!.display_name} ดูทาง Telegram แล้ว`);
+}
