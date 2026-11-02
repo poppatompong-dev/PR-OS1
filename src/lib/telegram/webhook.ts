@@ -31,6 +31,15 @@ import { announceDoneText, createAnnouncement, parseAnnounceCommand } from "@/li
 import { avatarUrl, hasAvatar } from "@/lib/avatars";
 import { answerCallback, downloadTelegramFile, editTelegram, esc, sendTelegram, type TgMessage } from "@/lib/telegram/api";
 import { consumeLinkToken, unlinkTelegram } from "@/lib/telegram/link";
+import {
+  PULSE_NOTE_MINUTES,
+  PULSE_NOTE_THANKS,
+  isPulseAnswer,
+  logPulse,
+  pulseAdminText,
+  pulseNoteAdminText,
+  pulseReply,
+} from "@/lib/telegram/pulse";
 import { TRIAL_STEPS, markTrial, trialDone } from "@/lib/trial";
 import {
   KEYBOARD,
@@ -120,6 +129,14 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
 
   const person = await findPersonByTelegramChatId(ctx.admin, chatId);
   if (!person) return [tgNotLinked()];
+
+  // "💬 อยากบอกอะไร" was tapped: this text goes to the admins (checked first —
+  // takePendingReason clears any waiting state).
+  if (!raw.startsWith("/") && (await takePendingAction(ctx.admin, stateKey(chatId), "pulse_note"))) {
+    await logPulse(ctx.admin, person.id, "note", raw);
+    await tellAdminsByTelegram(ctx.admin, pulseNoteAdminText(person.displayName, raw));
+    return [PULSE_NOTE_THANKS];
+  }
 
   const pendingAssignment = await takePendingReason(ctx.admin, stateKey(chatId));
   if (pendingAssignment && !raw.startsWith("/")) return finishUnavailable(ctx, person, pendingAssignment, raw);
@@ -309,6 +326,21 @@ async function handleCallback(ctx: Ctx, q: NonNullable<TgUpdate["callback_query"
     const task: TaskItem | null = await loadTask(ctx.admin, p.id);
     await answerCallback(q.id, "ยกเลิกแล้ว งานยังอยู่ในชื่อของคุณตามเดิม");
     if (task) await edit(tgTask(task, "list"));
+    return;
+  }
+
+  if (p.a === "pl" && isPulseAnswer(p.id)) {
+    // One answer per message per person.
+    if (messageId && !(await claimRun(ctx.admin, `pulse:${person.id}:${chatId}:${messageId}`))) {
+      await answerCallback(q.id, "ได้รับคำตอบแล้วครับ ขอบคุณครับ 🙏");
+      return;
+    }
+    await answerCallback(q.id);
+    await logPulse(ctx.admin, person.id, p.id);
+    if (p.id === "talk") await setPendingAction(ctx.admin, stateKey(chatId), "pulse_note", PULSE_NOTE_MINUTES);
+    const toAdmins = pulseAdminText(person.displayName, p.id);
+    if (toAdmins) await tellAdminsByTelegram(ctx.admin, toAdmins);
+    await sendTelegram(chatId, pulseReply(p.id));
     return;
   }
 

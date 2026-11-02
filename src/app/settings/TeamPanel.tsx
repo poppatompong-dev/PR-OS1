@@ -299,6 +299,9 @@ export function TeamPanel({
             ข้อความ (ถึงทุกคนที่ย้ายไป Telegram แล้ว · ฟรี)
             <textarea className="input" name="message" rows={3} maxLength={1000} required placeholder="เช่น พรุ่งนี้ 9 โมง ประชุมทีมห้อง ปชส." />
           </label>
+          <label className="team-check">
+            <input type="checkbox" name="pulse" /> 💬 แนบปุ่มถามไถ่ (😊 ใช้ได้ดี · 😕 ยังงงอยู่ · 💬 อยากบอกอะไร) — คำตอบส่งถึงแอดมิน
+          </label>
           <ConfirmSubmit className="button primary" message="ส่งข้อความนี้ถึงทุกคนใน Telegram?">ส่ง</ConfirmSubmit>
         </form>
         <form action={sendTrialMissions} className="team-add-form">

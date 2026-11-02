@@ -693,16 +693,20 @@ export async function broadcastTelegram(formData: FormData) {
   if (hour >= 21 || hour < 7) done("ไม่ส่งช่วง 21:00–07:00 น. เพื่อไม่รบกวนทีม — ส่งใหม่ตอนเช้า");
   const { sendTelegram, esc } = await import("@/lib/telegram/api");
   const { admin, people } = await telegramTeam();
-  const text = `📣 <b>แจ้งจากแอดมิน</b>\n\n${esc(message)}`;
+  // "ถามไถ่": the same message plus 3 answer buttons (lib/telegram/pulse.ts).
+  const pulse = formData.get("pulse") === "on";
+  const { pulseButtons } = await import("@/lib/telegram/pulse");
+  const text = `${pulse ? "💬 <b>ถามไถ่จากแอดมิน</b>" : "📣 <b>แจ้งจากแอดมิน</b>"}\n\n${esc(message)}`;
+  const buttons = pulse ? pulseButtons() : undefined;
   let sent = 0;
-  for (const p of people) if ((await sendTelegram(Number(p.telegram_chat_id), { text })).ok) sent++;
+  for (const p of people) if ((await sendTelegram(Number(p.telegram_chat_id), { text, buttons })).ok) sent++;
   await admin.from("audit_logs").insert({
     entity_type: "settings",
     entity_id: user.id,
     action: "telegram_broadcast",
     changed_by: user.id,
     summary: `ส่งข้อความถึงทีมทาง Telegram ${sent} คน`,
-    new_values: { message, sent, total: people.length },
+    new_values: { message, pulse, sent, total: people.length },
   });
   done(undefined, `ส่งทาง Telegram แล้ว ${sent}/${people.length} คน (ฟรี ไม่ใช้โควต้า LINE)`);
 }

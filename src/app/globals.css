@@ -3938,3 +3938,14 @@ textarea:focus-visible {
 .icon-picker-grid button.is-on { border-color: #6a2c91; background: rgba(106, 44, 145, .08); }
 
 .title-icon { margin-right: .45em; position: relative; top: -.08em; }
+
+.team-check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.team-check input {
+  margin-top: 3px;
+}
