@@ -142,13 +142,13 @@ function scene(key: FestivalKey): ReactNode[] {
     out.push(<div key="water" className="fx fx-water" />);
     for (let i = 0; i < 4; i++) {
       const d = depth(r);
-      piece(i, "fx-up fx-sky", { left: `${r(18, 62)}%`, "--d": `${r(16, 24) * d.speed}s`, "--delay": `${-r(0, 24)}s`, "--sway": u(r(-40, 40)), "--s": d.scale, "--o": d.opacity, filter: `blur(${d.blur}px)` }, <SkyLantern />);
+      piece(i, "fx-up fx-sky", { left: `${r(10, 70)}%`, "--d": `${r(16, 24) * d.speed}s`, "--delay": `${-r(0, 24)}s`, "--sway": u(r(-40, 40)), "--s": d.scale, "--o": d.opacity, filter: `blur(${d.blur}px)` }, <SkyLantern />);
     }
   }
   if (key === "cny") {
-    piece(0, "fx-hang", { left: "14%", "--delay": "0s" }, <RedLantern />);
-    piece(1, "fx-hang", { left: "70%", "--delay": "-1.3s" }, <RedLantern />);
-    for (let i = 0; i < 6; i++) piece(i, "fx-twinkle", { left: `${r(28, 62)}%`, top: `${r(10, 80)}%`, "--delay": `${-r(0, 4)}s`, "--d": `${r(2.5, 4.5)}s` }, null);
+    piece(0, "fx-hang", { left: "4%", "--delay": "0s" }, <RedLantern />);
+    piece(1, "fx-hang", { right: "4%", "--delay": "-1.3s" }, <RedLantern />);
+    for (let i = 0; i < 6; i++) piece(i, "fx-twinkle", { left: `${r(10, 90)}%`, top: `${r(10, 80)}%`, "--delay": `${-r(0, 4)}s`, "--d": `${r(2.5, 4.5)}s` }, null);
   }
   if (key === "father" || key === "mother") {
     const colors = key === "father" ? ["#ffd23f", "#ffc300", "#ffe680"] : ["#ffffff", "#eef3ff"];
@@ -172,13 +172,13 @@ function scene(key: FestivalKey): ReactNode[] {
   }
   if (key === "newyear") {
     [
-      [30, 40, "#ffd36b", 0],
-      [66, 34, "#ff8ad8", 2.2],
-      [48, 62, "#7ad7ff", 4.4],
+      [30, 36, "#ffd36b", 0],
+      [72, 30, "#ff8ad8", 2.2],
+      [50, 64, "#7ad7ff", 4.4],
     ].forEach(([x, y, c, delay], i) => {
       const sparks = Array.from({ length: 16 }, (_, k) => {
         const a = (k / 16) * Math.PI * 2;
-        const dist = 34 + (k % 2) * 12;
+        const dist = 26 + (k % 2) * 10;
         return <i key={k} style={{ "--dx": u(Math.cos(a) * dist), "--dy": u(Math.sin(a) * dist) } as V} />;
       });
       piece(i, "fx-burst", { left: `${x}%`, top: `${y}%`, "--c": String(c), "--delay": `${delay}s` }, sparks);
