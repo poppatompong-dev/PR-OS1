@@ -187,6 +187,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
                         </div>
                         <h2 className={`bm-job-title ${titleSize(t)}`}>{t}</h2>
                         <p className="bm-job-place">📍 {e.locationName || "ไม่ระบุสถานที่"}</p>
+                        {e.shortNote ? <p className="bm-job-note">📝 {e.shortNote}</p> : null}
                       </div>
                     </div>
                     <div className="bm-job-people">
@@ -235,6 +236,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
                           <em>{thaiTime(one.startTime)}</em> {screenTitle(one)}
                         </div>
                         <p className="bm-day-place">📍 {one.locationName || "ไม่ระบุสถานที่"}</p>
+                        {one.shortNote ? <p className="bm-day-note">📝 {one.shortNote}</p> : null}
                       </div>
                     </div>
                   ) : (

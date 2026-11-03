@@ -207,3 +207,13 @@
 
 .bm--b .bm-bench-face { border-color: #fff; }
 @media (prefers-reduced-motion: reduce) { .bm-bench-p.is-hop .bm-bench-face { animation: none; } }
+
+/* หมายเหตุบนจอทีวี (พี่เอิร์ธ 3 พ.ย. 2569): ช่อง "หมายเหตุบนจอทีวี" ในฟอร์มมอบงาน */
+.bm-job-note, .bm-day-note {
+  margin-top: calc(4 * var(--u)); color: #ffe3a0; font-weight: 600;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.bm-job-note { font-size: calc(24 * var(--u)); }
+.bm-day-note { font-size: calc(21 * var(--u)); -webkit-line-clamp: 1; white-space: nowrap; text-overflow: ellipsis; display: block; }
+.bm--b .bm-job-note, .bm--b .bm-day-note { color: #8a5a00; }
+.bm-today.is-lots .bm-job-note { font-size: calc(19 * var(--u)); -webkit-line-clamp: 1; }
