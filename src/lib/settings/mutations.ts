@@ -783,8 +783,16 @@ export async function messagePersonTelegram(formData: FormData) {
   const admin = createAdminClient();
   const { data: p } = await admin.from("people").select("display_name, telegram_chat_id").eq("id", personId).maybeSingle();
   if (!p?.telegram_chat_id) done("คนนี้ยังไม่ได้ผูก Telegram");
-  const { sendTelegram, esc } = await import("@/lib/telegram/api");
-  const res = await sendTelegram(Number(p!.telegram_chat_id), { text: `💬 <b>จากแอดมิน</b>\n\n${esc(message)}` });
+  const { sendTelegram, sendTelegramPhotoFile, esc } = await import("@/lib/telegram/api");
+  // Optional picture (proof screenshots, a map…): sent as one photo with the text as its caption.
+  const photo = formData.get("photo");
+  const hasPhoto = photo instanceof File && photo.size > 0;
+  if (hasPhoto && !/^image\/(jpeg|png|webp)$/.test(photo.type)) done("แนบได้เฉพาะรูป JPG / PNG / WEBP");
+  if (hasPhoto && photo.size > 8 * 1024 * 1024) done("รูปใหญ่เกิน 8 MB");
+  const caption = `💬 <b>จากแอดมิน</b>\n\n${esc(hasPhoto ? message.slice(0, 980) : message)}`;
+  const res = hasPhoto
+    ? await sendTelegramPhotoFile(Number(p!.telegram_chat_id), await photo.arrayBuffer(), photo.type, caption)
+    : await sendTelegram(Number(p!.telegram_chat_id), { text: caption });
   if (!res.ok) done(`ส่งไม่สำเร็จ: ${res.error ?? "ไม่ทราบสาเหตุ"}`);
   await admin.from("audit_logs").insert({
     entity_type: "person",
@@ -792,7 +800,7 @@ export async function messagePersonTelegram(formData: FormData) {
     action: "telegram_direct",
     changed_by: user.id,
     summary: `ส่งข้อความถึง ${p!.display_name} ทาง Telegram`,
-    new_values: { message },
+    new_values: { message, photo: hasPhoto ? { type: photo.type, bytes: photo.size } : null },
   });
-  done(undefined, `ส่งข้อความถึง ${p!.display_name} ทาง Telegram แล้ว`);
+  done(undefined, `ส่งข้อความ${hasPhoto ? "พร้อมรูป" : ""}ถึง ${p!.display_name} ทาง Telegram แล้ว`);
 }

@@ -71,6 +71,24 @@ export async function sendTelegram(chatId: number | string, m: TgMessage): Promi
   return res.ok ? { ok: true, providerMessageId: res.result ? `tg:${res.result.message_id}` : undefined } : { ok: false, error: res.error, status: res.status };
 }
 
+/** A picture from the admin's device (per-person message with a photo, 3 Nov 2026). */
+export async function sendTelegramPhotoFile(chatId: number | string, bytes: ArrayBuffer, contentType: string, captionHtml: string): Promise<SendResult> {
+  try {
+    const form = new FormData();
+    form.set("chat_id", String(chatId));
+    form.set("caption", captionHtml.slice(0, 1024));
+    form.set("parse_mode", "HTML");
+    form.set("photo", new Blob([bytes], { type: contentType }), contentType === "image/png" ? "photo.png" : "photo.jpg");
+    const res = await fetch(apiUrl("sendPhoto"), { method: "POST", body: form, cache: "no-store" });
+    const json = (await res.json().catch(() => ({}))) as { ok?: boolean; result?: { message_id: number }; description?: string };
+    return json.ok
+      ? { ok: true, providerMessageId: json.result ? `tg:${json.result.message_id}` : undefined }
+      : { ok: false, status: res.status, error: scrub(`Telegram ${res.status}: ${json.description ?? "error"}`).slice(0, 300) };
+  } catch (err) {
+    return { ok: false, error: scrub(err instanceof Error ? err.message : "Telegram request error") };
+  }
+}
+
 /** Replace a card the bot sent earlier (Telegram can edit; LINE cannot). */
 export async function editTelegram(chatId: number | string, messageId: number, m: TgMessage): Promise<SendResult> {
   const res = await call("editMessageText", {

@@ -130,6 +130,10 @@ function MemberMenu({ m, currentUserId }: { m: TeamMember; currentUserId: string
               <form action={messagePersonTelegram} className="team-menu-form">
                 <input type="hidden" name="personId" value={m.personId} />
                 <textarea className="input" name="message" rows={3} maxLength={1000} required placeholder={`ข้อความถึง ${m.displayName}`} />
+                <label className="team-check" style={{ flexWrap: "wrap" }}>
+                  🖼️ แนบรูป (ไม่บังคับ)
+                  <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" />
+                </label>
                 <ConfirmSubmit className="button secondary" message={`ส่งข้อความนี้ถึง ${m.displayName} ทาง Telegram?`}>
                   💬 ส่งข้อความถึงคนนี้
                 </ConfirmSubmit>
