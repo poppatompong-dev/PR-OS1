@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // The TV reloads itself when the live build differs from this (monitor/AutoUpdate).
+  env: { NEXT_PUBLIC_BUILD_SHA: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.VERCEL_DEPLOYMENT_ID ?? "" },
   experimental: {
     // Attachment uploads go through a Server Action; the default 1 MB body cap
     // would reject files long before the 10 MB bucket limit in migration 0010.
