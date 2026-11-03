@@ -134,3 +134,7 @@
 .bm-day-one { display: flex; align-items: center; gap: calc(14 * var(--u)); min-width: 0; }
 .bm-inline-icon { margin-right: calc(8 * var(--u)); position: relative; top: calc(-2 * var(--u)); }
 .bm-cell-x .bm-inline-icon { margin-right: calc(5 * var(--u)); }
+
+/* งานที่จบแล้ววันนี้: ค้างไว้ทั้งวัน แต่จางลงและอยู่ท้ายรายการ (คุณกุ๊ก 3 พ.ย. 2569) */
+.bm-job.is-done { opacity: 0.5; filter: grayscale(0.7); }
+.bm-done { margin-left: calc(14 * var(--u)); font-size: 0.6em; font-weight: 700; padding: 0.1em 0.6em; border-radius: 999px; background: var(--bm-line); vertical-align: middle; font-family: inherit; }

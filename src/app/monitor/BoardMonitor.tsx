@@ -12,7 +12,7 @@ import type { KeyboardEvent } from "react";
 import { fetchMonitorAnnouncements, fetchMonitorEvents, fetchMonitorTeam } from "@/lib/monitor/client";
 import type { MonitorAnnouncement, MonitorAssignee, MonitorEvent } from "@/lib/monitor/types";
 import { JobIconTile } from "@/components/JobIconTile";
-import { buildBoard, screenTitle, thaiTime, titleSize } from "@/lib/monitor/board";
+import { buildBoard, isDone, screenTitle, thaiTime, titleSize } from "@/lib/monitor/board";
 import { shortName } from "@/lib/monitor/rows";
 import { TH_MONTH_SHORT, TH_WEEKDAY_SHORT, bangkokNow, isoParts, thaiLongDate, whenLabel } from "@/lib/monitor/thai-time";
 import { Avatar } from "@/components/Avatar";
@@ -144,11 +144,14 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
               {board!.todayJobs.map((e) => {
                 const t = screenTitle(e);
                 return (
-                  <article className="bm-job" key={e.id} {...link(e)}>
+                  <article className={`bm-job${isDone(e, now) ? " is-done" : ""}`} key={e.id} {...link(e)}>
                     <div className="bm-job-info">
                       <JobIconTile title={e.title} icon={e.icon} size="var(--bm-ic)" className="bm-job-icon" />
                       <div className="bm-job-text">
-                        <div className="bm-job-time">{thaiTime(e.startTime, e.endTime)}</div>
+                        <div className="bm-job-time">
+                          {thaiTime(e.startTime, e.endTime)}
+                          {isDone(e, now) ? <span className="bm-done">✓ จบแล้ว</span> : null}
+                        </div>
                         <h2 className={`bm-job-title ${titleSize(t)}`}>{t}</h2>
                         <p className="bm-job-place">📍 {e.locationName || "ไม่ระบุสถานที่"}</p>
                       </div>

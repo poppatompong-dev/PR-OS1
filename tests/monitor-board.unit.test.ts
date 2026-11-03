@@ -3,7 +3,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildBoard, screenTitle, thaiTime, titleSize } from "@/lib/monitor/board";
+import { buildBoard, isDone, screenTitle, thaiTime, titleSize } from "@/lib/monitor/board";
 import type { MonitorEvent } from "@/lib/monitor/types";
 
 const ev = (id: string, date: string, start: string, end = "", extra: Partial<MonitorEvent> = {}): MonitorEvent => ({
@@ -13,7 +13,7 @@ const ev = (id: string, date: string, start: string, end = "", extra: Partial<Mo
 const T = "2026-10-29";
 const m = (h: string) => +h.slice(0, 2) * 60 + +h.slice(3);
 
-test("today card drops finished jobs; numbers count the whole day", () => {
+test("today card keeps finished jobs at the bottom; numbers count the whole day", () => {
   const b = buildBoard(
     [
       ev("done", T, "06:30", "08:00", { assigneeDetail: [{ name: "a", role: "", ack: false, unavailable: false }] }),
@@ -23,7 +23,9 @@ test("today card drops finished jobs; numbers count the whole day", () => {
     T,
     m("09:00"),
   );
-  assert.deepEqual(b.todayJobs.map((e) => e.id), ["next"]);
+  assert.deepEqual(b.todayJobs.map((e) => e.id), ["next", "done"]);
+  assert.equal(isDone(b.todayJobs[1], m("09:00")), true);
+  assert.equal(isDone(b.todayJobs[0], m("09:00")), false);
   assert.equal(b.stats.today, 2);
   assert.equal(b.stats.pending, 1);
 });

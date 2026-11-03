@@ -1,6 +1,7 @@
 // TV "ผังคุณกุ๊ก" (29 Oct 2026), pure layout logic:
 //   top-left  3 numbers: งานวันนี้ · ยังไม่รับงาน (today) · 7 วันข้างหน้า
-//   left card today's jobs still to come (a finished one drops off)
+//   left card all of today's jobs; finished ones stay, faded, at the bottom
+//             (คุณกุ๊ก 3 Nov 2026: "อยากให้ค้างอยู่ทั้งวัน" — gone the next day)
 //   right     the next 4 days that have work (empty days skipped)
 //   bottom    the 6 calendar days after those, up to 2 jobs each
 // Covered by tests/monitor-board.unit.test.ts.
@@ -12,8 +13,9 @@ import { addDaysIso } from "@/lib/monitor/thai-time";
 export type DayGroup = { iso: string; events: MonitorEvent[] };
 
 export type Board = {
-  stats: { today: number; pending: number; week: number };
+  /** Today's jobs: still to come first, then finished ones (see isDone). */
   todayJobs: MonitorEvent[];
+  stats: { today: number; pending: number; week: number };
   dayRows: DayGroup[];
   cells: DayGroup[];
 };
@@ -23,6 +25,11 @@ const byTime = (a: MonitorEvent, b: MonitorEvent) =>
 
 function endMinutes(e: MonitorEvent): number {
   return e.endTime ? minutesOf(e.endTime) : minutesOf(e.startTime) + 120;
+}
+
+/** A job of today whose end (or start + 2 h) has passed. */
+export function isDone(e: MonitorEvent, now: number): boolean {
+  return endMinutes(e) <= now;
 }
 
 export function buildBoard(events: MonitorEvent[], today: string, now: number, opts: { rows?: number; cells?: number; horizonDays?: number } = {}): Board {
@@ -49,7 +56,7 @@ export function buildBoard(events: MonitorEvent[], today: string, now: number, o
       pending: todays.flatMap((e) => e.assigneeDetail).filter((p) => !p.ack && !p.unavailable).length,
       week: live.filter((e) => e.eventDate > today && e.eventDate <= week).length,
     },
-    todayJobs: todays.filter((e) => endMinutes(e) > now),
+    todayJobs: [...todays.filter((e) => !isDone(e, now)), ...todays.filter((e) => isDone(e, now))],
     dayRows,
     cells,
   };

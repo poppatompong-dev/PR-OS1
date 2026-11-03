@@ -20,7 +20,7 @@ test("every manifest entry points at a real, small file; unknown people get the 
   assert.equal(avatarUrl("not-a-person"), DEFAULT_AVATAR);
   assert.equal(avatarUrl(null), DEFAULT_AVATAR);
   assert.equal(hasAvatar("00000000-0000-0000-0000-000000000505"), true);
-  assert.equal(avatarUrl("00000000-0000-0000-0000-000000000505"), "/avatars/00000000-0000-0000-0000-000000000505.png");
+  assert.equal(avatarUrl("00000000-0000-0000-0000-000000000505"), "/avatars/00000000-0000-0000-0000-000000000505-v4.jpg");
 });
 
 function task(personName: string, id: string): TaskItem {
