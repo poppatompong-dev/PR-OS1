@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { childrensDay, festivalFor, isFestivalKey, previewFestival } from "@/lib/monitor/festivals";
 
 test("windows by date", () => {
-  assert.equal(festivalFor("2026-11-03"), null);
+  assert.equal(festivalFor("2026-11-01"), null);
   assert.equal(festivalFor("2026-11-17")?.key, "loy");
   assert.equal(festivalFor("2026-11-24")?.key, "loy");
   assert.equal(festivalFor("2026-11-25"), null);
@@ -30,4 +30,14 @@ test("preview keys", () => {
   assert.equal(isFestivalKey("loy"), true);
   assert.equal(isFestivalKey("x"), false);
   assert.equal(previewFestival("cny").key, "cny");
+});
+
+test("ลอยกระทง countdown: 3–16 Nov, moon grows", () => {
+  assert.equal(festivalFor("2026-11-02"), null);
+  const a = festivalFor("2026-11-03");
+  assert.equal(a?.key, "loycd");
+  assert.equal(a?.daysLeft, 21);
+  assert.equal(a?.chip, "🌙 อีก 21 วัน ลอยกระทง (24 พ.ย.)");
+  assert.equal(festivalFor("2026-11-16")?.daysLeft, 8);
+  assert.equal(festivalFor("2026-11-17")?.key, "loy");
 });

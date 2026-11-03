@@ -8,9 +8,10 @@
 //   ลอยกระทง  2569 = 24 พ.ย. (PPTV)
 //   ตรุษจีนปากน้ำโพ 2570 = งาน 30 ม.ค.–10 ก.พ. (แนวหน้า: แห่กลางคืน 8 ก.พ., กลางวัน 9 ก.พ.)
 
-export type FestivalKey = "loy" | "father" | "newyear" | "child" | "cny" | "songkran" | "mother";
+export type FestivalKey = "loycd" | "loy" | "father" | "newyear" | "child" | "cny" | "songkran" | "mother";
 
-export type Festival = { key: FestivalKey; chip: string };
+/** daysLeft: only for the ลอยกระทง countdown (the moon grows as it nears 0). */
+export type Festival = { key: FestivalKey; chip: string; daysLeft?: number };
 
 type Range = { key: FestivalKey; from: string; to: string; chip: string }; // ISO yyyy-mm-dd, inclusive
 
@@ -41,12 +42,26 @@ function addDays(iso: string, n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-const KEYS: FestivalKey[] = ["loy", "father", "newyear", "child", "cny", "songkran", "mother"];
+const KEYS: FestivalKey[] = ["loycd", "loy", "father", "newyear", "child", "cny", "songkran", "mother"];
 export const isFestivalKey = (v: string | undefined): v is FestivalKey => KEYS.includes(v as FestivalKey);
+
+/** Whole days from a to b (ISO dates). */
+function daysBetween(a: string, b: string): number {
+  return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
+}
 
 export function festivalFor(iso: string): Festival | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
   for (const r of DATED) if (iso >= r.from && iso <= r.to) return { key: r.key, chip: r.chip };
+  // The three weeks before ลอยกระทง count down (owner, 3 Nov 2026), the moon filling up day by day.
+  for (const r of DATED) {
+    if (r.key !== "loy") continue;
+    if (iso >= addDays(r.to, -21) && iso < r.from) {
+      const left = daysBetween(iso, r.to);
+      const d = Number(r.to.slice(8));
+      return { key: "loycd", chip: `🌙 อีก ${left} วัน ลอยกระทง (${d} พ.ย.)`, daysLeft: left };
+    }
+  }
 
   const year = Number(iso.slice(0, 4));
   const md = iso.slice(5);
@@ -68,6 +83,7 @@ export function festivalFor(iso: string): Festival | null {
 /** For ?fest=… previews: the chip text without needing the date. */
 export function previewFestival(key: FestivalKey): Festival {
   const sample: Record<FestivalKey, string> = {
+    loycd: "2026-11-10",
     loy: "2026-11-24",
     father: "2026-12-05",
     newyear: "2026-12-31",

@@ -102,3 +102,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) { .bm-fest-stage .fx, .bm-fest-stage .fx * { animation: none !important; opacity: .8; } }
+
+/* ---------- นับถอยหลังลอยกระทง: จันทร์ค่อย ๆ เต็ม + หิ่งห้อย ---------- */
+.fx-cdmoon { right: 0; top: calc(4 * var(--u)); width: calc(60 * var(--u)); height: calc(60 * var(--u)); }
+.fx-cdmoon svg { filter: drop-shadow(0 0 calc(18 * var(--u)) rgba(255, 232, 170, .45)); animation: fx-cdglow 7s ease-in-out infinite; }
+@keyframes fx-cdglow { 50% { filter: drop-shadow(0 0 calc(30 * var(--u)) rgba(255, 232, 170, .6)); } }
+.fx-firefly { width: calc(6 * var(--u)); height: calc(6 * var(--u)); border-radius: 50%; background: #e8ff9a; box-shadow: 0 0 calc(10 * var(--u)) #d7ff6a; opacity: 0; animation: fx-fly var(--d) ease-in-out infinite; animation-delay: var(--delay); }
+@keyframes fx-fly { 0% { opacity: 0; transform: translate(0, 0); } 25% { opacity: .9; } 50% { transform: translate(var(--x), var(--y)); opacity: .4; } 75% { opacity: .9; } 100% { opacity: 0; transform: translate(0, 0); } }
+.fx-tint--loycd { background: radial-gradient(calc(800 * var(--u)) calc(220 * var(--u)) at 45% 0%, rgba(255, 220, 150, .06), transparent 70%); }

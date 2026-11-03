@@ -18,6 +18,7 @@ import { TH_MONTH_SHORT, TH_WEEKDAY_SHORT, bangkokNow, isoParts, thaiLongDate, w
 import { Avatar } from "@/components/Avatar";
 import "./monitor-hero.css";
 import { TeamPulse } from "./TeamPulse";
+import { TeamBench } from "./TeamBench";
 import { FestivalLayer, FestivalStage } from "./FestivalLayer";
 import { festivalFor, isFestivalKey, previewFestival } from "@/lib/monitor/festivals";
 import "./monitor-board.css";
@@ -142,7 +143,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
           <p>ตารางงานฝ่ายบริการและเผยแพร่วิชาการ</p>
           {festival?.chip ? <span className="bm-fest-chip">{festival.chip}</span> : null}
         </div>
-        <FestivalStage festival={festival?.key ?? null} still={staticMode} />
+        <FestivalStage festival={festival?.key ?? null} still={staticMode} daysLeft={festival?.daysLeft} />
         <TeamPulse still={staticMode} noFace={team.off} />
         <div className="hm-clock bm-clock">
           <b>{clock ? `${clock.hh}.${clock.mm}` : "--.--"}<small> น.</small></b>
@@ -198,7 +199,12 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
 
         <section className="bm-days">
           {Array.from({ length: 4 }, (_, i) => board?.dayRows[i]).map((d, i) => {
-            if (!d) return <div className="bm-day is-blank" key={`blank-${i}`} />;
+            if (!d) {
+              // ม้านั่งทีมอยู่ในช่องว่างแรก กินที่ทุกช่องว่างที่เหลือ
+              const filled = board?.dayRows.length ?? 0;
+              if (i === filled) return <TeamBench key="bench" span={4 - filled} still={staticMode} />;
+              return null;
+            }
             const p = dayParts(d.iso);
             const people = d.events.flatMap((e) => e.assigneeDetail);
             const uniq = people.filter((x, k) => people.findIndex((y) => y.name === x.name) === k);

@@ -125,7 +125,30 @@ function depth(r: (a: number, b: number) => number) {
  * Everything happens in the header's empty space (between the title and the
  * stats), so the board itself stays clean — คุณกุ๊ก does not like clutter.
  */
-function scene(key: FestivalKey): ReactNode[] {
+/** The moon on day `left` before ลอยกระทง: a thin crescent that fills to full. */
+function GrowingMoon({ left }: { left: number }) {
+  const frac = Math.min(1, Math.max(0.08, 1 - left / 14));
+  const r = 46;
+  const c = 50;
+  const k = 1 - 2 * frac;
+  const dx = Math.abs(k) * r;
+  const sweep = k > 0 ? 0 : 1;
+  return (
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <defs>
+        <radialGradient id="fx-moon-g" cx="40%" cy="38%">
+          <stop offset="0" stopColor="#fffdf5" />
+          <stop offset=".6" stopColor="#ffeec2" />
+          <stop offset="1" stopColor="#f5cf7f" />
+        </radialGradient>
+      </defs>
+      <circle cx={c} cy={c} r={r} fill="rgba(255,255,255,.07)" />
+      <path d={`M${c} ${c - r} A${r} ${r} 0 0 1 ${c} ${c + r} A${dx} ${r} 0 0 ${sweep} ${c} ${c - r}Z`} fill="url(#fx-moon-g)" />
+    </svg>
+  );
+}
+
+function scene(key: FestivalKey, daysLeft = 14): ReactNode[] {
   const r = seeded(key.length * 7919 + key.charCodeAt(0));
   const out: ReactNode[] = [];
   const piece = (i: number, cls: string, style: V, child: ReactNode) =>
@@ -135,6 +158,11 @@ function scene(key: FestivalKey): ReactNode[] {
       </div>,
     );
 
+  if (key === "loycd") {
+    piece(0, "fx-cdmoon", {}, <GrowingMoon left={daysLeft} />);
+    for (let i = 0; i < 6; i++)
+      piece(i, "fx-firefly", { left: `${r(6, 70)}%`, top: `${r(20, 80)}%`, "--d": `${r(5, 9)}s`, "--delay": `${-r(0, 9)}s`, "--x": u(r(-30, 30)), "--y": u(r(-20, 20)) }, null);
+  }
   if (key === "loy") {
     out.push(<div key="moon" className="fx fx-moon" />);
     piece(0, "fx-krathong", {}, <Krathong />);
@@ -188,7 +216,7 @@ function scene(key: FestivalKey): ReactNode[] {
 }
 
 /** The decorations, in the header's empty space. */
-export function FestivalStage({ festival, still }: { festival: FestivalKey | null; still: boolean }) {
+export function FestivalStage({ festival, still, daysLeft }: { festival: FestivalKey | null; still: boolean; daysLeft?: number }) {
   const [calm, setCalm] = useState(still);
   useEffect(() => {
     if (still || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) setCalm(true);
@@ -196,7 +224,7 @@ export function FestivalStage({ festival, still }: { festival: FestivalKey | nul
   if (!festival) return <div className="bm-fest-stage" />;
   return (
     <div className={`bm-fest-stage fest--${festival}${calm ? " fest--still" : ""}`} aria-hidden="true">
-      {scene(festival)}
+      {scene(festival, daysLeft)}
     </div>
   );
 }
