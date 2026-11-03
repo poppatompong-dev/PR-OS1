@@ -6,10 +6,9 @@
 //   POST { id }             → { url }
 
 import { NextResponse } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/server";
-import { authenticateLiff, type LiffCaller } from "@/lib/liff/auth";
-import { getAdminRecipientIds } from "@/lib/line/data";
+import { authenticateLiff } from "@/lib/liff/auth";
+import { mayOpenJob as mayOpen } from "@/lib/liff/may-open";
 import { ATTACHMENT_BUCKET, SIGNED_URL_TTL_SECONDS } from "@/lib/attachments/queries";
 import { isSupabaseConfigured } from "@/lib/env";
 import { isImageMime, thumbPathFor } from "@/lib/attachments/rules";
@@ -20,21 +19,6 @@ export const dynamic = "force-dynamic";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DENIED = "ไฟล์ของงานนี้เปิดได้เฉพาะคนที่ได้รับมอบหมาย และหัวหน้า/แอดมินครับ";
-
-async function mayOpen(admin: SupabaseClient, eventId: string, caller: LiffCaller): Promise<boolean> {
-  const { data: asg } = await admin
-    .from("assignments")
-    .select("id")
-    .eq("event_id", eventId)
-    .eq("person_id", caller.personId)
-    .eq("assignment_status", "assigned")
-    .limit(1);
-  if ((asg ?? []).length > 0) return true;
-  if ((await getAdminRecipientIds(admin)).includes(caller.personId)) return true;
-  if (!caller.userId) return false;
-  const { data: profile } = await admin.from("profiles").select("role").eq("id", caller.userId).maybeSingle();
-  return profile?.role === "admin";
-}
 
 async function guard(request: Request) {
   if (!isSupabaseConfigured()) return { error: NextResponse.json({ error: "ระบบยังไม่พร้อม" }, { status: 503 }) } as const;

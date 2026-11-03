@@ -3949,3 +3949,26 @@ textarea:focus-visible {
 .team-check input {
   margin-top: 3px;
 }
+
+/* ---- แผนที่ปักหมุด (MapPicker, 3 Nov 2026) ---- */
+.mp { display: flex; flex-direction: column; gap: 8px; }
+.mp-map { width: 100%; border-radius: 14px; overflow: hidden; border: 1px solid var(--line-strong); background: #e8e4ec; z-index: 0; }
+.mp-tools { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mp-hint { font-size: 13px; color: var(--muted); }
+.mp-btn { flex: none; white-space: nowrap; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--blue-dark); font: inherit; font-size: 14px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.mp-btn.is-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+.mp-btn:disabled { opacity: .6; }
+.mp-note { margin: 0; font-size: 13px; color: var(--amber); }
+.mp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.mp-list li { display: flex; align-items: center; gap: 8px; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-2); }
+.mp-list li.is-active { border-color: var(--blue); box-shadow: 0 0 0 2px var(--brand-soft); }
+.mp-num { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 0; background: var(--blue); color: #fff; font: 700 14px/1 inherit; cursor: pointer; }
+.mp-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mp .mp-body input { min-height: 36px !important; padding: 6px 10px !important; font-size: 15px !important; border-radius: 10px !important; }
+.mp-coord { font: 600 12px "JetBrains Mono Variable", "JetBrains Mono", monospace; color: var(--muted); }
+.mp-del { flex: none; width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: 16px; }
+.mp-pin-wrap { background: none; border: 0; }
+.mp-pin { position: relative; width: 36px; height: 36px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: #5e2f73; border: 3px solid #fff; box-shadow: 0 3px 8px rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; }
+.mp-pin span { transform: rotate(45deg); color: #fff; font: 700 15px/1 system-ui, sans-serif; }
+.mp-pin.is-active { background: #c2410c; }
+.leaflet-container { font-family: inherit; }

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { IconPicker } from "@/components/IconPicker";
 import { PlaceInput } from "@/components/PlaceInput";
+import { MapPointsField } from "@/components/MapPointsField";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { getEventById, getEventFormData } from "@/lib/events/queries";
@@ -77,6 +78,10 @@ export default async function EditEventPage({
         <div className="form-field">
           สถานที่
           <PlaceInput name="locationText" defaultValue={event.location.id ? event.location.name : ""} suggestions={formData.places} />
+        </div>
+        <div className="form-field" style={{ gridColumn: "1 / -1" }}>
+          📍 พิกัด — แตะแผนที่ปักหมุด ลากย้ายได้ (สูงสุด 5 จุด)
+          <MapPointsField name="mapPoints" defaultValue={event.mapPoints ?? []} height={320} />
         </div>
         <label className="form-field">
           หน่วยงานเจ้าของเรื่อง

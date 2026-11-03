@@ -5,6 +5,7 @@ import { createEvent } from "@/lib/events/mutations";
 import { FormWizard } from "@/components/FormWizard";
 import { AttachmentPicker } from "@/components/AttachmentPicker";
 import { PlaceInput } from "@/components/PlaceInput";
+import { MapPointsField } from "@/components/MapPointsField";
 import { RoleChips } from "@/components/RoleChips";
 
 export const dynamic = "force-dynamic";
@@ -113,6 +114,10 @@ export default async function NewEventPage({
             <div className="form-field">
               สถานที่
               <PlaceInput name="locationText" defaultValue={clone?.location?.id ? clone.location.name : ""} suggestions={places} />
+            </div>
+            <div className="form-field" style={{ gridColumn: "1 / -1" }}>
+              📍 พิกัด — แตะแผนที่ปักหมุด ลากย้ายได้ (สูงสุด 5 จุด · ไม่บังคับ)
+              <MapPointsField name="mapPoints" defaultValue={clone?.mapPoints ?? []} height={320} />
             </div>
             <label className="form-field">
               หน่วยงานเจ้าของเรื่อง

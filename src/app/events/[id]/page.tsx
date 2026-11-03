@@ -8,6 +8,8 @@ import { getEventAuditLog, getEventById, getEventFormData } from "@/lib/events/q
 import { cancelEvent, completeEvent, deleteEvent, postponeEvent, publishEvent } from "@/lib/events/mutations";
 import { addAssignment, removeAssignment, updateAssignmentRoles } from "@/lib/assignments/mutations";
 import { RoleChips } from "@/components/RoleChips";
+import { MapPicker } from "@/components/MapPicker";
+import { pointName, pointNavUrl } from "@/lib/maps";
 import { checkConflictsForEvent } from "@/lib/assignments/queries";
 import { conflictLevel } from "@/lib/assignments/conflict";
 import { getEventAttachments } from "@/lib/attachments/queries";
@@ -129,6 +131,25 @@ export default async function EventDetailPage({
           <p className="login-error">เหตุผลการยกเลิก: {event.cancellationReason}</p>
         ) : null}
       </section>
+
+      {event.mapPoints?.length ? (
+        <section className="panel">
+          <h2>📍 พิกัด ({event.mapPoints.length} จุด)</h2>
+          <MapPicker points={event.mapPoints} readOnly height={320} />
+          <ol className="mp-list" style={{ marginTop: 10 }}>
+            {event.mapPoints.map((p, i) => (
+              <li key={i}>
+                <span className="mp-num" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
+                <div className="mp-body">
+                  <strong>{pointName(p, i, event.mapPoints!.length) || "จุดนัดหมาย"}</strong>
+                  <span className="mp-coord">{p.lat != null && p.lng != null ? `${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}` : "ลิงก์แผนที่"}</span>
+                </div>
+                <a className="mp-btn is-primary" href={pointNavUrl(p)} target="_blank" rel="noreferrer">🧭 นำทาง</a>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
 
       <section className="panel">
         <h2>ผู้ได้รับมอบหมาย</h2>

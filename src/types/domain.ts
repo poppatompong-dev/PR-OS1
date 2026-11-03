@@ -45,6 +45,8 @@ export type Assignment = {
 };
 
 export type PrEvent = {
+  /** พิกัด pins (events.metadata.map_points). */
+  mapPoints?: import("@/lib/maps").MapPoint[];
   id: string;
   title: string;
   description?: string;

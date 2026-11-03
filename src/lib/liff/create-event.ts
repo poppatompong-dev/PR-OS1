@@ -19,7 +19,7 @@ import { cleanIcon } from "@/lib/events/job-icon";
 import { markTrial } from "@/lib/trial";
 import { cleanScreenTitle } from "@/lib/events/screen-title";
 import { createAnnouncement } from "@/lib/announcements";
-import { normalizeMapInput } from "@/lib/maps";
+import { mapMetadata, parseMapPoints, type MapPoint } from "@/lib/maps";
 
 export type LiffEventInput = {
   title: string;
@@ -36,8 +36,8 @@ export type LiffEventInput = {
   icon: string | null;
   /** "ประกาศบนจอ": a ticker line until midnight. */
   announce: string | null;
-  /** พิกัด (3 Nov 2026): a Google Maps / Waze link, kept in events.metadata.map_url. */
-  mapUrl: string | null;
+  /** พิกัด (3 Nov 2026): up to 5 pins / maps links, kept in events.metadata.map_points (+ map_url = the first). */
+  mapPoints: MapPoint[];
   /** One row per person, every duty they hold on this job (0016). */
   assignees: Array<{ personId: string; roleIds: string[] }>;
   /** Files already uploaded to staging from the form (max 5). */
@@ -79,7 +79,7 @@ export function parseLiffEventInput(body: unknown): { ok: true; input: LiffEvent
     rows.push({ personId, roleIds });
   }
   const assignees = mergeAssignees(rows);
-  const map = normalizeMapInput(b.mapUrl);
+  const map = parseMapPoints(b.mapPoints, b.mapUrl);
   if (!map.ok) return { ok: false, error: map.error };
 
   return {
@@ -95,7 +95,7 @@ export function parseLiffEventInput(body: unknown): { ok: true; input: LiffEvent
       screenTitle: cleanScreenTitle(typeof b.screenTitle === "string" ? b.screenTitle : null),
       icon: cleanIcon(b.icon, title),
       announce: optional(b.announce, 140),
-      mapUrl: map.url,
+      mapPoints: map.points,
       assignees,
       attachments: parseStagedList(b.attachments),
       publish: b.publish === true,
@@ -156,7 +156,7 @@ export async function createEventFromLiff(
       published_at: input.publish ? nowIso : null,
       created_by: caller.userId,
       updated_by: caller.userId,
-      metadata: { created_via: caller.via ?? "line", created_by_person_id: caller.personId, ...(input.mapUrl ? { map_url: input.mapUrl } : {}) },
+      metadata: { created_via: caller.via ?? "line", created_by_person_id: caller.personId, ...(input.mapPoints.length ? mapMetadata(input.mapPoints) : {}) },
     })
     .select("id")
     .single();

@@ -123,13 +123,20 @@ test("the LINE invite names the person and carries their own link", async () => 
   assert.ok(t.length < 5000);
 });
 
-test("a job with พิกัด gets a 🧭 นำทาง button on both cards", () => {
+test("a job with พิกัด gets 🧭 per pin + 🗺️ ดูพิกัด on both cards", () => {
   const base = task();
-  const t = task({ event: { ...base.event, mapUrl: "https://www.google.com/maps/search/?api=1&query=15.7,100.1" } });
-  const row = tgTask(t, "assignment").buttons?.at(-1) ?? [];
-  assert.equal(row[0].text, "🧭 นำทาง");
-  assert.equal((row[0] as { url?: string }).url, "https://www.google.com/maps/dir/?api=1&destination=15.7%2C100.1");
-  const line = JSON.stringify(taskBubble(t, "assignment"));
-  assert.ok(line.includes("maps/dir/?api=1&destination=15.7%2C100.1"));
+  const one = task({ event: { ...base.event, mapPoints: [{ label: "", lat: 15.7, lng: 100.1 }] } });
+  const b1 = tgTask(one, "assignment").buttons ?? [];
+  assert.equal(b1[1][0].text, "🧭 นำทาง");
+  assert.equal((b1[1][0] as { url?: string }).url, "https://www.google.com/maps/dir/?api=1&destination=15.7%2C100.1");
+  assert.equal(b1[2][0].text, "🗺️ ดูพิกัด");
+  assert.ok((b1[2][0] as { web_app?: { url: string } }).web_app?.url.endsWith("/liff/add-event/map?tg=1&e=e1"));
+  const three = task({ event: { ...base.event, mapPoints: [{ label: "เวที", lat: 15.7, lng: 100.1 }, { label: "", lat: 15.71, lng: 100.11 }, { label: "ที่จอดรถ", url: "https://maps.app.goo.gl/x" }] } });
+  const b3 = tgTask(three, "assignment").buttons ?? [];
+  assert.deepEqual(b3[1].map((b) => b.text), ["🧭 เวที", "🧭 จุดที่ 2"]);
+  assert.deepEqual(b3[2].map((b) => b.text), ["🧭 ที่จอดรถ"]);
+  assert.equal(b3[3][0].text, "🗺️ ดูพิกัด (3 จุด)");
+  const line = JSON.stringify(taskBubble(three, "assignment"));
+  assert.ok(line.includes("🧭 เวที") && line.includes("/map?e=e1"));
   assert.equal(tgTask(task(), "assignment").buttons?.length, 1);
 });

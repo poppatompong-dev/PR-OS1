@@ -14,6 +14,7 @@ import { resolveLocationId } from "@/lib/locations/resolve";
 import { cleanIcon } from "@/lib/events/job-icon";
 import { cleanScreenTitle } from "@/lib/events/screen-title";
 import { createAnnouncement } from "@/lib/announcements";
+import { mapMetadata, parseMapPoints } from "@/lib/maps";
 
 function emptyToNull(value: FormDataEntryValue | null): string | null {
   const text = String(value ?? "").trim();
@@ -60,10 +61,14 @@ export async function createEvent(formData: FormData) {
     fail(e instanceof Error ? e.message : "บันทึกสถานที่ไม่สำเร็จ");
   }
 
+  const map = parseMapPoints(formData.get("mapPoints"));
+  if (!map.ok) fail(map.error);
+
   const { data: created, error } = await supabase
     .from("events")
     .insert({
       title,
+      ...(map.points.length ? { metadata: mapMetadata(map.points) } : {}),
       event_date: eventDate,
       start_time: startTime,
       end_time: emptyToNull(formData.get("endTime")),
@@ -210,7 +215,7 @@ export async function editEvent(formData: FormData) {
 
   const { data: current, error: loadErr } = await supabase
     .from("events")
-    .select("title, event_date, start_time, end_time, location_id, status")
+    .select("title, event_date, start_time, end_time, location_id, status, metadata")
     .eq("id", eventId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -244,6 +249,12 @@ export async function editEvent(formData: FormData) {
     internal_note: emptyToNull(formData.get("internalNote")),
     updated_by: user.id,
   };
+  // พิกัด: only when the form sent the field, so other edits keep the pins.
+  if (formData.has("mapPoints")) {
+    const map = parseMapPoints(formData.get("mapPoints"));
+    if (!map.ok) redirect(`${editPath}?error=${encodeURIComponent(map.error)}`);
+    updatePayload.metadata = { ...((current.metadata as Record<string, unknown> | null) ?? {}), ...mapMetadata(map.points) };
+  }
   if (significant) updatePayload.has_changes = true;
 
   const { error: upErr } = await supabase.from("events").update(updatePayload).eq("id", eventId);

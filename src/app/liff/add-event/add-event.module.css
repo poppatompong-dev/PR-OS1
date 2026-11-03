@@ -503,27 +503,3 @@
   margin-top: 0;
 }
 
-/* 📍 พิกัด: ปุ่มใช้ตำแหน่งตอนนี้ + เปิดดูแผนที่ */
-.mapRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: -4px;
-}
-.mapBtn {
-  display: inline-flex;
-  align-items: center;
-  min-height: 42px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  font: inherit;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--blue-dark);
-  text-decoration: none;
-}
-.mapBtn:disabled {
-  opacity: 0.6;
-}

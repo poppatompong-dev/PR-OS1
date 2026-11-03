@@ -12,6 +12,7 @@ type Liff = {
   getIDToken(): string | null;
   isInClient(): boolean;
   closeWindow(): void;
+  openWindow?(opts: { url: string; external?: boolean }): void;
 };
 type TgWebApp = {
   initData: string;
@@ -19,6 +20,7 @@ type TgWebApp = {
   expand(): void;
   close(): void;
   showConfirm?(message: string, cb: (ok: boolean) => void): void;
+  openLink?(url: string): void;
   HapticFeedback?: { notificationOccurred(type: "success" | "error" | "warning"): void };
 };
 declare global {
@@ -36,6 +38,8 @@ export type Host = {
   /** Telegram's own confirm box when there is one (looks native), else the browser's. */
   confirm: (message: string) => Promise<boolean>;
   buzz: (ok: boolean) => void;
+  /** Open a link outside the app (Google Maps app / browser), e.g. 🧭 นำทาง. */
+  openLink: (url: string) => void;
 };
 
 const TG_SDK = "https://telegram.org/js/telegram-web-app.js";
@@ -74,6 +78,7 @@ async function start(liffId: string): Promise<Host | null> {
           else res(window.confirm(m));
         }),
       buzz: (ok) => app.HapticFeedback?.notificationOccurred(ok ? "success" : "error"),
+      openLink: (url) => (app.openLink ? app.openLink(url) : window.open(url, "_blank")),
     };
   }
   await load(LIFF_SDK, () => Boolean(window.liff), "LIFF SDK ไม่พร้อม");
@@ -90,6 +95,7 @@ async function start(liffId: string): Promise<Host | null> {
     close: () => sdk.closeWindow(),
     confirm: (m) => Promise.resolve(window.confirm(m)),
     buzz: () => undefined,
+    openLink: (url) => (sdk.openWindow && sdk.isInClient() ? sdk.openWindow({ url, external: true }) : window.open(url, "_blank")),
   };
 }
 

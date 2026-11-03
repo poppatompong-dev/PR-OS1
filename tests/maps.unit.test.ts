@@ -3,7 +3,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { navigateUrl, normalizeMapInput } from "@/lib/maps";
+import { mapMetadata, navigateUrl, normalizeMapInput, parseMapPoints, pointButton, pointsFromMetadata } from "@/lib/maps";
 
 test("coordinates become a maps link; directions from it", () => {
   const r = normalizeMapInput("15.7047, 100.1372");
@@ -19,4 +19,18 @@ test("maps links are kept, other links refused, empty is fine", () => {
   assert.equal(normalizeMapInput("https://www.google.com/search?q=x").ok, false);
   assert.deepEqual(normalizeMapInput(""), { ok: true, url: null });
   assert.equal(navigateUrl("https://maps.app.goo.gl/AbC"), "https://maps.app.goo.gl/AbC");
+});
+
+test("several pins: cleaned, capped at 5, a lone old link still reads as one pin", () => {
+  const r = parseMapPoints(JSON.stringify([{ label: "  เวที  ", lat: 15.7047123, lng: 100.1373456 }, { url: "https://maps.app.goo.gl/AbC" }]));
+  assert.deepEqual(r, { ok: true, points: [{ label: "เวที", lat: 15.704712, lng: 100.137346 }, { label: "", url: "https://maps.app.goo.gl/AbC" }] });
+  assert.equal(parseMapPoints(Array.from({ length: 6 }, () => ({ lat: 15, lng: 100 }))).ok, false);
+  assert.equal(parseMapPoints([{ lat: 99, lng: 100 }]).ok, false);
+  assert.equal(parseMapPoints([{ url: "https://evil.example.com" }]).ok, false);
+  assert.deepEqual(parseMapPoints("", "15.7, 100.1"), { ok: true, points: [{ label: "", lat: 15.7, lng: 100.1 }] });
+  assert.deepEqual(pointsFromMetadata({ map_url: "https://www.google.com/maps/search/?api=1&query=15.7,100.1" }), [{ label: "", lat: 15.7, lng: 100.1 }]);
+  const meta = mapMetadata([{ label: "", lat: 15.7, lng: 100.1 }]);
+  assert.equal(meta.map_url, "https://www.google.com/maps/search/?api=1&query=15.7,100.1");
+  assert.deepEqual(pointsFromMetadata(meta), meta.map_points);
+  assert.equal(pointButton({ label: "ลานจอดรถด้านหลังศาลากลางจังหวัด" }, 0, 2).length <= 20, true);
 });

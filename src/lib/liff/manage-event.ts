@@ -11,6 +11,7 @@
 // client because a phone caller has no web session — the caller was checked
 // in authenticateLiff() and here in canManage().
 
+import { mapMetadata, pointsFromMetadata, type MapPoint } from "@/lib/maps";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LiffCaller } from "@/lib/liff/auth";
 import type { LiffEventInput } from "@/lib/liff/create-event";
@@ -285,8 +286,8 @@ export type JobDetail = {
   shortNote: string;
   screenTitle: string;
   icon: string;
-  /** พิกัด (metadata.map_url). */
-  mapUrl: string;
+  /** พิกัด (metadata.map_points, or the older single map_url). */
+  mapPoints: MapPoint[];
   assignees: AssigneeRow[];
   attachmentCount: number;
 };
@@ -342,7 +343,7 @@ export async function getJob(admin: Admin, caller: LiffCaller, eventId: string):
       shortNote: ev.short_note ?? "",
       screenTitle: ev.screen_title ?? "",
       icon: ev.icon ?? "",
-      mapUrl: String((ev.metadata as { map_url?: string } | null)?.map_url ?? ""),
+      mapPoints: pointsFromMetadata(ev.metadata),
       assignees: (asgs ?? []).map((a) => ({ personId: a.person_id, roleIds: normalizeRoleIds([a.role_id, ...(a.extra_role_ids ?? [])]) })),
       attachmentCount: await countEventAttachments(admin, eventId),
     },
@@ -403,7 +404,7 @@ export async function editJob(admin: Admin, caller: LiffCaller, eventId: string,
       short_note: input.shortNote,
       screen_title: input.screenTitle,
       icon: input.icon,
-      metadata: { ...((ev.metadata as Record<string, unknown> | null) ?? {}), map_url: input.mapUrl },
+      metadata: { ...((ev.metadata as Record<string, unknown> | null) ?? {}), ...mapMetadata(input.mapPoints) },
       updated_by: caller.userId,
       ...(significant ? { has_changes: true } : {}),
       ...(publishNow ? { status: "published", published_at: nowIso } : {}),

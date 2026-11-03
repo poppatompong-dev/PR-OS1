@@ -12,11 +12,16 @@ import type { LineAction, LineMessage, QuickReply } from "@/lib/line/api";
 import type { TaskItem } from "@/lib/line/data";
 import { ackLabelFor, type FieldChange } from "@/lib/line/change-diff";
 import { LIFF_ADD_EVENT_URL } from "@/lib/liff/config";
-import { navigateUrl } from "@/lib/maps";
+import { pointButton, pointNavUrl } from "@/lib/maps";
 
 /** liff.line.me/<id>/files → the LIFF endpoint + "/files" (/liff/add-event/files). */
 export function attachmentsUrl(eventId: string): string {
   return `${LIFF_ADD_EVENT_URL}/files?e=${encodeURIComponent(eventId)}`;
+}
+
+/** liff.line.me/<id>/map → the map page with every pin of the job (/liff/add-event/map). */
+export function mapPageUrl(eventId: string): string {
+  return `${LIFF_ADD_EVENT_URL}/map?e=${encodeURIComponent(eventId)}`;
 }
 
 const PURPLE = "#5e2f73";
@@ -151,9 +156,9 @@ export function taskBubble(t: TaskItem, kind: BubbleKind, changes: FieldChange[]
       footer.push(button({ type: "postback", label: "ไม่สะดวก", data: postback.unavailable(t), displayText: "ไม่สะดวก" }));
     }
   }
-  if (t.event.mapUrl && t.event.status === "published") {
-    footer.push(button({ type: "uri", label: "🧭 นำทาง", uri: navigateUrl(t.event.mapUrl) }, "secondary"));
-  }
+  const pts = t.event.status === "published" ? (t.event.mapPoints ?? []) : [];
+  pts.forEach((p, i) => footer.push(button({ type: "uri", label: pointButton(p, i, pts.length), uri: pointNavUrl(p) }, "secondary")));
+  if (pts.length) footer.push(button({ type: "uri", label: pts.length > 1 ? `🗺️ ดูพิกัด (${pts.length} จุด)` : "🗺️ ดูพิกัด", uri: mapPageUrl(t.event.id) }, "secondary"));
   const files = t.event.attachmentCount ?? 0;
   if (files > 0) {
     // Opens inside LINE (LIFF): only people on this job, and the admins, can open the files.

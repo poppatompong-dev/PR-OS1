@@ -11,7 +11,7 @@ import { COMMANDS, UNAVAILABLE_PRESETS, appUrl, bangkokHhmm, type BubbleKind, ty
 import { esc, type TgButton, type TgMessage } from "@/lib/telegram/api";
 import { callName, shortName } from "@/lib/names";
 import { jobIcon } from "@/lib/events/job-icon";
-import { navigateUrl } from "@/lib/maps";
+import { pointButton, pointNavUrl } from "@/lib/maps";
 
 /** The job type at a glance, e.g. 🚴 for a cycling event. */
 const ic = (e: { title: string; icon?: string | null }) => jobIcon(e.title, e.icon).emoji;
@@ -136,8 +136,13 @@ export function tgTask(t: TaskItem, kind: BubbleKind, changes: FieldChange[] = [
     buttons.push(row);
   }
   const files = t.event.attachmentCount ?? 0;
+  // พิกัด (3 Nov 2026): 🧭 straight to directions for each pin (two per row), and
+  // 🗺️ the map page with every pin, its name and coordinates, and where I am.
+  const pts = t.event.status === "published" ? (t.event.mapPoints ?? []) : [];
+  const nav: TgButton[] = pts.map((p, i) => ({ text: pointButton(p, i, pts.length), url: pointNavUrl(p) }));
+  for (let i = 0; i < nav.length; i += 2) buttons.push(nav.slice(i, i + 2));
   const extra: TgButton[] = [];
-  if (t.event.mapUrl && t.event.status === "published") extra.push({ text: "🧭 นำทาง", url: navigateUrl(t.event.mapUrl) });
+  if (pts.length) extra.push({ text: `🗺️ ดูพิกัด${pts.length > 1 ? ` (${pts.length} จุด)` : ""}`, web_app: { url: appUrl(`/liff/add-event/map?tg=1&e=${t.event.id}`) } });
   if (files > 0) extra.push({ text: `📎 ไฟล์แนบ (${files})`, url: appUrl(`/events/${t.event.id}`) });
   if (extra.length) buttons.push(extra);
   return { text: lines.join("\n"), buttons };
