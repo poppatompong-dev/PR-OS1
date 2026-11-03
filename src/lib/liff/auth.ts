@@ -9,6 +9,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { env } from "@/lib/env";
 
 export type LiffCaller = {
+  /** Which app the form was opened in (audit text only). */
+  via?: "line" | "telegram";
   personId: string;
   displayName: string;
   /** auth.users id when this person also has a web account, else null. */
@@ -66,7 +68,7 @@ async function authenticateTelegram(initData: string, admin: SupabaseClient): Pr
   }
   const { data: profile } = await admin.from("profiles").select("id, role").eq("person_id", person.id).maybeSingle();
   if (profile?.role === "display") return { ok: false, status: 403, error: "บัญชีจอทีวีเพิ่มงานไม่ได้" };
-  return { ok: true, caller: { personId: person.id, displayName: person.display_name, userId: profile?.id ?? null } };
+  return { ok: true, caller: { personId: person.id, displayName: person.display_name, userId: profile?.id ?? null, via: "telegram" } };
 }
 
 export async function authenticateLiff(request: Request, admin: SupabaseClient): Promise<LiffAuthResult> {
@@ -97,5 +99,5 @@ export async function authenticateLiff(request: Request, admin: SupabaseClient):
   // A TV-screen account never adds work, even if someone linked a LINE to it.
   if (profile?.role === "display") return { ok: false, status: 403, error: "บัญชีจอทีวีเพิ่มงานไม่ได้" };
 
-  return { ok: true, caller: { personId: person.id, displayName: person.display_name, userId: profile?.id ?? null } };
+  return { ok: true, caller: { personId: person.id, displayName: person.display_name, userId: profile?.id ?? null, via: "line" } };
 }

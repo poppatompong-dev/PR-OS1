@@ -150,7 +150,7 @@ export async function createEventFromLiff(
       published_at: input.publish ? nowIso : null,
       created_by: caller.userId,
       updated_by: caller.userId,
-      metadata: { created_via: "line", created_by_person_id: caller.personId },
+      metadata: { created_via: caller.via ?? "line", created_by_person_id: caller.personId },
     })
     .select("id")
     .single();
@@ -187,14 +187,14 @@ export async function createEventFromLiff(
     entity_id: created.id,
     action: input.publish ? "publish" : "create",
     changed_by: caller.userId,
-    summary: `${input.publish ? "สร้างและเผยแพร่งาน" : "สร้างร่างงาน"} ผ่าน LINE โดย ${caller.displayName}: ${input.title}`,
+    summary: `${input.publish ? "สร้างและเผยแพร่งาน" : "สร้างร่างงาน"} ผ่าน ${caller.via === "telegram" ? "Telegram" : "LINE"} โดย ${caller.displayName}: ${input.title}`,
     new_values: {
       title: input.title,
       event_date: input.eventDate,
       start_time: input.startTime,
       status: input.publish ? "published" : "draft",
       assignees: input.assignees.length,
-      via: "line",
+      via: caller.via ?? "line",
     },
   });
 
