@@ -137,7 +137,9 @@
 
 /* งานที่จบแล้ววันนี้: ค้างไว้ทั้งวัน แต่จางลงและอยู่ท้ายรายการ (คุณกุ๊ก 3 พ.ย. 2569) */
 .bm-job.is-done { opacity: 0.5; filter: grayscale(0.7); }
-.bm-done { margin-left: calc(14 * var(--u)); font-size: 0.6em; font-weight: 700; padding: 0.1em 0.6em; border-radius: 999px; background: var(--bm-line); vertical-align: middle; font-family: inherit; }
+/* the time can fill the card (one job, "10.00 น. - 11.00 น."): the badge drops to its own line instead of being cut off */
+.bm-job.is-done .bm-job-time { display: flex; flex-wrap: wrap; align-items: center; column-gap: calc(14 * var(--u)); row-gap: calc(6 * var(--u)); }
+.bm-done { flex: none; font-size: 0.6em; font-weight: 700; padding: 0.1em 0.6em; border-radius: 999px; background: var(--bm-line); vertical-align: middle; font-family: inherit; }
 
 /* สถิติทีมข้างนาฬิกา (3 พ.ย. 2569): ผลงานเดือนนี้ + รับทราบไวแค่ไหน · ไม่มีชื่อคน */
 .bm-pulse { margin-left: auto; display: flex; gap: calc(16 * var(--u)); align-items: stretch; }
