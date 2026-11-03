@@ -24,6 +24,26 @@ test("ack: share acknowledged and median minutes; notices under an hour old wait
   assert.deepEqual(ackStats([], [], now), { rate: null, medianMin: null, sent: 0, fastest: null });
 });
 
+test("fastest = quickest over the week, not one lucky tap", () => {
+  const sent = [
+    { assignmentId: "a1", sentAt: ago(600), personId: "aeh" }, // 22 s once, then slow
+    { assignmentId: "a2", sentAt: ago(500), personId: "aeh" },
+    { assignmentId: "b1", sentAt: ago(400), personId: "pang" },
+    { assignmentId: "b2", sentAt: ago(300), personId: "pang" },
+    { assignmentId: "b3", sentAt: ago(200), personId: "pang" },
+    { assignmentId: "c1", sentAt: ago(100), personId: "solo" }, // only one tap: not enough
+  ];
+  const acks = [
+    { assignmentId: "a1", at: ago(600 - 22 / 60) },
+    { assignmentId: "a2", at: ago(500 - 60) },
+    { assignmentId: "b1", at: ago(399) },
+    { assignmentId: "b2", at: ago(299.5) },
+    { assignmentId: "b3", at: ago(185) },
+    { assignmentId: "c1", at: ago(100 - 0.1) },
+  ];
+  assert.deepEqual(ackStats(sent, acks, now).fastest, { personId: "pang", minutes: 1 });
+});
+
 test("helpers", () => {
   assert.equal(median([3, 1, 2]), 2);
   assert.equal(median([]), null);

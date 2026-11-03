@@ -3,8 +3,10 @@
 // animation, next to the clock). Team totals only, never a name.
 //   month   jobs done this month (published, date ≤ today) · person-slots
 //   ack     last 7 days: share of assignment notices acknowledged ·
-//           median minutes from the notice to the tap · the fastest
-//           tapper's face (owner asked for it: praise, not blame)
+//           median minutes from the notice to the tap · the face of whoever
+//           is fastest on the whole week (their own median; at least 2 taps
+//           when anyone has 2 — owner, 3 Nov 2026: one lucky 22-second tap
+//           should not beat someone who is always quick)
 // Test jobs ("ทดสอบ" in the title) are left out.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -38,7 +40,7 @@ export function ackStats(
   for (const a of acks) ackTimes.set(a.assignmentId, [...(ackTimes.get(a.assignmentId) ?? []), Date.parse(a.at)]);
   const mins: number[] = [];
   let acked = 0;
-  let fastest: { personId: string; minutes: number } | null = null;
+  const byPerson = new Map<string, number[]>();
   for (const s of fair) {
     const sentAt = Date.parse(s.sentAt);
     // The first tap after this notice (a minute of clock slack).
@@ -47,8 +49,12 @@ export function ackStats(
     acked++;
     const m = Math.max(0, (Math.min(...after) - sentAt) / 60_000);
     mins.push(m);
-    if (s.personId && (!fastest || m < fastest.minutes)) fastest = { personId: s.personId, minutes: m };
+    if (s.personId) byPerson.set(s.personId, [...(byPerson.get(s.personId) ?? []), m]);
   }
+  const people = [...byPerson].map(([personId, xs]) => ({ personId, n: xs.length, med: median(xs)! }));
+  const pool = people.some((p) => p.n >= 2) ? people.filter((p) => p.n >= 2) : people;
+  pool.sort((a, b) => a.med - b.med || b.n - a.n || a.personId.localeCompare(b.personId));
+  const fastest = pool.length ? { personId: pool[0].personId, minutes: pool[0].med } : null;
   const med = median(mins);
   return {
     rate: Math.round((acked / fair.length) * 100),
