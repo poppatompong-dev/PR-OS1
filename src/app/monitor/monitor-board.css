@@ -138,3 +138,35 @@
 /* งานที่จบแล้ววันนี้: ค้างไว้ทั้งวัน แต่จางลงและอยู่ท้ายรายการ (คุณกุ๊ก 3 พ.ย. 2569) */
 .bm-job.is-done { opacity: 0.5; filter: grayscale(0.7); }
 .bm-done { margin-left: calc(14 * var(--u)); font-size: 0.6em; font-weight: 700; padding: 0.1em 0.6em; border-radius: 999px; background: var(--bm-line); vertical-align: middle; font-family: inherit; }
+
+/* สถิติทีมข้างนาฬิกา (3 พ.ย. 2569): ผลงานเดือนนี้ + รับทราบไวแค่ไหน · ไม่มีชื่อคน */
+.bm-pulse { margin-left: auto; display: flex; gap: calc(16 * var(--u)); align-items: stretch; }
+.bm-pulse + .hm-clock { margin-left: calc(28 * var(--u)); }
+.bm-pulse-item {
+  position: relative; overflow: hidden; display: flex; align-items: center; gap: calc(14 * var(--u));
+  padding: calc(10 * var(--u)) calc(20 * var(--u)); border-radius: calc(20 * var(--u));
+  background: var(--bm-card); border: 1px solid var(--bm-line);
+}
+.bm-pulse-item b { display: block; font-size: calc(44 * var(--u)); font-weight: 800; line-height: 1; color: var(--hm-accent); font-variant-numeric: tabular-nums; }
+.bm-pulse-item b small { font-size: .5em; font-weight: 700; margin-left: .15em; }
+.bm-pulse-item span { display: block; font-size: calc(19 * var(--u)); opacity: .8; white-space: nowrap; margin-top: calc(4 * var(--u)); }
+.bm-pulse-ic { font-size: calc(40 * var(--u)); line-height: 1; }
+.bm-ring { width: calc(58 * var(--u)); height: calc(58 * var(--u)); transform: rotate(-90deg); flex: none; }
+.bm-ring circle { fill: none; stroke-width: 7; }
+.bm-ring-bg { stroke: var(--bm-line); }
+.bm-ring-fg { stroke: var(--hm-accent); stroke-linecap: round; }
+.bm-pulse.is-live .bm-ring-fg { transition: stroke-dashoffset 1.4s cubic-bezier(.2, .8, .2, 1); }
+/* แสงวิ่งผ่านเบา ๆ ทุก 12 วิ */
+.bm-pulse.is-live .bm-pulse-item::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .16) 50%, transparent 70%);
+  transform: translateX(-120%); animation: bm-shine 12s ease-in-out infinite;
+}
+.bm-pulse.is-live .bm-pulse-item + .bm-pulse-item::after { animation-delay: 1.2s; }
+@keyframes bm-shine { 0%, 82% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+.bm--b .bm-pulse-item { background: rgba(106, 44, 145, .06); }
+.bm--b .bm-pulse-item b { color: #6a2c91; }
+.bm--b .bm-ring-fg { stroke: #6a2c91; }
+.bm--c .bm-pulse-item b { color: #ffd36b; }
+.bm--c .bm-ring-fg { stroke: #ffd36b; }
+@media (prefers-reduced-motion: reduce) { .bm-pulse-item::after { animation: none !important; } .bm-ring-fg { transition: none !important; } }

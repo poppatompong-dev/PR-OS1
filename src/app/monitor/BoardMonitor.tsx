@@ -17,6 +17,7 @@ import { shortName } from "@/lib/monitor/rows";
 import { TH_MONTH_SHORT, TH_WEEKDAY_SHORT, bangkokNow, isoParts, thaiLongDate, whenLabel } from "@/lib/monitor/thai-time";
 import { Avatar } from "@/components/Avatar";
 import "./monitor-hero.css";
+import { TeamPulse } from "./TeamPulse";
 import "./monitor-board.css";
 
 export type BoardTheme = "a" | "b" | "c";
@@ -135,6 +136,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
           <h1>เทศบาลนครนครสวรรค์</h1>
           <p>ตารางงานฝ่ายบริการและเผยแพร่วิชาการ</p>
         </div>
+        <TeamPulse still={staticMode} />
         <div className="hm-clock bm-clock">
           <b>{clock ? `${clock.hh}.${clock.mm}` : "--.--"}<small> น.</small></b>
           <span>{today ? thaiLongDate(today) : ""}</span>
