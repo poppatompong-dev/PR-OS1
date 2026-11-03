@@ -19,9 +19,9 @@ export const dynamic = "force-dynamic";
 export default async function MonitorPage({
   searchParams,
 }: {
-  searchParams: Promise<{ classic?: string; v?: string; static?: string; theme?: string }>;
+  searchParams: Promise<{ classic?: string; v?: string; static?: string; theme?: string; fest?: string }>;
 }) {
-  const { classic, v, static: still, theme } = await searchParams;
+  const { classic, v, static: still, theme, fest } = await searchParams;
   if (classic === "1") {
     return <ClassicMonitor />;
   }
@@ -38,5 +38,5 @@ export default async function MonitorPage({
   }
   if (v === "hero") return <HeroMonitor linkable={linkable} staticMode={still === "1"} />;
   const boardTheme = theme === "b" || theme === "c" ? theme : "a";
-  return <BoardMonitor linkable={linkable} staticMode={still === "1"} theme={boardTheme} />;
+  return <BoardMonitor linkable={linkable} staticMode={still === "1"} theme={boardTheme} fest={fest} />;
 }

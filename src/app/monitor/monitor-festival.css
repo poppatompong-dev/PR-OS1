@@ -1,0 +1,104 @@
+/* =====================================================================
+   ธีมเทศกาลบนจอทีวี (3 พ.ย. 2569) — ชิ้นน้อย นุ่ม อยู่ขอบจอ ไม่ทับตัวหนังสือ
+   (คุณกุ๊กไม่ชอบจอรก) · ความลึก = ขนาด/เบลอ/ความเร็ว · จอนิ่ง = หยุดทุกอย่าง
+   ===================================================================== */
+
+.fest { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+/* เวทีเล็กในที่ว่างหัวจอ ระหว่างชื่อเทศบาลกับสถิติ */
+.bm-fest-stage { position: relative; flex: 1 1 auto; align-self: stretch; min-width: 0; height: calc(130 * var(--u)); pointer-events: none; }
+.bm > :not(.fest) { position: relative; z-index: 1; }
+.fx { position: absolute; will-change: transform; }
+.fx svg { display: block; width: 100%; height: auto; }
+.fest--still .fx, .fest--still .fx * { animation-play-state: paused !important; }
+
+/* chip ใต้ชื่อเทศบาล */
+.bm-fest-chip {
+  display: inline-block; margin-top: calc(6 * var(--u)); padding: calc(3 * var(--u)) calc(16 * var(--u));
+  border-radius: 999px; font-size: calc(21 * var(--u)); font-weight: 700; color: #ffd36b;
+  background: rgba(255, 211, 107, .14); border: 1px solid rgba(255, 211, 107, .42);
+  animation: fx-chip 4s ease-in-out infinite;
+}
+@keyframes fx-chip { 50% { box-shadow: 0 0 calc(18 * var(--u)) rgba(255, 211, 107, .4); } }
+.hm--still .bm-fest-chip { animation: none; }
+
+/* ---------- ลอยกระทง: จันทร์เต็มดวง + กระทงมีเงาสะท้อน + โคมลอยเล็ก ๆ ---------- */
+.fx-moon {
+  right: 10%; top: calc(2 * var(--u)); width: calc(64 * var(--u)); height: calc(64 * var(--u)); border-radius: 50%;
+  background: radial-gradient(circle at 40% 38%, #fffdf5, #ffeec2 55%, #f5cf7f);
+  box-shadow: 0 0 calc(40 * var(--u)) calc(8 * var(--u)) rgba(255, 232, 170, .35), 0 0 calc(110 * var(--u)) calc(30 * var(--u)) rgba(255, 220, 140, .12);
+  animation: fx-moon 8s ease-in-out infinite;
+}
+@keyframes fx-moon { 50% { box-shadow: 0 0 calc(56 * var(--u)) calc(12 * var(--u)) rgba(255, 232, 170, .45), 0 0 calc(140 * var(--u)) calc(40 * var(--u)) rgba(255, 220, 140, .16); } }
+.fx-krathong { left: 26%; bottom: calc(22 * var(--u)); width: calc(92 * var(--u)); animation: fx-bob 3.6s ease-in-out infinite; transform-origin: 50% 90%; }
+.fx-reflect { bottom: auto; top: calc(108 * var(--u)); transform: scaleY(-.6); opacity: .22; filter: blur(1.5px); animation: fx-reflect 3.6s ease-in-out infinite; transform-origin: 50% 0;
+  -webkit-mask-image: linear-gradient(180deg, #000, transparent 70%); mask-image: linear-gradient(180deg, #000, transparent 70%); }
+@keyframes fx-bob { 50% { transform: translateY(calc(-4 * var(--u))) rotate(-2.5deg); } }
+@keyframes fx-reflect { 50% { transform: scaleY(-.6) translateY(calc(4 * var(--u))) rotate(2.5deg); } }
+.fx-water { left: 12%; right: 30%; top: calc(104 * var(--u)); height: calc(10 * var(--u)); border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(150, 190, 255, .35), transparent); animation: fx-ripple 4s ease-in-out infinite; }
+@keyframes fx-ripple { 50% { transform: scaleX(1.12); opacity: .6; } }
+.fx-flame { transform-box: fill-box; transform-origin: 50% 100%; animation: fx-flicker .18s ease-in-out infinite alternate; }
+.fx-halo { animation: fx-halo 1.6s ease-in-out infinite alternate; }
+@keyframes fx-flicker { to { transform: scaleY(.82) scaleX(1.12); } }
+@keyframes fx-halo { to { opacity: .55; } }
+.fx-sky { width: calc(22 * var(--u) * var(--s)); }
+.fx-sky svg { filter: drop-shadow(0 0 calc(8 * var(--u)) rgba(255, 170, 80, .9)); }
+
+/* ---------- ลอยขึ้น / โปรยลง (อยู่ในเวทีหัวจอเท่านั้น) ---------- */
+.fx-up { bottom: calc(10 * var(--u)); opacity: 0; animation: fx-up var(--d) ease-in-out infinite; animation-delay: var(--delay); }
+@keyframes fx-up {
+  0% { transform: translate(0, 0); opacity: 0; }
+  15% { opacity: var(--o); }
+  80% { opacity: var(--o); }
+  100% { transform: translate(var(--sway), calc(-170 * var(--u))); opacity: 0; }
+}
+.fx-down { top: calc(-24 * var(--u)); width: calc(26 * var(--u) * var(--s)); opacity: 0; animation: fx-down var(--d) linear infinite; animation-delay: var(--delay); }
+.fx-down svg { animation: fx-spin 8s linear infinite; }
+@keyframes fx-down {
+  0% { transform: translate(0, 0); opacity: 0; }
+  12% { opacity: var(--o); }
+  78% { opacity: var(--o); }
+  100% { transform: translate(var(--sway), calc(140 * var(--u))); opacity: 0; }
+}
+@keyframes fx-spin { to { transform: rotate(360deg); } }
+.fx-balloon { width: calc(38 * var(--u) * var(--s)); }
+.fx-balloon svg { animation: fx-bob 4s ease-in-out infinite; }
+.fx-drop { width: calc(18 * var(--u) * var(--s)); }
+
+/* ---------- โทนสีทั้งจอ (จาง ๆ ด้านบน) ---------- */
+.fx-tint--loy { background: radial-gradient(calc(900 * var(--u)) calc(260 * var(--u)) at 45% 0%, rgba(255, 220, 150, .10), transparent 70%); }
+.fx-tint--cny { background: linear-gradient(180deg, rgba(215, 38, 46, .16), transparent 30%); }
+.fx-tint--father { background: linear-gradient(180deg, rgba(255, 211, 63, .12), transparent 32%); }
+.fx-tint--mother { background: linear-gradient(180deg, rgba(130, 175, 255, .14), transparent 32%); }
+.fx-tint--songkran { background: linear-gradient(180deg, rgba(90, 200, 255, .12), transparent 34%); }
+.fx-tint--newyear { background: linear-gradient(180deg, rgba(70, 110, 255, .10), transparent 38%); }
+.fx-tint--child { background: linear-gradient(180deg, rgba(255, 160, 220, .08), transparent 32%); }
+.bm--fest-loy .hm-ticker { background: linear-gradient(180deg, rgba(40, 70, 140, .45), rgba(20, 40, 90, .65)); border-color: rgba(140, 180, 255, .35); }
+
+/* ---------- ตรุษจีนปากน้ำโพ: โคมแดง 2 ดวง + ประกายทอง ---------- */
+.fx-hang { top: calc(-34 * var(--u)); width: calc(46 * var(--u)); transform-origin: 50% 0; animation: fx-swing 3.6s ease-in-out infinite alternate; animation-delay: var(--delay); }
+.fx-hang svg { filter: drop-shadow(0 0 calc(14 * var(--u)) rgba(255, 70, 60, .55)); }
+@keyframes fx-swing { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+.fx-tassel { animation: fx-swing 2.4s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 0; }
+.fx-twinkle {
+  width: calc(7 * var(--u)); height: calc(7 * var(--u)); border-radius: 50%; background: #ffd36b;
+  box-shadow: 0 0 calc(12 * var(--u)) #ffd36b; opacity: 0; animation: fx-twinkle var(--d) ease-in-out infinite; animation-delay: var(--delay);
+}
+@keyframes fx-twinkle { 0%, 100% { opacity: 0; transform: scale(.4); } 50% { opacity: .9; transform: scale(1); } }
+
+/* ---------- ปีใหม่: พลุเล็ก 3 ลูก สลับกันจุด ---------- */
+.fx-burst { width: 0; height: 0; }
+.fx-burst i {
+  position: absolute; width: calc(5 * var(--u)); height: calc(5 * var(--u)); border-radius: 50%;
+  background: var(--c); box-shadow: 0 0 calc(10 * var(--u)) var(--c);
+  opacity: 0; animation: fx-spark 6.6s ease-out infinite; animation-delay: var(--delay);
+}
+@keyframes fx-spark {
+  0% { transform: translate(0, 0) scale(1); opacity: 0; }
+  2% { opacity: 1; }
+  18% { transform: translate(var(--dx), var(--dy)) scale(.9); opacity: .95; }
+  32% { transform: translate(var(--dx), calc(var(--dy) + 22 * var(--u))) scale(.3); opacity: 0; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) { .bm-fest-stage .fx, .bm-fest-stage .fx * { animation: none !important; opacity: .8; } }

@@ -18,6 +18,8 @@ import { TH_MONTH_SHORT, TH_WEEKDAY_SHORT, bangkokNow, isoParts, thaiLongDate, w
 import { Avatar } from "@/components/Avatar";
 import "./monitor-hero.css";
 import { TeamPulse } from "./TeamPulse";
+import { FestivalLayer, FestivalStage } from "./FestivalLayer";
+import { festivalFor, isFestivalKey, previewFestival } from "@/lib/monitor/festivals";
 import "./monitor-board.css";
 
 export type BoardTheme = "a" | "b" | "c";
@@ -46,7 +48,7 @@ function dayParts(iso: string) {
   return { wd: TH_WEEKDAY_SHORT[p.weekday], d: p.d, mon: TH_MONTH_SHORT[p.m - 1] };
 }
 
-export function BoardMonitor({ linkable = false, staticMode = false, theme = "a" }: { linkable?: boolean; staticMode?: boolean; theme?: BoardTheme }) {
+export function BoardMonitor({ linkable = false, staticMode = false, theme = "a", fest }: { linkable?: boolean; staticMode?: boolean; theme?: BoardTheme; fest?: string }) {
   const [events, setEvents] = useState<MonitorEvent[]>([]);
   const [notes, setNotes] = useState<MonitorAnnouncement[]>([]);
   const [team, setTeam] = useState<{ ids: Record<string, string>; off: Set<string> }>({ ids: {}, off: new Set() });
@@ -124,9 +126,12 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
   };
 
   const todayCount = board?.todayJobs.length ?? 0;
+  // ธีมเทศกาลตามวันที่ (?fest=loy ใช้ดูตัวอย่าง)
+  const festival = isFestivalKey(fest) ? previewFestival(fest) : today ? festivalFor(today) : null;
 
   return (
-    <div className={`hm bm bm--${theme}${staticMode ? " hm--still" : ""}`}>
+    <div className={`hm bm bm--${theme}${staticMode ? " hm--still" : ""}${festival ? ` bm--fest-${festival.key}` : ""}`}>
+      <FestivalLayer festival={festival?.key ?? null} />
       <header className="hm-head bm-head">
         <span className="bm-seal">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -135,7 +140,9 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
         <div>
           <h1>เทศบาลนครนครสวรรค์</h1>
           <p>ตารางงานฝ่ายบริการและเผยแพร่วิชาการ</p>
+          {festival?.chip ? <span className="bm-fest-chip">{festival.chip}</span> : null}
         </div>
+        <FestivalStage festival={festival?.key ?? null} still={staticMode} />
         <TeamPulse still={staticMode} noFace={team.off} />
         <div className="hm-clock bm-clock">
           <b>{clock ? `${clock.hh}.${clock.mm}` : "--.--"}<small> น.</small></b>
