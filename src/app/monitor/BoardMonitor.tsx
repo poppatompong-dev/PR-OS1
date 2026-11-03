@@ -136,7 +136,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
           <h1>เทศบาลนครนครสวรรค์</h1>
           <p>ตารางงานฝ่ายบริการและเผยแพร่วิชาการ</p>
         </div>
-        <TeamPulse still={staticMode} />
+        <TeamPulse still={staticMode} noFace={team.off} />
         <div className="hm-clock bm-clock">
           <b>{clock ? `${clock.hh}.${clock.mm}` : "--.--"}<small> น.</small></b>
           <span>{today ? thaiLongDate(today) : ""}</span>

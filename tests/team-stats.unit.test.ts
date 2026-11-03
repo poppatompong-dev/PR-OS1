@@ -10,8 +10,8 @@ const ago = (min: number) => new Date(now - min * 60_000).toISOString();
 
 test("ack: share acknowledged and median minutes; notices under an hour old wait", () => {
   const sent = [
-    { assignmentId: "a", sentAt: ago(300) },
-    { assignmentId: "b", sentAt: ago(200) },
+    { assignmentId: "a", sentAt: ago(300), personId: "p1" },
+    { assignmentId: "b", sentAt: ago(200), personId: "p2" },
     { assignmentId: "c", sentAt: ago(120) },
     { assignmentId: "d", sentAt: ago(30) }, // too fresh, not counted
   ];
@@ -20,8 +20,8 @@ test("ack: share acknowledged and median minutes; notices under an hour old wait
     { assignmentId: "b", at: ago(190) }, // 10 min
     { assignmentId: "b", at: ago(100) }, // later re-ack ignored
   ];
-  assert.deepEqual(ackStats(sent, acks, now), { rate: 67, medianMin: 7, sent: 3 });
-  assert.deepEqual(ackStats([], [], now), { rate: null, medianMin: null, sent: 0 });
+  assert.deepEqual(ackStats(sent, acks, now), { rate: 67, medianMin: 7, sent: 3, fastest: { personId: "p1", minutes: 4 } });
+  assert.deepEqual(ackStats([], [], now), { rate: null, medianMin: null, sent: 0, fastest: null });
 });
 
 test("helpers", () => {

@@ -3,14 +3,15 @@
 // animation, next to the clock). Team totals only, never a name.
 //   month   jobs done this month (published, date ≤ today) · person-slots
 //   ack     last 7 days: share of assignment notices acknowledged ·
-//           median minutes from the notice to the tap
+//           median minutes from the notice to the tap · the fastest
+//           tapper's face (owner asked for it: praise, not blame)
 // Test jobs ("ทดสอบ" in the title) are left out.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type TeamStats = {
   month: { jobs: number; slots: number; label: string };
-  ack: { rate: number | null; medianMin: number | null; sent: number };
+  ack: { rate: number | null; medianMin: number | null; sent: number; fastest?: { personId: string; minutes: number } | null };
 };
 
 const THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
@@ -26,27 +27,35 @@ export function median(xs: number[]): number | null {
 
 /** Notices sent in the window vs. the first acknowledgement after each one. */
 export function ackStats(
-  sent: Array<{ assignmentId: string; sentAt: string }>,
+  sent: Array<{ assignmentId: string; sentAt: string; personId?: string | null }>,
   acks: Array<{ assignmentId: string; at: string }>,
   now = Date.now(),
 ): TeamStats["ack"] {
   // A notice under an hour old has not had a fair chance yet.
   const fair = sent.filter((s) => now - Date.parse(s.sentAt) >= 3600_000);
-  if (!fair.length) return { rate: null, medianMin: null, sent: 0 };
+  if (!fair.length) return { rate: null, medianMin: null, sent: 0, fastest: null };
   const ackTimes = new Map<string, number[]>();
   for (const a of acks) ackTimes.set(a.assignmentId, [...(ackTimes.get(a.assignmentId) ?? []), Date.parse(a.at)]);
   const mins: number[] = [];
   let acked = 0;
+  let fastest: { personId: string; minutes: number } | null = null;
   for (const s of fair) {
     const sentAt = Date.parse(s.sentAt);
     // The first tap after this notice (a minute of clock slack).
     const after = (ackTimes.get(s.assignmentId) ?? []).filter((t) => t >= sentAt - 60_000);
     if (!after.length) continue;
     acked++;
-    mins.push(Math.max(0, (Math.min(...after) - sentAt) / 60_000));
+    const m = Math.max(0, (Math.min(...after) - sentAt) / 60_000);
+    mins.push(m);
+    if (s.personId && (!fastest || m < fastest.minutes)) fastest = { personId: s.personId, minutes: m };
   }
   const med = median(mins);
-  return { rate: Math.round((acked / fair.length) * 100), medianMin: med === null ? null : Math.max(1, Math.round(med)), sent: fair.length };
+  return {
+    rate: Math.round((acked / fair.length) * 100),
+    medianMin: med === null ? null : Math.max(1, Math.round(med)),
+    sent: fair.length,
+    fastest: fastest ? { personId: fastest.personId, minutes: Math.max(1, Math.round(fastest.minutes)) } : null,
+  };
 }
 
 export async function loadTeamStats(admin: SupabaseClient, todayIso: string, now = Date.now()): Promise<TeamStats> {
@@ -74,14 +83,14 @@ export async function loadTeamStats(admin: SupabaseClient, todayIso: string, now
   const since = new Date(now - 7 * 24 * 3600_000).toISOString();
   const { data: notes } = await admin
     .from("notifications")
-    .select("assignment_id, sent_at, event:events(title, deleted_at)")
+    .select("assignment_id, person_id, sent_at, event:events(title, deleted_at)")
     .eq("notification_type", "assignment")
     .eq("status", "sent")
     .gte("sent_at", since)
     .not("assignment_id", "is", null);
-  const sent = ((notes ?? []) as unknown as Array<{ assignment_id: string; sent_at: string; event: { title: string; deleted_at: string | null } | null }>)
+  const sent = ((notes ?? []) as unknown as Array<{ assignment_id: string; person_id: string | null; sent_at: string; event: { title: string; deleted_at: string | null } | null }>)
     .filter((n) => n.event && !n.event.deleted_at && !isTestTitle(n.event.title))
-    .map((n) => ({ assignmentId: n.assignment_id, sentAt: n.sent_at }));
+    .map((n) => ({ assignmentId: n.assignment_id, sentAt: n.sent_at, personId: n.person_id }));
   let acks: Array<{ assignmentId: string; at: string }> = [];
   if (sent.length) {
     const { data: k } = await admin

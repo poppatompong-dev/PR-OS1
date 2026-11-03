@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { TeamStats } from "@/lib/monitor/team-stats";
+import { avatarUrl, hasAvatar } from "@/lib/avatars";
 
 function useCountUp(target: number, animate: boolean): number {
   const [v, setV] = useState(animate ? 0 : target);
@@ -31,7 +32,7 @@ function useCountUp(target: number, animate: boolean): number {
   return v;
 }
 
-export function TeamPulse({ still }: { still: boolean }) {
+export function TeamPulse({ still, noFace }: { still: boolean; noFace: Set<string> }) {
   const [s, setS] = useState<TeamStats | null>(null);
   const [motion, setMotion] = useState(!still);
   useEffect(() => {
@@ -52,6 +53,8 @@ export function TeamPulse({ still }: { still: boolean }) {
   const rate = useCountUp(s?.ack.rate ?? 0, motion);
   if (!s) return null;
 
+  const f = s.ack.fastest;
+  const fast = f && hasAvatar(f.personId) && !noFace.has(f.personId) ? f : null;
   const R = 26;
   const C = 2 * Math.PI * R;
   const hasAck = s.ack.rate !== null;
@@ -74,6 +77,13 @@ export function TeamPulse({ still }: { still: boolean }) {
             <b>{rate}<small>%</small></b>
             <span>รับทราบ 7 วัน{s.ack.medianMin !== null ? ` · เฉลี่ย ~${s.ack.medianMin} นาที` : ""}</span>
           </div>
+          {fast ? (
+            <div className="bm-fast" title="รับทราบเร็วสุด 7 วัน">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={avatarUrl(fast.personId)} alt="" />
+              <small>⚡ {fast.minutes} นาที</small>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

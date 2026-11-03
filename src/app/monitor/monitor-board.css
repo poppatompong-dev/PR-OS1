@@ -170,3 +170,10 @@
 .bm--c .bm-pulse-item b { color: #ffd36b; }
 .bm--c .bm-ring-fg { stroke: #ffd36b; }
 @media (prefers-reduced-motion: reduce) { .bm-pulse-item::after { animation: none !important; } .bm-ring-fg { transition: none !important; } }
+/* หน้าคนที่รับทราบเร็วสุด 7 วัน (ชมทีม ไม่ใช่จับผิด) */
+.bm-fast { display: flex; flex-direction: column; align-items: center; gap: calc(2 * var(--u)); margin-left: calc(6 * var(--u)); }
+.bm-fast img { width: calc(52 * var(--u)); height: calc(52 * var(--u)); border-radius: 50%; object-fit: cover; border: calc(3 * var(--u)) solid #ffd36b; box-shadow: 0 0 calc(14 * var(--u)) rgba(255, 211, 107, .45); }
+.bm-fast small { font-size: calc(15 * var(--u)); font-weight: 700; color: #ffd36b; white-space: nowrap; }
+.bm-pulse.is-live .bm-fast img { animation: bm-fast-pop 1.2s cubic-bezier(.2, .9, .3, 1.4) both; }
+@keyframes bm-fast-pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.bm--b .bm-fast small { color: #a86a00; }
