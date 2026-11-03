@@ -11,6 +11,7 @@ import { COMMANDS, UNAVAILABLE_PRESETS, appUrl, bangkokHhmm, type BubbleKind, ty
 import { esc, type TgButton, type TgMessage } from "@/lib/telegram/api";
 import { callName, shortName } from "@/lib/names";
 import { jobIcon } from "@/lib/events/job-icon";
+import { navigateUrl } from "@/lib/maps";
 
 /** The job type at a glance, e.g. 🚴 for a cycling event. */
 const ic = (e: { title: string; icon?: string | null }) => jobIcon(e.title, e.icon).emoji;
@@ -135,7 +136,10 @@ export function tgTask(t: TaskItem, kind: BubbleKind, changes: FieldChange[] = [
     buttons.push(row);
   }
   const files = t.event.attachmentCount ?? 0;
-  if (files > 0) buttons.push([{ text: `📎 ไฟล์แนบ (${files})`, url: appUrl(`/events/${t.event.id}`) }]);
+  const extra: TgButton[] = [];
+  if (t.event.mapUrl && t.event.status === "published") extra.push({ text: "🧭 นำทาง", url: navigateUrl(t.event.mapUrl) });
+  if (files > 0) extra.push({ text: `📎 ไฟล์แนบ (${files})`, url: appUrl(`/events/${t.event.id}`) });
+  if (extra.length) buttons.push(extra);
   return { text: lines.join("\n"), buttons };
 }
 

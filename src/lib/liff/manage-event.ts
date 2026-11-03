@@ -285,6 +285,8 @@ export type JobDetail = {
   shortNote: string;
   screenTitle: string;
   icon: string;
+  /** พิกัด (metadata.map_url). */
+  mapUrl: string;
   assignees: AssigneeRow[];
   attachmentCount: number;
 };
@@ -340,6 +342,7 @@ export async function getJob(admin: Admin, caller: LiffCaller, eventId: string):
       shortNote: ev.short_note ?? "",
       screenTitle: ev.screen_title ?? "",
       icon: ev.icon ?? "",
+      mapUrl: String((ev.metadata as { map_url?: string } | null)?.map_url ?? ""),
       assignees: (asgs ?? []).map((a) => ({ personId: a.person_id, roleIds: normalizeRoleIds([a.role_id, ...(a.extra_role_ids ?? [])]) })),
       attachmentCount: await countEventAttachments(admin, eventId),
     },
@@ -400,6 +403,7 @@ export async function editJob(admin: Admin, caller: LiffCaller, eventId: string,
       short_note: input.shortNote,
       screen_title: input.screenTitle,
       icon: input.icon,
+      metadata: { ...((ev.metadata as Record<string, unknown> | null) ?? {}), map_url: input.mapUrl },
       updated_by: caller.userId,
       ...(significant ? { has_changes: true } : {}),
       ...(publishNow ? { status: "published", published_at: nowIso } : {}),

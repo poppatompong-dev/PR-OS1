@@ -49,6 +49,8 @@ export type TaskItem = {
     cancellationReason: string | null;
     /** Files on the job (not deleted); the card offers "ดูไฟล์แนบ" when > 0. */
     attachmentCount?: number;
+    /** พิกัด link from the form (events.metadata.map_url); the card offers 🧭 นำทาง. */
+    mapUrl?: string | null;
   };
 };
 
@@ -133,7 +135,7 @@ const TASK_SELECT = `
   person:people(display_name, line_user_id, telegram_chat_id),
   acknowledgements(assignment_version),
   event:events!inner(
-    id, title, event_date, start_time, end_time, short_note, status, cancellation_reason, deleted_at, icon,
+    id, title, event_date, start_time, end_time, short_note, status, cancellation_reason, deleted_at, icon, metadata,
     location:locations(name),
     attachments:event_attachments(id, deleted_at)
   )
@@ -168,6 +170,7 @@ function toTask(a: any): TaskItem | null {
       status: ev.status,
       cancellationReason: ev.cancellation_reason ?? null,
       attachmentCount: Array.isArray(ev.attachments) ? ev.attachments.filter((f: any) => !f.deleted_at).length : 0,
+      mapUrl: typeof ev.metadata?.map_url === "string" && ev.metadata.map_url ? ev.metadata.map_url : null,
     },
   };
 }

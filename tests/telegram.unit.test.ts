@@ -8,6 +8,7 @@ import { cb, parseCb, tgReasonPrompt, tgTask, tgCancellation, tgLinked, tgTeamDa
 import { esc } from "@/lib/telegram/api";
 import { isWellFormedToken, newLinkToken } from "@/lib/telegram/link";
 import { isLinkTelegramCommand } from "@/lib/line/webhook";
+import { taskBubble } from "@/lib/line/messages";
 import { planForRow, renderLine, renderTelegram } from "@/lib/notifications/queue";
 
 const task = (over: Partial<TaskItem> = {}): TaskItem => ({
@@ -120,4 +121,15 @@ test("the LINE invite names the person and carries their own link", async () => 
   assert.match(t, /คุณณัฏฐ์/);
   assert.match(t, /https:\/\/t\.me\/x\?start=abc/);
   assert.ok(t.length < 5000);
+});
+
+test("a job with พิกัด gets a 🧭 นำทาง button on both cards", () => {
+  const base = task();
+  const t = task({ event: { ...base.event, mapUrl: "https://www.google.com/maps/search/?api=1&query=15.7,100.1" } });
+  const row = tgTask(t, "assignment").buttons?.at(-1) ?? [];
+  assert.equal(row[0].text, "🧭 นำทาง");
+  assert.equal((row[0] as { url?: string }).url, "https://www.google.com/maps/dir/?api=1&destination=15.7%2C100.1");
+  const line = JSON.stringify(taskBubble(t, "assignment"));
+  assert.ok(line.includes("maps/dir/?api=1&destination=15.7%2C100.1"));
+  assert.equal(tgTask(task(), "assignment").buttons?.length, 1);
 });

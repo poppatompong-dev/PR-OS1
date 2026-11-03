@@ -12,6 +12,7 @@ import type { LineAction, LineMessage, QuickReply } from "@/lib/line/api";
 import type { TaskItem } from "@/lib/line/data";
 import { ackLabelFor, type FieldChange } from "@/lib/line/change-diff";
 import { LIFF_ADD_EVENT_URL } from "@/lib/liff/config";
+import { navigateUrl } from "@/lib/maps";
 
 /** liff.line.me/<id>/files → the LIFF endpoint + "/files" (/liff/add-event/files). */
 export function attachmentsUrl(eventId: string): string {
@@ -149,6 +150,9 @@ export function taskBubble(t: TaskItem, kind: BubbleKind, changes: FieldChange[]
     if (!t.unavailable) {
       footer.push(button({ type: "postback", label: "ไม่สะดวก", data: postback.unavailable(t), displayText: "ไม่สะดวก" }));
     }
+  }
+  if (t.event.mapUrl && t.event.status === "published") {
+    footer.push(button({ type: "uri", label: "🧭 นำทาง", uri: navigateUrl(t.event.mapUrl) }, "secondary"));
   }
   const files = t.event.attachmentCount ?? 0;
   if (files > 0) {

@@ -28,12 +28,22 @@ type Job = {
   startTime: string;
   endTime: string | null;
   place: string;
+  mapUrl?: string;
   shortNote: string;
   screenTitle: string;
   icon: string;
   assignees: Row[];
   attachmentCount: number;
 };
+
+/** A link to check what was typed: coordinates or a maps link, else nothing. */
+function mapPreview(v: string): string | null {
+  const t = v.trim();
+  const c = t.match(/^(-?\d{1,2}(?:\.\d+)?)\s*[, ]\s*(-?\d{1,3}(?:\.\d+)?)$/);
+  if (c) return `https://www.google.com/maps/search/?api=1&query=${c[1]},${c[2]}`;
+  const m = t.match(/https:\/\/\S+/);
+  return m ? m[0] : null;
+}
 
 /** รายการงาน in the same app: /liff/add-event/jobs (LIFF maps liff.line.me/<id>/jobs here). */
 function jobsHref(): string {
@@ -81,6 +91,8 @@ export function AddEventForm({
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("");
   const [place, setPlace] = useState("");
+  const [mapUrl, setMapUrl] = useState("");
+  const [locating, setLocating] = useState(false);
   const [shortNote, setShortNote] = useState("");
   const [screenTitle, setScreenTitle] = useState("");
   const [icon, setIcon] = useState("");
@@ -119,6 +131,7 @@ export function AddEventForm({
           setStartTime(jj.startTime || "09:00");
           setEndTime(jj.endTime ?? "");
           setPlace(jj.place);
+          setMapUrl(jj.mapUrl ?? "");
           setShortNote(jj.shortNote);
           setScreenTitle(jj.screenTitle);
           setIcon(jj.icon);
@@ -168,7 +181,7 @@ export function AddEventForm({
       const res = await fetch(editId ? `/api/liff/events/${editId}` : "/api/liff/events", {
         method: editId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json", Authorization: auth() },
-        body: JSON.stringify({ title, eventDate, startTime, endTime: endTime || null, locationText: place.trim() || null, shortNote, screenTitle, icon, announce, assignees: filled, attachments: files.staged, publish, reason }),
+        body: JSON.stringify({ title, eventDate, startTime, endTime: endTime || null, locationText: place.trim() || null, mapUrl: mapUrl.trim(), shortNote, screenTitle, icon, announce, assignees: filled, attachments: files.staged, publish, reason }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "บันทึกไม่สำเร็จ");
@@ -322,6 +335,46 @@ export function AddEventForm({
         <div className={styles.field}>
           <span>สถานที่</span>
           <PlaceInput value={place} onChange={setPlace} suggestions={L.places ?? []} inputClassName="" />
+        </div>
+
+        <label className={styles.field}>
+          <span>📍 พิกัด / ลิงก์แผนที่</span>
+          <input
+            value={mapUrl}
+            onChange={(e) => setMapUrl(e.target.value)}
+            maxLength={500}
+            inputMode="url"
+            placeholder="วางลิงก์ Google Maps หรือ 15.70, 100.13 · ไม่บังคับ"
+          />
+        </label>
+        <div className={styles.mapRow}>
+          <button
+            type="button"
+            className={styles.mapBtn}
+            disabled={locating}
+            onClick={() => {
+              if (!navigator.geolocation) return alert("เครื่องนี้หาตำแหน่งไม่ได้");
+              setLocating(true);
+              navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                  setMapUrl(`${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`);
+                  setLocating(false);
+                },
+                () => {
+                  setLocating(false);
+                  alert("หาตำแหน่งไม่ได้ — อนุญาตตำแหน่ง หรือวางลิงก์แผนที่แทน");
+                },
+                { enableHighAccuracy: true, timeout: 15000 },
+              );
+            }}
+          >
+            {locating ? "กำลังหา…" : "📌 ใช้ตำแหน่งตอนนี้"}
+          </button>
+          {mapPreview(mapUrl) ? (
+            <a className={styles.mapBtn} href={mapPreview(mapUrl)!} target="_blank" rel="noreferrer">
+              🗺️ เปิดดูแผนที่
+            </a>
+          ) : null}
         </div>
       </section>
 
