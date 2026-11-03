@@ -68,6 +68,19 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
     return () => window.clearInterval(id);
   }, [load]);
 
+  // ทอง · น้ำมัน · ข่าว after the team's own lines (owner, 3 Nov 2026).
+  const [world, setWorld] = useState<string[]>([]);
+  useEffect(() => {
+    const loadWorld = () =>
+      fetch("/api/monitor/feed")
+        .then((r) => (r.ok ? r.json() : { items: [] }))
+        .then((j: { items?: string[] }) => setWorld(Array.isArray(j.items) ? j.items : []))
+        .catch(() => undefined);
+    loadWorld();
+    const id = window.setInterval(loadWorld, 20 * 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   useEffect(() => {
     const loadTeam = () =>
       fetchMonitorTeam()
@@ -91,8 +104,8 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
     const changed = events
       .filter((e) => e.status !== "canceled" && e.hasChanges)
       .map((e) => `🔄 เปลี่ยนแปลง ${whenLabel(e.eventDate, e.startTime, today)} ${screenTitle(e)} — ตรวจสอบก่อนออกงาน`);
-    return [...said, ...canceled, ...changed];
-  }, [events, notes, today]);
+    return [...said, ...canceled, ...changed, ...world];
+  }, [events, notes, today, world]);
 
   const link = (e: MonitorEvent) => (linkable ? openProps(e.id, e.title) : {});
   const personIdOf = (p: MonitorAssignee) => p.personId ?? team.ids[p.name];
