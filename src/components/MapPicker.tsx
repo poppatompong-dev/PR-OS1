@@ -77,8 +77,10 @@ export function MapPicker({ points, onChange, readOnly = false, height = 280 }: 
       }
       mapRef.current = map;
       setReady(true);
-      // A map inside a card that just appeared needs its size measured again.
+      // A map inside a card that just appeared (or a form step that opens later)
+      // needs its size measured again, or only one tile shows.
       setTimeout(() => map.invalidateSize(), 200);
+      if (typeof ResizeObserver !== "undefined") new ResizeObserver(() => map.invalidateSize()).observe(box.current);
     })();
     return () => {
       cancelled = true;

@@ -55,6 +55,7 @@ export function MapPointsField({ value, onChange, defaultValue = [], name, heigh
           inputMode="url"
           maxLength={500}
           placeholder="หรือวางลิงก์ Google Maps / 15.70, 100.13"
+          className="input"
           style={{ flex: 1, minWidth: 0 }}
         />
         <button type="button" className="mp-btn" onClick={addLink}>
