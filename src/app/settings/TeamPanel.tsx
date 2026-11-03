@@ -28,6 +28,7 @@ import {
   setAccountSuspended,
   setAdminWatcher,
   notifyAvatarReady,
+  messagePersonTelegram,
   setPersonActive,
   unlinkPersonLine,
   updatePerson,
@@ -124,6 +125,17 @@ function MemberMenu({ m, currentUserId }: { m: TeamMember; currentUserId: string
               </button>
               <small>ได้รายงาน 17:00 และแจ้งเมื่อมีคนกด ไม่สะดวก · พิมพ์ อนุญาตกลุ่มนี้ ในกลุ่มไลน์ได้</small>
             </form>
+
+            {m.telegramLinked && m.personId ? (
+              <form action={messagePersonTelegram} className="team-menu-form">
+                <input type="hidden" name="personId" value={m.personId} />
+                <textarea className="input" name="message" rows={3} maxLength={1000} required placeholder={`ข้อความถึง ${m.displayName}`} />
+                <ConfirmSubmit className="button secondary" message={`ส่งข้อความนี้ถึง ${m.displayName} ทาง Telegram?`}>
+                  💬 ส่งข้อความถึงคนนี้
+                </ConfirmSubmit>
+                <small>ส่วนตัว ถึงคนนี้คนเดียว · ฟรี · ไม่ส่ง 21:00–07:00</small>
+              </form>
+            ) : null}
 
             {m.telegramLinked && hasAvatar(m.personId) ? (
               <form action={notifyAvatarReady} className="team-menu-form">

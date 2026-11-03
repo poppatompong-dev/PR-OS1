@@ -765,3 +765,34 @@ export async function notifyAvatarReady(formData: FormData) {
   });
   done(undefined, `ส่งรูปใหม่ให้ ${p!.display_name} ดูทาง Telegram แล้ว`);
 }
+
+/**
+ * "💬 ส่งข้อความถึงคนนี้" (owner, 3 Nov 2026: tell คุณกุ๊ก what was changed
+ * for his request). One free Telegram message to one person, from the admin.
+ * Same night rule as the team messages.
+ */
+export async function messagePersonTelegram(formData: FormData) {
+  await blockWritesInDemoMode();
+  const { user } = await requireAdmin();
+  const personId = String(formData.get("personId") ?? "");
+  const message = String(formData.get("message") ?? "").trim().slice(0, 1000);
+  if (!message) done("พิมพ์ข้อความก่อนส่ง");
+  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
+  if (hour >= 21 || hour < 7) done("ไม่ส่งช่วง 21:00–07:00 น. — ส่งใหม่ตอนเช้า");
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const admin = createAdminClient();
+  const { data: p } = await admin.from("people").select("display_name, telegram_chat_id").eq("id", personId).maybeSingle();
+  if (!p?.telegram_chat_id) done("คนนี้ยังไม่ได้ผูก Telegram");
+  const { sendTelegram, esc } = await import("@/lib/telegram/api");
+  const res = await sendTelegram(Number(p!.telegram_chat_id), { text: `💬 <b>จากแอดมิน</b>\n\n${esc(message)}` });
+  if (!res.ok) done(`ส่งไม่สำเร็จ: ${res.error ?? "ไม่ทราบสาเหตุ"}`);
+  await admin.from("audit_logs").insert({
+    entity_type: "person",
+    entity_id: personId,
+    action: "telegram_direct",
+    changed_by: user.id,
+    summary: `ส่งข้อความถึง ${p!.display_name} ทาง Telegram`,
+    new_values: { message },
+  });
+  done(undefined, `ส่งข้อความถึง ${p!.display_name} ทาง Telegram แล้ว`);
+}
