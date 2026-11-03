@@ -63,7 +63,17 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
   }, []);
 
   const load = useCallback(() => {
-    fetchMonitorEvents().then(setEvents).catch(() => undefined);
+    // The RPC covers 14 days; /api/monitor/later adds days 15–60 so a job
+    // booked weeks ahead (ลอยกระทง) shows on the right instead of nowhere.
+    Promise.all([
+      fetchMonitorEvents(),
+      fetch("/api/monitor/later")
+        .then((r) => (r.ok ? r.json() : { events: [] }))
+        .then((j: { events?: MonitorEvent[] }) => j.events ?? [])
+        .catch(() => [] as MonitorEvent[]),
+    ])
+      .then(([near, far]) => setEvents([...near, ...far.filter((f) => !near.some((n) => n.id === f.id))]))
+      .catch(() => undefined);
     fetchMonitorAnnouncements().then(setNotes).catch(() => undefined);
   }, []);
   useEffect(() => {
@@ -97,7 +107,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
 
   const today = clock?.iso ?? "";
   const now = clock?.minutes ?? 0;
-  const board = useMemo(() => (today ? buildBoard(events, today, now) : null), [events, today, now]);
+  const board = useMemo(() => (today ? buildBoard(events, today, now, { horizonDays: 60 }) : null), [events, today, now]);
 
   const ticker = useMemo(() => {
     if (!today) return [];
