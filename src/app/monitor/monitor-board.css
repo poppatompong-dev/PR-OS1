@@ -182,24 +182,28 @@
 .bm-bench { position: relative; overflow: hidden; display: flex; flex-direction: column; border-radius: calc(22 * var(--u)); background: var(--bm-card); border: 1px solid var(--bm-line); padding: calc(12 * var(--u)) calc(18 * var(--u)) calc(10 * var(--u)); min-height: 0; }
 .bm-bench-head { display: flex; justify-content: space-between; align-items: baseline; font-size: calc(22 * var(--u)); color: var(--hm-dim); font-weight: 600; }
 .bm-bench-head small { font-size: calc(17 * var(--u)); }
-.bm-bench-row { flex: 1; display: flex; justify-content: center; align-items: flex-end; padding-bottom: calc(6 * var(--u)); min-height: 0; }
+.bm-bench-row { position: relative; margin: auto 0; display: flex; justify-content: center; align-items: flex-end; padding: calc(28 * var(--u)) 0 calc(6 * var(--u)); min-height: 0; --face: calc(92 * var(--u)); }
+.bm-bench.span-2 .bm-bench-row { --face: calc(106 * var(--u)); }
+.bm-bench.span-3 .bm-bench-row, .bm-bench.span-4 .bm-bench-row { --face: calc(106 * var(--u)); padding-top: calc(36 * var(--u)); }
+/* ม้านั่ง: แถบใต้รูป อยู่ระดับป้ายชื่อเสมอ */
+.bm-bench-row::before { content: ""; position: absolute; left: 4%; right: 4%; bottom: calc(18 * var(--u)); height: calc(10 * var(--u)); border-radius: 999px; background: linear-gradient(90deg, #6a2c91, #b67dff, #6a2c91); opacity: .45; }
 .bm-bench-p { position: relative; display: flex; flex-direction: column; align-items: center; margin: 0 calc(-4 * var(--u)); }
-.bm-bench-p:nth-child(odd) { transform: translateY(calc(-14 * var(--u))); }
-.bm-bench-face { position: relative; width: calc(92 * var(--u)); height: calc(92 * var(--u)); border-radius: 50%; border: calc(4 * var(--u)) solid #2a1838; box-shadow: 0 calc(6 * var(--u)) calc(14 * var(--u)) rgba(0, 0, 0, .4); background: #e9def5; }
+.bm-bench-p:nth-child(odd) { transform: translateY(calc(-16 * var(--u))); }
+.bm-bench-face { position: relative; width: var(--face); height: var(--face); border-radius: 50%; border: calc(4 * var(--u)) solid #2a1838; box-shadow: 0 calc(6 * var(--u)) calc(14 * var(--u)) rgba(0, 0, 0, .4); background: #e9def5; }
 .bm-bench-face img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
 .bm-bench-initial { display: grid; place-items: center; width: 100%; height: 100%; font-size: calc(38 * var(--u)); font-weight: 800; color: #5e2f73; }
 .bm-bench-out { position: absolute; right: calc(-8 * var(--u)); top: calc(-4 * var(--u)); font-size: calc(18 * var(--u)); background: #ffd36b; border-radius: 999px; padding: 0 calc(6 * var(--u)); line-height: 1.5; }
-.bm-bench-name { position: relative; z-index: 1; margin-top: calc(4 * var(--u)); font-size: calc(18 * var(--u)); background: var(--bm-block); color: var(--bm-block-text); padding: 0 calc(10 * var(--u)); border-radius: 999px; white-space: nowrap; }
+.bm-bench-name { position: relative; z-index: 1; margin-top: calc(4 * var(--u)); font-size: calc(20 * var(--u)); background: var(--bm-block); color: var(--bm-block-text); padding: 0 calc(10 * var(--u)); border-radius: 999px; white-space: nowrap; }
 .bm-medals { position: absolute; z-index: 2; top: calc(-16 * var(--u)); left: 50%; transform: translateX(-50%); display: flex; gap: calc(2 * var(--u)); }
 .bm-medal { display: inline-grid; place-items: center; width: calc(26 * var(--u)); height: calc(26 * var(--u)); border-radius: 50%; font-size: calc(15 * var(--u)); line-height: 1; background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, .4), transparent 50%), var(--m, #6a4c8a); box-shadow: 0 0 0 calc(2 * var(--u)) rgba(255, 255, 255, .25); }
 .m-job5 { --m: #b06b3b; } .m-job10 { --m: #9aa3b5; } .m-job15 { --m: #d9a520; } .m-fast { --m: #6a5cff; } .m-help { --m: #2e9e6e; } .m-self { --m: #d65a8a; }
-.bm-bench-bar { position: absolute; left: 6%; right: 6%; bottom: calc(50 * var(--u)); height: calc(10 * var(--u)); border-radius: 999px; background: linear-gradient(90deg, #6a2c91, #b67dff, #6a2c91); opacity: .45; pointer-events: none; }
+.bm-bench-bar { display: none; }
 .bm-bench-p.is-hop .bm-bench-face { animation: bm-hop .9s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes bm-hop { 30% { transform: translateY(-22%) rotate(-6deg); } 60% { transform: translateY(0) rotate(4deg); } 100% { transform: none; } }
 /* ช่องเดียว: ย่อให้พอดี ไม่มีหัวข้อ */
 .bm-bench.is-short .bm-bench-head { display: none; }
-.bm-bench.is-short .bm-bench-face { width: calc(64 * var(--u)); height: calc(64 * var(--u)); }
+.bm-bench.is-short .bm-bench-row { --face: calc(64 * var(--u)); padding-top: calc(20 * var(--u)); }
 .bm-bench.is-short .bm-bench-p:nth-child(odd) { transform: none; }
-.bm-bench.is-short .bm-bench-bar { bottom: calc(40 * var(--u)); }
+
 .bm--b .bm-bench-face { border-color: #fff; }
 @media (prefers-reduced-motion: reduce) { .bm-bench-p.is-hop .bm-bench-face { animation: none; } }

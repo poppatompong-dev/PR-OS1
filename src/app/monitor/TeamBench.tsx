@@ -36,7 +36,7 @@ export function TeamBench({ span, still }: { span: number; still: boolean }) {
 
   if (!bench?.people.length) return <div className="bm-day is-blank" style={{ gridRow: `span ${span}` }} />;
   return (
-    <div className={`bm-bench${span === 1 ? " is-short" : ""}`} style={{ gridRow: `span ${span}` }} ref={box} aria-label="ทีม ปชส.">
+    <div className={`bm-bench span-${Math.min(span, 4)}${span === 1 ? " is-short" : ""}`} style={{ gridRow: `span ${span}` }} ref={box} aria-label="ทีม ปชส.">
       <div className="bm-bench-head">
         <span>🧑‍🤝‍🧑 ทีม ปชส.</span>
         <small>เหรียญเดือน {bench.monthLabel}</small>
