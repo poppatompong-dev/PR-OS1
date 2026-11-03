@@ -63,7 +63,14 @@
   - ยกเลิกคิวเตือนอัตโนมัติเมื่อยกเลิกงาน (`cancel_event_reminders`)
 - ตัวประมวลผลจริง `processDueNotifications()` (`src/lib/notifications/queue.ts`) — ดึงคิวที่ถึงเวลา, ส่ง LINE ผ่าน Messaging API / Email ผ่าน Resend, เช็คโควต้า LINE รายเดือน, fallback ไป email ตาม settings
 
+### Telegram + มือถือ (20 ต.ค. – 3 พ.ย. 2569)
+- Telegram @nsm_pr_bot เป็นช่องทางหลัก (`src/lib/telegram/*`): การ์ดงาน รับทราบ/ไม่สะดวก, การ์ดส้มเมื่องานเปลี่ยน, สรุปเช้า, เตือน 1.5 ชม., ประกาศขึ้นแถบวิ่ง, รูปของฉัน, ทัวร์ + ภารกิจทดสอบ 4 ข้อ
+- รายการงานบนมือถือ (Mini App / LIFF `/liff/add-event/jobs`): ดู · แก้ · เผยแพร่ · เลื่อนออกไปก่อน · ยกเลิก · ลบร่าง (`src/lib/liff/manage-event.ts`)
+- หน้าทีมงาน: ส่งถึงทีมทาง Telegram (+ ปุ่มถามไถ่ `src/lib/telegram/pulse.ts`), ส่งภารกิจทดสอบ, แจ้งรูปการ์ตูนเสร็จ
+- จอทีวีผังคุณกุ๊ก (`BoardMonitor`) เป็นค่าเริ่มต้น · งานที่จบแล้ววันนี้ค้างจาง ๆ ท้ายรายการ
+
 ## ⚠️ ยังเหลือ / ข้อจำกัด
+- **หมายเหตุ 3 พ.ย. 2569:** สามข้อ LINE/ตัวตั้งเวลาด้านล่างเป็นสถานะ 19 ต.ค. — LINE ใช้จริงแล้ว และตัวส่งแจ้งเตือนย้ายไป Supabase pg_cron (`0015`) แล้ว · ยังไม่ได้ตรวจซ้ำว่า secret ของ GitHub Actions สำรองข้อมูลใส่แล้วหรือยัง
 - **LINE bot — โค้ดเสร็จ รอเปิดใช้**: ต้องรัน `0014_line_bot.sql` ก่อน push แล้วสร้าง OA + ใส่ 4 ตัวแปรบน Vercel (`docs/15` ข้อ 8)
   ก่อนมี credential คิวจะถูก mark `skipped` (โหมดจำลอง) ตามเดิม · ยังไม่ได้ทดสอบกับ LINE จริง
 - **อีเมล (Resend) ไม่ใช้** — owner เลือกไม่ใช้อีเมลสำรอง โค้ดส่งอีเมลถูกถอดออกแล้ว (19 ต.ค.)
@@ -73,7 +80,7 @@
 - **keep-alive** (`.github/workflows/keep-alive.yml`) ต้องเขียวทุกวัน ถ้าแดง = Supabase หลับหรือ Vercel หลุดจากฐานข้อมูล
 
 ## Migrations
-`0001` schema · `0002` auth/RLS/views · `0003` monitor feed · `0004` DB hardening · `0005` accounts · `0006` notifications · `0007` username login · `0008` monitor assignees · `0009` notification delivery settings · `0010` event attachments · `0011` nakhon sawan master data · `0012` reminders & conflict check · `0013` monitor board (status/การยกเลิก/ผู้รับทราบรายคน) · `0014` LINE bot (**ยังไม่ได้รันบน production**)
+`0001` schema · `0002` auth/RLS/views · `0003` monitor feed · `0004` DB hardening · `0005` accounts · `0006` notifications · `0007` username login · `0008` monitor assignees · `0009` notification delivery settings · `0010` event attachments · `0011` nakhon sawan master data · `0012` reminders & conflict check · `0013` monitor board (status/การยกเลิก/ผู้รับทราบรายคน) · `0014` LINE bot · `0015` pg_cron · `0016` หลายหน้าที่/สถานที่พิมพ์ · `0017` Telegram/แถบวิ่ง · `0018` เลือกใช้รูป · `0019` ไอคอนงาน (รันบน production แล้วทั้งหมด)
 
-## Quality gates (ผ่านล่าสุด 13 ต.ค. 2569)
-`npm run build` ✓ · `npm run typecheck` ✓ · `npm run lint` ✓ · smoke test 12/12 (mock mode)
+## Quality gates (ผ่านล่าสุด 3 พ.ย. 2569)
+`npm run typecheck` ✓ · `npm run lint` ✓ · unit 132/132 · production smoke 27/27
