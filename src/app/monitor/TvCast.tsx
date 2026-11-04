@@ -11,6 +11,12 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { CAST_IDS, CAST_POSES, castUrl, type CastPose } from "@/lib/monitor/cast";
+import { EARTH_ID, GAG_COUNT, GAG_HOME_TIME, playGag, preloadGags } from "./tv-gags";
+
+// แก็กพี่เอิร์ธ × ป้าจิตร: one after every 4 ordinary antics (owner, 4 Nov 2026).
+const GAG_EVERY = 4;
+const GAG_WITH_TEAM = 7; // น้องชวนไปต่อ — needs กุ๊ก แป้ง นัท on screen
+const TEAM_FOR_GAG = ["00000000-0000-0000-0000-000000000503", "00000000-0000-0000-0000-000000000505", "00000000-0000-0000-0000-000000000504"];
 
 const GAP_S: [number, number] = [45, 90];
 
@@ -140,6 +146,21 @@ export function TvCast({ still, people, off }: { still: boolean; people: string[
     }
 
     const ACTS = [walkTicker, runAcross, peekCard, climbCard, hang, pair];
+    // /tv?jit=fast — preview: a gag every time, any hour.
+    const jitFast = new URLSearchParams(window.location.search).get("jit") === "fast";
+    const gagsOn = cast.includes(EARTH_ID); // พี่เอิร์ธ chose "no cartoon" → no gags
+    if (gagsOn) preloadGags();
+    let ordinary = 0;
+    let gagBag: number[] = [];
+    let gag: { kill: () => void } | null = null;
+    const nextGag = (): number | null => {
+      const late = bangkokHour() >= 16;
+      const team = TEAM_FOR_GAG.every((id) => cast.includes(id));
+      const ok = (g: number) => (g !== GAG_HOME_TIME || late || jitFast) && (g !== GAG_WITH_TEAM || team);
+      if (!gagBag.some(ok)) gagBag = Array.from({ length: GAG_COUNT }, (_, i) => i).sort(() => Math.random() - 0.5);
+      const i = gagBag.findIndex(ok);
+      return i < 0 ? null : gagBag.splice(i, 1)[0];
+    };
     let last: (typeof ACTS)[number] | null = null;
     let call: gsap.core.Tween | null = null;
     let tl: gsap.core.Timeline | null = null;
@@ -147,9 +168,19 @@ export function TvCast({ still, people, off }: { still: boolean; people: string[
     async function run() {
       if (!alive) return;
       const h = bangkokHour();
-      if (!fast && (document.hidden || h < 7 || h >= 19)) return schedule(300);
+      if (!fast && !jitFast && (document.hidden || h < 7 || h >= 19)) return schedule(300);
       // A birthday show is on (TvBirthday) — let it have the screen.
       if (document.documentElement.dataset.tvShow) return schedule(30);
+      if (gagsOn && (jitFast || ordinary >= GAG_EVERY)) {
+        const g = nextGag();
+        if (g !== null) {
+          ordinary = 0;
+          const s = u();
+          gag = playGag(g, root!, floorY() / s, s, () => { gag = null; schedule(jitFast ? 3 : gap[0] + Math.random() * (gap[1] - gap[0])); });
+          return;
+        }
+      }
+      ordinary += 1;
       let f = ACTS[Math.floor(Math.random() * ACTS.length)];
       while (f === last) f = ACTS[Math.floor(Math.random() * ACTS.length)];
       last = f;
@@ -160,10 +191,10 @@ export function TvCast({ still, people, off }: { still: boolean; people: string[
       const cb = tl.eventCallback("onComplete");
       tl.eventCallback("onComplete", () => { cb?.(); schedule(gap[0] + Math.random() * (gap[1] - gap[0])); });
     }
-    schedule(fast ? 1 : 20);
+    schedule(fast || jitFast ? 1 : 20);
     return () => {
       alive = false;
-      call?.kill(); tl?.kill();
+      call?.kill(); tl?.kill(); gag?.kill();
       timers.forEach(clearInterval);
       root.replaceChildren();
     };

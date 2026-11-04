@@ -326,3 +326,20 @@
 .bm-job-people.is-two .bm-pp i { display: none; }
 .bm-today.fit-3 .bm-job-people.is-two { display: flex; }
 .bm-pp i { font-style: normal; }
+
+/* แก็กพี่เอิร์ธ × ป้าจิตร (tv-gags.ts) — เวที 1920×1080 ย่อตามจอ */
+.tv-gag{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;pointer-events:none;overflow:hidden;font-family:inherit}
+.tv-gag .sp{position:absolute;left:0;top:0;background-size:contain;background-repeat:no-repeat;background-position:50% 100%}
+.tv-gag .bubble{position:absolute;left:0;top:0;padding:14px 22px;background:#fff;color:#1b1024;border:5px solid #1b1024;border-radius:26px;font-weight:900;font-size:38px;white-space:nowrap;box-shadow:6px 6px 0 #1b1024;opacity:0;display:flex;align-items:center;gap:14px}
+.tv-gag .bubble:after{content:"";position:absolute;left:46px;bottom:-30px;border:16px solid transparent;border-top:22px solid #1b1024}
+.tv-gag .bubble.sm{font-size:30px;padding:10px 16px}
+.tv-gag .bubble .face{width:72px;height:72px;border-radius:50%;background:#fff center/cover;border:4px solid #1b1024}
+.tv-gag .bang{position:absolute;left:0;top:0;width:110px;height:110px;opacity:0}
+.tv-gag .sweat{position:absolute;left:0;top:0;width:22px;height:30px;background:radial-gradient(circle at 40% 35%,#fff 0 18%,#8fd3ff 20% 100%);border-radius:50% 50% 50% 50%/60% 60% 40% 40%;border:3px solid #1b1024}
+.tv-gag .puff{position:absolute;left:0;top:0;width:46px;height:46px;border-radius:50%;background:#e8dcef;border:3px solid #1b1024}
+.tv-gag .emo{position:absolute;left:0;top:0;font-size:56px;opacity:0}
+.tv-gag .tif{position:absolute;left:0;top:0;width:54px;height:68px;background-size:contain;background-repeat:no-repeat;opacity:0}
+.tv-gag .shadow{position:absolute;left:0;top:0;width:1100px;height:1960px;background-size:contain;background-repeat:no-repeat;background-position:50% 100%;filter:brightness(0) blur(6px);opacity:0;transform-origin:50% 100%;top:-900px}
+.tv-gag .card{position:absolute;left:0;top:0;width:190px;padding:12px;background:#fff;border:5px solid #1b1024;border-radius:18px;box-shadow:6px 6px 0 #1b1024;text-align:center;color:#1b1024;font-weight:900;display:flex;flex-direction:column;align-items:center;gap:2px;opacity:0}.tv-gag .card b{font-size:26px}.tv-gag .card span{font-size:30px;color:#c0182c}
+.tv-gag .note20{position:absolute;left:0;top:0;width:120px;height:62px;background:linear-gradient(135deg,#7fc77a,#3f8f4a);border:4px solid #1b1024;border-radius:8px;color:#fff;font-weight:900;font-size:36px;display:grid;place-items:center;text-shadow:2px 2px 0 #1b1024;opacity:0}
+.tv-gag .sign{position:absolute;left:0;top:0;padding:10px 18px;background:#ffd36b;border:5px solid #1b1024;border-radius:14px;box-shadow:5px 5px 0 #1b1024;color:#1b1024;font-weight:900;font-size:34px;white-space:nowrap;opacity:0}
