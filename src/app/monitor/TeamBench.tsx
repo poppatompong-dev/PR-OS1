@@ -43,7 +43,7 @@ export function TeamBench({ span, still }: { span: number; still: boolean }) {
       </div>
       <div className="bm-bench-row">
         {bench.people.map((p, i) => (
-          <div className={`bm-bench-p${i === hop ? " is-hop" : ""}`} key={`${p.personId}-${i === hop ? hop : "x"}`}>
+          <div className={`bm-bench-p${i === hop ? " is-hop" : ""}${p.out ? " is-out" : ""}`} key={`${p.personId}-${i === hop ? hop : "x"}`}>
             {p.badges.length ? (
               <div className="bm-medals">
                 {p.badges.map((b) => (
