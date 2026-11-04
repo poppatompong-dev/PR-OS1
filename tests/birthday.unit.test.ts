@@ -35,6 +35,11 @@ test("today's birthday people, deduped, with the wish", () => {
   assert.equal(b.wish, "ขอให้มีความสุข สุขภาพแข็งแรง");
 });
 
+test("the TV's nickname when there is one (ภัส, not พัท)", () => {
+  const b = birthdayToday([job({ title: "วันเกิด", assigneeDetail: [who("นางวิภัสรา แสงรอด", "dd5a7eb4-d62a-45bc-b11b-33dae93d6b49")] })], "2026-11-04");
+  assert.equal(b?.names, "ภัส");
+});
+
 test("no job or nobody on it = no celebration", () => {
   assert.equal(birthdayToday([], "2026-11-04"), null);
   assert.equal(birthdayToday([job({ title: "วันเกิด" })], "2026-11-04"), null);

@@ -9,7 +9,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAdminRecipientIds } from "@/lib/line/data";
-import { shortName } from "@/lib/names";
+import { nickname } from "@/lib/monitor/nicknames";
 import { isTestTitle } from "@/lib/monitor/team-stats";
 
 export type BadgeKey = "job5" | "job10" | "job15" | "fast" | "help" | "self";
@@ -28,18 +28,7 @@ export type Bench = { monthLabel: string; month: string; people: BenchPerson[] }
 
 const THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
-/** What the TV calls each person (first name when not listed). */
-const NICKNAMES: Record<string, string> = {
-  "00000000-0000-0000-0000-000000000501": "พี่ไป๋",
-  "00000000-0000-0000-0000-000000000502": "พี่เอิร์ธ",
-  "00000000-0000-0000-0000-000000000503": "กุ๊ก",
-  "00000000-0000-0000-0000-000000000504": "นัท",
-  "00000000-0000-0000-0000-000000000505": "แป้ง",
-  "00000000-0000-0000-0000-000000000506": "แข",
-  "dd5a7eb4-d62a-45bc-b11b-33dae93d6b49": "พัท",
-  "1b378ad3-73a3-461c-985e-b1d52189dbee": "พี่เอ๋",
-};
-export const nickname = (id: string, displayName: string) => NICKNAMES[id] ?? shortName(displayName);
+export { nickname };
 
 /** The month whose badges are on show: last month during days 1–7. */
 export function shownMonth(todayIso: string): { start: string; end: string; key: string; label: string } {

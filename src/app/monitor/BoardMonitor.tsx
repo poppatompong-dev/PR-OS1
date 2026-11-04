@@ -22,6 +22,7 @@ import { TeamBench } from "./TeamBench";
 import { TvCast } from "./TvCast";
 import { BirthdayBanner, BirthdayShow } from "./TvBirthday";
 import { birthdayToday } from "@/lib/monitor/birthday";
+import { nickname } from "@/lib/monitor/nicknames";
 import { FestivalLayer, FestivalStage } from "./FestivalLayer";
 import { festivalFor, isFestivalKey, previewFestival } from "@/lib/monitor/festivals";
 import "./monitor-board.css";
@@ -151,7 +152,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
     const real = birthdayToday(events, today, (n) => team.ids[n]);
     if (real || !bdayPreview) return real;
     const name = Object.keys(team.ids).find((n) => team.ids[n] === bdayPreview);
-    return name ? { people: [{ name, short: shortName(name), personId: bdayPreview }], wish: "", names: shortName(name) } : null;
+    return name ? { people: [{ name, short: nickname(bdayPreview, name), personId: bdayPreview }], wish: "", names: nickname(bdayPreview, name) } : null;
   }, [events, today, team.ids, bdayPreview]);
   const todayCount = board?.todayJobs.length ?? 0;
   const fit = useTodayFit(board?.todayJobs ?? [], now);

@@ -5,14 +5,15 @@
 //   A  fireworks, dim, big face, Happy Birthday + the wish from the job's note.
 //   C  the birthday person's cartoon pops up, friends walk in and bounce,
 //      fireworks + confetti + big text. Needs their sprites; else A plays.
-// Big shows alternate A → C, 07:00–19:00, ~11 s each; never on the still
+// Big shows alternate A → C, 07:00–19:00, ~14 s each (long enough for a
+// photo): every 10 min for the first hour of shows, then every 30; never on the still
 // screen or with reduced motion. TvCast waits while a show is on.
 // /tv?bday=fast — preview: a show every ~25 s at any hour.
 
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { avatarUrl } from "@/lib/avatars";
-import { BDAY_SHOW_EVERY_MIN, type Birthday } from "@/lib/monitor/birthday";
+import { BDAY_FIRST_HOUR_EVERY_MIN, BDAY_SHOW_EVERY_MIN, type Birthday } from "@/lib/monitor/birthday";
 import { CAST_IDS, castUrl } from "@/lib/monitor/cast";
 
 const COLS = ["#ffd36b", "#ff6fb5", "#9fd2ff", "#b98cff", "#7dff9a", "#ffffff"];
@@ -143,7 +144,7 @@ export function BirthdayShow({ bday, still, off, team }: { bday: Birthday; still
         .fromTo(card, { opacity: 0, scale: 0.3 }, { opacity: 1, scale: 1, duration: 0.9, ease: "back.out(1.7)" }, "+=.6")
         .call(() => { confetti(); volley(8, 500); })
         .to(card.querySelectorAll(".tv-bday-face"), { rotation: 6, duration: 0.5, yoyo: true, repeat: 5, ease: "sine.inOut" })
-        .to({}, { duration: 2 })
+        .to({}, { duration: 5 })
         .to([card, dim], { opacity: 0, duration: 0.8 });
     }
 
@@ -187,7 +188,7 @@ export function BirthdayShow({ bday, still, off, team }: { bday: Birthday; still
         .fromTo(big, { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.7, ease: "back.out(2)" })
         .to(fr, { y: `-=${40 * s}`, duration: 0.25, yoyo: true, repeat: 5, stagger: 0.06, ease: "sine.inOut" })
         .to(me, { rotation: -6, duration: 0.3, yoyo: true, repeat: 5, transformOrigin: "50% 100%" }, "<")
-        .to({}, { duration: 1.5 })
+        .to({}, { duration: 4.5 })
         .to([big, dim, ...fr, me], { opacity: 0, duration: 0.6 });
     }
 
@@ -197,15 +198,17 @@ export function BirthdayShow({ bday, still, off, team }: { bday: Birthday; still
     }
 
     let n = 0;
+    let first = 0;
     let call: gsap.core.Tween | null = null;
     let tl: gsap.core.Timeline | null = null;
-    const every = fast ? 25 : BDAY_SHOW_EVERY_MIN * 60;
     const run = () => {
       const h = bangkokHour();
       if (!fast && (document.hidden || h < 7 || h >= 19)) { call = gsap.delayedCall(300, run); return; }
       start();
       tl = n++ % 2 === 0 ? showA() : showC();
-      call = gsap.delayedCall(every, run);
+      first ||= Date.now();
+      const mins = Date.now() - first < 60 * 60_000 ? BDAY_FIRST_HOUR_EVERY_MIN : BDAY_SHOW_EVERY_MIN;
+      call = gsap.delayedCall(fast ? 25 : mins * 60, run);
     };
     call = gsap.delayedCall(fast ? 3 : 25, run);
     return () => {
