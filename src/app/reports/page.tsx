@@ -190,7 +190,7 @@ export default async function ReportsPage({
         <MetricCard
           label="รอรับทราบ"
           value={report.pendingAcks}
-          hint="ควรติดตามก่อนวันงาน"
+          hint={report.notReached > 0 ? `ควรติดตามก่อนวันงาน · ไม่ได้รับแจ้งอีก ${report.notReached} (ต้องบอกเอง)` : "ควรติดตามก่อนวันงาน"}
           tone="amber"
         />
         <MetricCard
@@ -248,6 +248,7 @@ export default async function ReportsPage({
                       </span>
                       <span>
                         {row.eventTitle} — {row.personName} ({row.roleName})
+                        {row.notReached ? " · ⚠️ ไม่ได้รับแจ้ง (ยังไม่ผูก Telegram/LINE)" : ""}
                       </span>
                     </li>
                   ))}

@@ -44,7 +44,10 @@ export default async function HomePage() {
         <article className={`lead-stat${report.pendingAcks > 0 ? " lead-stat-alert" : ""}`}>
           <span className="lead-value">{report.pendingAcks}</span>
           <span className="lead-label">ยังไม่รับทราบ</span>
-          <span className="lead-hint">ต้องตามก่อนถึงวันงาน</span>
+          <span className="lead-hint">
+            ต้องตามก่อนถึงวันงาน
+            {report.notReached > 0 ? ` · อีก ${report.notReached} คนไม่ได้รับแจ้ง (ยังไม่ผูก Telegram/LINE) ต้องบอกเอง` : ""}
+          </span>
         </article>
         <div className="lead-side">
           <article className="side-stat">
@@ -88,6 +91,7 @@ export default async function HomePage() {
                 <span className="unack-event">{row.eventTitle}</span>
                 <span className="unack-meta">
                   {row.roleName} · {formatThaiDate(row.eventDate)}
+                  {row.notReached ? " · ⚠️ ไม่ได้รับแจ้ง ต้องบอกเอง" : ""}
                 </span>
               </li>
             ))}

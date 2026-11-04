@@ -20,6 +20,7 @@ export function buildReportSheets(report: ReportData): SheetData[] {
       ["งานทั้งหมด", report.totalEvents],
       ["เผยแพร่แล้ว", report.publishedEvents],
       ["รอรับทราบ", report.pendingAcks],
+      ["ไม่ได้รับแจ้ง (ยังไม่ผูก Telegram/LINE)", report.notReached],
       ["เปลี่ยน/ยกเลิก", report.changedOrCanceled],
       ["งานที่มีการเปลี่ยนแปลง", report.changedEvents],
       ["งานที่ยกเลิก", report.canceledEvents],
@@ -90,7 +91,7 @@ export function buildReportSheets(report: ReportData): SheetData[] {
         row.eventTitle,
         row.personName,
         row.roleName,
-        ackStatusLabel("pending"),
+        row.notReached ? "ไม่ได้รับแจ้ง (ยังไม่ผูก Telegram/LINE)" : ackStatusLabel("pending"),
       ]),
     ],
   };

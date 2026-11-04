@@ -42,6 +42,9 @@ export type Assignment = {
   /** Set when the assignee pressed "ไม่สะดวก" and has not acknowledged since. */
   unavailableReason?: string;
   note?: string;
+  /** false = the system never got a card to this person (no Telegram/LINE linked) —
+   *  reports must not count that as "didn't acknowledge" (owner, 4 Nov 2026). */
+  notified?: boolean;
 };
 
 export type PrEvent = {

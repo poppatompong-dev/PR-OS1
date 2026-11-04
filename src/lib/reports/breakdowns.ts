@@ -27,7 +27,10 @@ export type PersonRow = {
   total: number;
   acknowledged: number;
   pending: number;
-  ackRate: number;
+  /** Assigned but never reached (no Telegram/LINE) — not held against them. */
+  notReached: number;
+  /** null when nothing could be acknowledged (e.g. never reached). */
+  ackRate: number | null;
   urgent: number;
   roles: { roleName: string; count: number }[];
   departments: string[];
@@ -119,6 +122,7 @@ export function byPerson(events: PrEvent[]): PersonRow[] {
           total: 0,
           acknowledged: 0,
           pending: 0,
+          notReached: 0,
           urgent: 0,
           lastDate: event.eventDate,
           roles: new Map(),
@@ -128,7 +132,10 @@ export function byPerson(events: PrEvent[]): PersonRow[] {
       }
       row.total += 1;
       if (assignment.ackStatus === "acknowledged") row.acknowledged += 1;
-      if (assignment.ackStatus === "pending") row.pending += 1;
+      if (assignment.ackStatus === "pending") {
+        if (assignment.notified === false) row.notReached += 1;
+        else row.pending += 1;
+      }
       if (event.urgency !== "normal") row.urgent += 1;
       if (event.eventDate > row.lastDate) row.lastDate = event.eventDate;
       // One person can hold several duties on one job ("ช่างภาพนิ่ง · ทำข่าว"): count each.
@@ -148,7 +155,8 @@ export function byPerson(events: PrEvent[]): PersonRow[] {
         total: row.total,
         acknowledged: row.acknowledged,
         pending: row.pending,
-        ackRate: answerable === 0 ? 1 : row.acknowledged / answerable,
+        notReached: row.notReached,
+        ackRate: answerable === 0 ? null : row.acknowledged / answerable,
         urgent: row.urgent,
         lastDate: row.lastDate,
         roles: [...row.roles.entries()]

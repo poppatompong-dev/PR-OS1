@@ -78,7 +78,8 @@ export function PersonReport({ events }: { events: PrEvent[] }) {
   return (
     <>
       <p className="report-note">
-        นับเฉพาะงานที่ไม่ถูกยกเลิก — งานที่ยกเลิกไม่ใช่ภาระงานที่ปฏิบัติจริง
+        นับเฉพาะงานที่ไม่ถูกยกเลิก — งานที่ยกเลิกไม่ใช่ภาระงานที่ปฏิบัติจริง · อัตรารับทราบคิดจากงานที่ระบบส่งการ์ดถึงจริงเท่านั้น
+        (คนที่ยังไม่ผูก Telegram/LINE ไม่ถูกนับว่า &quot;ไม่รับทราบ&quot;)
       </p>
 
       <div className="only-wide table-wrap">
@@ -106,8 +107,9 @@ export function PersonReport({ events }: { events: PrEvent[] }) {
                 <td className="num">
                   {row.acknowledged}
                   {row.pending > 0 ? <div className="table-note">ค้าง {row.pending}</div> : null}
+                  {row.notReached > 0 ? <div className="table-note">ไม่ได้รับแจ้ง {row.notReached} (ยังไม่ผูก Telegram/LINE)</div> : null}
                 </td>
-                <td className="num">{PERCENT.format(row.ackRate)}</td>
+                <td className="num">{row.ackRate === null ? "—" : PERCENT.format(row.ackRate)}</td>
                 <td>
                   <div className="assignee-list">
                     {row.roles.map((r) => (
@@ -129,12 +131,13 @@ export function PersonReport({ events }: { events: PrEvent[] }) {
           <li key={row.personName} className="stat-card">
             <h3>{row.personName}</h3>
             <p className="stat-lead">
-              <strong>{row.total}</strong> งาน · รับทราบ {PERCENT.format(row.ackRate)}
+              <strong>{row.total}</strong> งาน · รับทราบ {row.ackRate === null ? "—" : PERCENT.format(row.ackRate)}
             </p>
             <dl className="stat-pairs">
               <div><dt>ด่วน/สำคัญ</dt><dd>{row.urgent}</dd></div>
               <div><dt>รับทราบแล้ว</dt><dd>{row.acknowledged}</dd></div>
               <div><dt>ค้างรับทราบ</dt><dd>{row.pending}</dd></div>
+              {row.notReached > 0 ? <div><dt>ไม่ได้รับแจ้ง</dt><dd>{row.notReached}</dd></div> : null}
               <div><dt>งานล่าสุด</dt><dd>{formatThaiDate(row.lastDate)}</dd></div>
             </dl>
             <p className="stat-tags">

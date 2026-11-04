@@ -81,6 +81,7 @@ export default async function ReportPrintPage({
     { label: "งานทั้งหมด", value: report.totalEvents },
     { label: "เผยแพร่แล้ว", value: report.publishedEvents },
     { label: "รอรับทราบ", value: report.pendingAcks },
+    ...(report.notReached > 0 ? [{ label: "ไม่ได้รับแจ้ง (ยังไม่ผูกช่องทาง)", value: report.notReached }] : []),
     { label: "เปลี่ยน/ยกเลิก", value: report.changedOrCanceled },
     { label: "งานวันนี้", value: report.todayEvents },
     { label: "ภาระงานสูงสุด", value: report.topWorkloadPerson },
@@ -208,7 +209,7 @@ export default async function ReportPrintPage({
               <tr key={`${row.eventTitle}-${row.personName}-${i}`}>
                 <td>{formatThaiDate(row.eventDate)}</td>
                 <td>{row.eventTitle}</td>
-                <td>{row.personName}</td>
+                <td>{row.personName}{row.notReached ? " (ไม่ได้รับแจ้ง)" : ""}</td>
                 <td>{row.roleName}</td>
               </tr>
             ))}

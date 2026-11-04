@@ -4,6 +4,7 @@ export type SmartSummaryInput = {
   totalEvents: number;
   publishedEvents: number;
   pendingAcks: number;
+  notReached?: number;
   changedEvents: number;
   canceledEvents: number;
   todayEvents: number;
@@ -25,7 +26,10 @@ export function buildSmartSummary(d: SmartSummaryInput): string {
   if (d.pendingAcks > 0) {
     parts.push(`มีการรับทราบค้างอยู่ ${d.pendingAcks} รายการ ควรติดตามก่อนถึงวันงาน`);
   } else {
-    parts.push("ผู้รับมอบหมายรับทราบครบแล้ว");
+    parts.push("ผู้รับมอบหมายที่ได้รับแจ้งรับทราบครบแล้ว");
+  }
+  if (d.notReached) {
+    parts.push(`มีผู้รับมอบหมาย ${d.notReached} รายการที่ระบบแจ้งไม่ถึง (ยังไม่ผูก Telegram/LINE) ควรแจ้งด้วยตนเอง`);
   }
   if (d.changedEvents > 0 || d.canceledEvents > 0) {
     parts.push(`มีงานที่เปลี่ยนแปลง ${d.changedEvents} รายการ และยกเลิก ${d.canceledEvents} รายการ`);
