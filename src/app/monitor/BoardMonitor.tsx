@@ -220,16 +220,16 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
                         {e.shortNote ? <p className="bm-job-note">📝 {e.shortNote}</p> : null}
                       </div>
                     </div>
-                    <div className="bm-job-people">
-                      {e.assigneeDetail.slice(0, todayCount >= 3 ? 3 : 4).map((p, k) => (
+                    {/* ทุกคนในงาน ไม่ตัด "+ อีก n คน" (owner, 4 Nov 2026): 4–5 คนแถวชิด · 6+ สองคอลัมน์ */}
+                    <div className={`bm-job-people${e.assigneeDetail.length > 3 ? " is-grid" : ""}${e.assigneeDetail.length > 5 ? " is-two" : ""}`}>
+                      {e.assigneeDetail.map((p, k) => (
                         <div className="bm-pp" key={`${p.name}-${k}`}>
                           {face(p, k, 64)}
                           <span>
-                            <b>{shortName(p.name)}</b> {p.role}
+                            <b>{shortName(p.name)}</b> <i>{p.role}</i>
                           </span>
                         </div>
                       ))}
-                      {e.assigneeDetail.length > (todayCount >= 3 ? 3 : 4) ? <p className="bm-more">+ อีก {e.assigneeDetail.length - (todayCount >= 3 ? 3 : 4)} คน</p> : null}
                     </div>
                   </article>
                 );

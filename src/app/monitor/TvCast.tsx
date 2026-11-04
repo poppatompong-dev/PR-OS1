@@ -124,18 +124,22 @@ export function TvCast({ still, people, off }: { still: boolean; people: string[
         .to(c.el, { rotation: 12, duration: 0.5, yoyo: true, repeat: 5, ease: "sine.inOut", transformOrigin: "50% 5%" })
         .to(c.el, { y: window.innerHeight + 300, duration: 0.9, ease: "power2.in" });
     }
-    function piggy() {
+    // เดินคู่กัน (เดิมขี่หลัง — owner 4 Nov 2026: ดูเหมือนวิ่งซ้อนกัน): side by side, a gap
+    // between them, the one behind waves now and then.
+    function pair() {
       if (cast.length < 2) return walkTicker();
       const a = make(nextId()); const b = make(nextId(a.id)); const y = floorY(); const dir = Math.random() < 0.5 ? 1 : -1;
-      const x0 = dir > 0 ? -80 : W() + 80, x1 = dir > 0 ? W() + 80 : -80, d = W() / (190 * u());
-      gsap.set(a.el, { x: x0, y, scaleX: dir }); gsap.set(b.el, { x: x0, y: y - 105 * u(), scaleX: dir, zIndex: 3 }); b.set("sit");
+      const gapX = 130 * u();
+      const x0 = dir > 0 ? -80 : W() + 80, x1 = dir > 0 ? W() + 80 + gapX : -80 - gapX, d = (W() + gapX) / (190 * u());
+      gsap.set(a.el, { x: x0, y, scaleX: dir }); gsap.set(b.el, { x: x0 - dir * gapX, y, scaleX: dir });
       return gsap.timeline({ onComplete: done(a, b) })
-        .call(() => a.cycle("walkA", "walkB", 0.22)).to([a.el, b.el], { x: x1, duration: d, ease: "none" }, 0)
-        .to(b.el, { y: y - 112 * u(), duration: 0.22, yoyo: true, repeat: Math.round(d / 0.22), ease: "sine.inOut" }, 0)
-        .call(() => b.set("wave"), undefined, d * 0.2).call(() => b.set("sit"), undefined, d * 0.4).call(() => b.set("wave"), undefined, d * 0.65).call(() => b.set("sit"), undefined, d * 0.8);
+        .call(() => { a.cycle("walkA", "walkB", 0.22); b.cycle("walkB", "walkA", 0.22); })
+        .to([a.el, b.el], { x: `+=${dir * (Math.abs(x1 - x0))}`, duration: d, ease: "none" }, 0)
+        .call(() => b.stop("wave"), undefined, d * 0.3).call(() => b.cycle("walkB", "walkA", 0.22), undefined, d * 0.42)
+        .call(() => a.stop("wave"), undefined, d * 0.6).call(() => a.cycle("walkA", "walkB", 0.22), undefined, d * 0.72);
     }
 
-    const ACTS = [walkTicker, runAcross, peekCard, climbCard, hang, piggy];
+    const ACTS = [walkTicker, runAcross, peekCard, climbCard, hang, pair];
     let last: (typeof ACTS)[number] | null = null;
     let call: gsap.core.Tween | null = null;
     let tl: gsap.core.Timeline | null = null;

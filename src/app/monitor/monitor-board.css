@@ -70,7 +70,6 @@
 .bm-today.is-lots .bm-job-time { font-size: calc(26 * var(--u)); }
 .bm-today.is-lots .bm-job-title { font-size: calc(28 * var(--u)); }
 .bm-today.is-lots .bm-job-place { display: none; }
-.bm-today.is-lots .bm-pp:nth-child(n + 3) { display: none; }
 
 /* faces (cartoon or two letters when the person chose "no cartoon") */
 .bm .bm-face { width: calc(64 * var(--u)) !important; height: calc(64 * var(--u)) !important; border-radius: 50%; background: #fff; flex: none; border: calc(4 * var(--u)) solid var(--hm-ok); box-sizing: border-box; }
@@ -319,3 +318,11 @@
 .tv-bday-card small { text-shadow: 0 calc(2 * var(--u)) calc(10 * var(--u)) #000; display: block; max-width: calc(1300 * var(--u)); margin: calc(12 * var(--u)) auto 0; font-size: calc(34 * var(--u)); color: #ffe3a0; }
 .tv-bday-big { position: absolute; left: 0; right: 0; top: calc(130 * var(--u)); text-align: center; font-size: calc(110 * var(--u)); font-weight: 900; color: #ffd36b; text-shadow: 0 calc(6 * var(--u)) 0 #7a3f96, 0 0 calc(40 * var(--u)) #ff6fb5; opacity: 0; white-space: nowrap; }
 .tv-bday-crew { position: absolute; inset: 0; }
+
+/* คนในงานวันนี้ขึ้นครบทุกคน (4 พ.ย. 2569): 4–5 คน = แถวชิดขึ้น · 6 คนขึ้นไป = 2 คอลัมน์ ชื่ออย่างเดียว
+   (ยังล้นจริง ๆ ระบบย่อ/แบ่งหน้าเองตาม useTodayFit) */
+.bm-job-people.is-grid { gap: calc(6 * var(--u)); }
+.bm-job-people.is-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: calc(6 * var(--u)) calc(14 * var(--u)); align-content: center; }
+.bm-job-people.is-two .bm-pp i { display: none; }
+.bm-today.fit-3 .bm-job-people.is-two { display: flex; }
+.bm-pp i { font-style: normal; }
