@@ -14,6 +14,7 @@
 //   ช่วยเพื่อน     = joined a job after someone else on it pressed ไม่สะดวก
 //   ลงงานเอง      = jobs they created themselves (not counted for heads/admins)
 
+import { todayInBangkok } from "@/lib/date";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isTestTitle } from "@/lib/monitor/team-stats";
 import { BADGE_LABEL, type BadgeKey } from "@/lib/monitor/badges";
@@ -237,7 +238,8 @@ export async function loadPersonSheet(
     .is("deleted_at", null)
     .in("status", ["published", "completed"])
     .gte("event_date", from)
-    .lte("event_date", to)
+    // Work done = up to today; jobs booked later in the round are not "ปฏิบัติ" yet.
+    .lte("event_date", to < todayInBangkok() ? to : todayInBangkok())
     .limit(5000);
   if (evErr) throw new Error(`person-sheet events: ${evErr.message}`);
   const events = ((evRows ?? []) as any[]).filter((e) => !isTestTitle(e.title));
