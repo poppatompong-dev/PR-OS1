@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { UNREACHABLE_NOTE } from "@/lib/notifications/reach";
 import { JobIconTile } from "@/components/JobIconTile";
 import { Avatar } from "@/components/Avatar";
 import Link from "next/link";
@@ -250,6 +251,7 @@ export default async function EventDetailPage({
                 {formData.people.map((person) => (
                   <option key={person.id} value={person.id}>
                     {person.display_name}
+                    {person.reachable ? "" : ` ⚠️ ${UNREACHABLE_NOTE}`}
                   </option>
                 ))}
               </select>

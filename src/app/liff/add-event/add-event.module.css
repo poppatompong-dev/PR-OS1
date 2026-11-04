@@ -503,3 +503,6 @@
   margin-top: 0;
 }
 
+
+/* คนที่ยังไม่ผูกช่องทาง (4 พ.ย. 2569) */
+.warnNote { margin: 6px 0 2px; padding: 8px 10px; border-radius: 10px; background: #fff4e0; color: #8a4b00; border: 1px solid #f3c27a; font-size: 13px; line-height: 1.45; }

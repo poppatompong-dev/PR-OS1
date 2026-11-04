@@ -18,7 +18,7 @@ import type { StagedAttachment } from "@/lib/attachments/rules";
 import { useMiniApp, type Host } from "./host";
 
 type Option = { id: string; name: string };
-type Person = Option & { position: string | null; avatar: string };
+type Person = Option & { position: string | null; avatar: string; reachable?: boolean };
 type Lists = { me: Option; people: Person[]; roles: Option[]; places: string[] };
 type Row = { personId: string; roleIds: string[] };
 type Job = {
@@ -346,6 +346,7 @@ export function AddEventForm({
               {L.people.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
+                  {p.reachable === false ? " ⚠️ ไม่ได้รับแจ้ง" : ""}
                 </option>
               ))}
             </select>
@@ -355,6 +356,9 @@ export function AddEventForm({
               </button>
             ) : null}
           </div>
+          {L.people.find((p) => p.id === r.personId)?.reachable === false ? (
+            <p className={styles.warnNote}>⚠️ คนนี้ยังไม่ผูก Telegram/LINE — ระบบส่งการ์ดแจ้งงานให้ไม่ได้ ช่วยบอกท่านเองด้วย</p>
+          ) : null}
           <RoleChips roles={L.roles} selected={r.roleIds} onChange={(ids) => setRow(i, { roleIds: ids })} idPrefix={`liff-${i}`} />
           </div>
         ))}

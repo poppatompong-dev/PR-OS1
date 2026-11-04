@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { UNREACHABLE_NOTE } from "@/lib/notifications/reach";
 import { IconPicker } from "@/components/IconPicker";
 import { getEventById, getEventFormData } from "@/lib/events/queries";
 import { createEvent } from "@/lib/events/mutations";
@@ -189,6 +190,7 @@ export default async function NewEventPage({
                 {people.map((person) => (
                   <option key={person.id} value={person.id}>
                     {person.display_name}
+                    {person.reachable ? "" : ` ⚠️ ${UNREACHABLE_NOTE}`}
                   </option>
                 ))}
               </select>

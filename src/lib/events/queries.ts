@@ -6,6 +6,7 @@
 // Supabase nested-select results are dynamically shaped (no generated DB types),
 // so `any` is used at the mapping boundary — consistent with the monitor modules.
 
+import { isReachable } from "@/lib/notifications/reach";
 import { pointsFromMetadata } from "@/lib/maps";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -128,7 +129,8 @@ export type EventFormData = {
   departments: { id: string; name: string }[];
   eventTypes: { id: string; name: string }[];
   roles: { id: string; name: string }[];
-  people: { id: string; display_name: string }[];
+  /** reachable = gets cards (Telegram or LINE linked); false → the form warns. */
+  people: { id: string; display_name: string; reachable: boolean }[];
 };
 
 export async function getEventFormData(): Promise<EventFormData> {
@@ -142,7 +144,7 @@ export async function getEventFormData(): Promise<EventFormData> {
         name,
       })),
       roles: mockRoles.map(({ id, name }) => ({ id, name })),
-      people: mockPeople.map(({ id, displayName }) => ({ id, display_name: displayName })),
+      people: mockPeople.map(({ id, displayName }) => ({ id, display_name: displayName, reachable: true })),
     };
   }
 
@@ -154,7 +156,7 @@ export async function getEventFormData(): Promise<EventFormData> {
     supabase.from("roles").select("id, name").eq("is_active", true).order("name"),
     supabase
       .from("people")
-      .select("id, display_name")
+      .select("id, display_name, telegram_chat_id, line_user_id")
       .eq("is_active", true)
       .order("display_name"),
     placeSuggestions(supabase).catch(() => [] as string[]),
@@ -166,7 +168,8 @@ export async function getEventFormData(): Promise<EventFormData> {
     departments: departments.data ?? [],
     eventTypes: eventTypes.data ?? [],
     roles: roles.data ?? [],
-    people: people.data ?? [],
+    // Only the yes/no leaves the server — never the chat ids.
+    people: (people.data ?? []).map((p) => ({ id: p.id, display_name: p.display_name, reachable: isReachable(p) })),
   };
 }
 
