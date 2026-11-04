@@ -9,21 +9,33 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/server";
 import { isTestTitle } from "@/lib/monitor/team-stats";
 
-/** Assignment ids that ever got a card (any type, status sent). Server-only;
- *  only the yes/no reaches the page. */
-async function reachedAssignments(ids: string[]): Promise<Set<string> | null> {
+/** Assignment ids the system tried to card and could not, because the person
+ *  has no Telegram/LINE (skipped "ยังไม่ผูก…") and nothing was ever sent.
+ *  Server-only; only the yes/no reaches the page. null = unknown. */
+async function unreachedAssignments(ids: string[]): Promise<Set<string> | null> {
   if (!isSupabaseConfigured() || !ids.length) return null;
   try {
     const admin = createAdminClient();
-    const out = new Set<string>();
+    const sent = new Set<string>();
+    const unlinked = new Set<string>();
     for (let i = 0; i < ids.length; i += 200) {
-      const { data, error } = await admin.from("notifications").select("assignment_id").eq("status", "sent").in("assignment_id", ids.slice(i, i + 200));
+      const { data, error } = await admin
+        .from("notifications")
+        .select("assignment_id, status, error_message")
+        .in("assignment_id", ids.slice(i, i + 200))
+        .in("status", ["sent", "skipped"]);
       if (error) return null;
-      for (const r of data ?? []) if (r.assignment_id) out.add(r.assignment_id as string);
+      for (const r of data ?? []) {
+        const id = r.assignment_id as string | null;
+        if (!id) continue;
+        if (r.status === "sent") sent.add(id);
+        else if (String(r.error_message ?? "").includes("ยังไม่ผูก")) unlinked.add(id);
+      }
     }
-    return out;
+    for (const id of sent) unlinked.delete(id);
+    return unlinked;
   } catch {
-    return null; // unknown → treat everyone as reached (old behaviour)
+    return null; // unknown → old behaviour
   }
 }
 
@@ -68,9 +80,12 @@ export async function getReportData(filters: {
       to: filters.to,
       departmentId: filters.departmentId,
     })
-  ).filter((e) => !isTestTitle(e.title));
-  const reached = await reachedAssignments(events.flatMap((e) => e.assignments.map((a) => a.id)));
-  if (reached) for (const e of events) for (const a of e.assignments) a.notified = reached.has(a.id);
+  )
+    .filter((e) => !isTestTitle(e.title))
+    // Test people ("[ทดสอบ] …") are not staff either.
+    .map((e) => ({ ...e, assignments: e.assignments.filter((a) => !a.person.displayName.startsWith("[ทดสอบ]")) }));
+  const unreached = await unreachedAssignments(events.flatMap((e) => e.assignments.map((a) => a.id)));
+  if (unreached) for (const e of events) for (const a of e.assignments) a.notified = !unreached.has(a.id);
 
   const today = todayInBangkok();
   const publishedEvents = events.filter((e) => e.status === "published").length;
