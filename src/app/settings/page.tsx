@@ -129,6 +129,11 @@ export default async function SettingsPage({
               : "ทีมงาน การแจ้งเตือน และข้อมูลหลัก (โหมดตัวอย่าง)"}
           </p>
         </div>
+        {/* อยู่บนสุด: เดิมอยู่กลางหน้า เลื่อนไม่ถึง (owner, 4 Nov 2026) */}
+        <form action={reloadTv} className="tv-reload" title="ทีวีที่เปิดจออยู่จะโหลดหน้าใหม่ภายใน 1 นาที">
+          <button type="submit" className="button">🔄 รีเฟรชทีวีตอนนี้</button>
+          <span>ทีวีโหลดใหม่ภายใน 1 นาที</span>
+        </form>
       </header>
 
       {!live ? (
@@ -161,12 +166,7 @@ export default async function SettingsPage({
         <p className="tv-link-alt">
           แบบใหม่ ธีมกรมท่า + โพโพกับฟูฟู 5 ท่า (ยังไม่เป็นค่าเริ่มต้น): <b>{tvAddress}?v=3d</b> — มาสคอตเป็นวิดีโอวนสั้น ทีวีแค่เล่นวิดีโอ จึงลื่น; ถ้าเล่นไม่ได้จะเป็นภาพนิ่ง (บังคับภาพนิ่ง: เติม <b>&amp;static=1</b>)
         </p>
-        <form action={reloadTv} className="tv-reload">
-          <button type="submit" className="button secondary">
-            <RotateCcw size={16} aria-hidden="true" /> รีเฟรชทีวีตอนนี้
-          </button>
-          <span>ทีวีที่เปิดจออยู่จะโหลดหน้าใหม่ภายใน 1 นาที (ปกติหลังแก้ระบบทีวีรีเฟรชเองอยู่แล้ว)</span>
-        </form>
+        <p className="tv-link-alt">สั่งทีวีโหลดหน้าใหม่: ปุ่ม <b>🔄 รีเฟรชทีวีตอนนี้</b> มุมขวาบนของหน้านี้</p>
       </section>
 
       {/* ---- Notifications ---- */}
