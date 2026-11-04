@@ -40,7 +40,8 @@
 .bm-today { grid-column: 1; grid-row: 2 / span 3; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: calc(14 * var(--u)); border-radius: calc(28 * var(--u)); padding: calc(22 * var(--u)) calc(28 * var(--u)); background: var(--bm-card); border: calc(2 * var(--u)) solid var(--bm-line); }
 .bm-chip { align-self: flex-start; background: var(--bm-chip); color: var(--bm-chip-text); font-weight: 800; font-size: calc(32 * var(--u)); border-radius: 999px; padding: calc(6 * var(--u)) calc(26 * var(--u)); }
 .bm-empty { flex: 1; display: grid; place-items: center; font-size: calc(38 * var(--u)); color: var(--hm-dim); }
-.bm-today-list { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: space-evenly; gap: calc(12 * var(--u)); }
+.bm-today-list { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: space-evenly; gap: calc(12 * var(--u)); overflow: hidden; }
+.bm-today-list > .bm-job { flex: none; }
 .bm-job { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: calc(24 * var(--u)); align-items: center; min-height: 0; }
 .bm-job + .bm-job { border-top: 1px solid var(--bm-line); padding-top: calc(12 * var(--u)); }
 .bm-job-info { min-width: 0; }
@@ -219,3 +220,38 @@
 .bm-day-note { font-size: calc(21 * var(--u)); -webkit-line-clamp: 1; white-space: nowrap; text-overflow: ellipsis; display: block; }
 .bm--b .bm-job-note, .bm--b .bm-day-note { color: #8a5a00; }
 .bm-today.is-lots .bm-job-note { font-size: calc(19 * var(--u)); -webkit-line-clamp: 1; }
+
+/* งานวันนี้ต้องเห็นครบ (4 พ.ย. 2569): ย่อทีละขั้นจนพอดีการ์ด แล้วค่อยแบ่งหน้า */
+.bm-today.fit-1 .bm-job { grid-template-columns: 1fr; gap: calc(8 * var(--u)); }
+.bm-today.fit-1 .bm-job-people { border-left: 0; padding-left: 0; flex-direction: row; flex-wrap: wrap; gap: calc(6 * var(--u)) calc(20 * var(--u)); }
+.bm-today.fit-1 .bm-job-time { font-size: calc(30 * var(--u)); }
+.bm-today.fit-1 .bm-job-title { font-size: calc(32 * var(--u)); -webkit-line-clamp: 1; }
+.bm-today.fit-1 .bm-job-place { font-size: calc(21 * var(--u)); }
+.bm-today.fit-1 .bm-job-note { font-size: calc(21 * var(--u)); -webkit-line-clamp: 1; }
+.bm-today.fit-1 .bm-pp { font-size: calc(21 * var(--u)); }
+.bm-today.fit-1 .bm-face { width: calc(40 * var(--u)) !important; height: calc(40 * var(--u)) !important; }
+.bm-time-place { display: none; }
+/* fit-2/3: คนอยู่ด้านขวาแบบย่อ (หน้า + ชื่อเล่น) */
+.bm-today.fit-2 .bm-job, .bm-today.fit-3 .bm-job { grid-template-columns: minmax(0, 1fr) auto; gap: calc(14 * var(--u)); }
+.bm-today.fit-2 .bm-job-people, .bm-today.fit-3 .bm-job-people { border-left: calc(3 * var(--u)) solid var(--bm-line); padding-left: calc(12 * var(--u)); flex-direction: column; flex-wrap: nowrap; gap: calc(4 * var(--u)); max-width: calc(250 * var(--u)); }
+.bm-today.fit-2, .bm-today.fit-3 { --bm-ic: calc(52 * var(--u)); gap: calc(8 * var(--u)); }
+.bm-today.fit-2 .bm-chip, .bm-today.fit-3 .bm-chip { font-size: calc(24 * var(--u)); padding: calc(3 * var(--u)) calc(18 * var(--u)); }
+.bm-today.fit-2 .bm-job-time { font-size: calc(26 * var(--u)); }
+.bm-today.fit-2 .bm-job-title { font-size: calc(30 * var(--u)); -webkit-line-clamp: 1; line-height: 1.25; }
+.bm-today.fit-2 .bm-job-place, .bm-today.fit-2 .bm-job-note { font-size: calc(19 * var(--u)); -webkit-line-clamp: 1; margin-top: 0 !important; }
+.bm-today.fit-2 .bm-pp, .bm-today.fit-3 .bm-pp { font-size: calc(19 * var(--u)); gap: calc(8 * var(--u)); }
+.bm-today.fit-2 .bm-face, .bm-today.fit-3 .bm-face { width: calc(34 * var(--u)) !important; height: calc(34 * var(--u)) !important; border-width: calc(3 * var(--u)); }
+.bm-today.fit-2 .bm-today-list, .bm-today.fit-3 .bm-today-list { gap: calc(6 * var(--u)); }
+.bm-today.fit-2 .bm-job + .bm-job, .bm-today.fit-3 .bm-job + .bm-job { padding-top: calc(6 * var(--u)); }
+/* fit-3: เวลา + สถานที่บรรทัดเดียว · คนเหลือแค่หน้า (ชื่อเล่นสั้น) */
+.bm-today.fit-3 .bm-job-time { font-size: calc(22 * var(--u)); display: flex; gap: calc(12 * var(--u)); align-items: baseline; }
+.bm-today.fit-3 .bm-time-place { display: inline; font-family: "IBM Plex Sans Thai", sans-serif; font-size: calc(18 * var(--u)); font-weight: 500; color: var(--hm-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bm-today.fit-3 .bm-job-place { display: none; }
+.bm-today.fit-3 .bm-job-title { font-size: calc(26 * var(--u)); -webkit-line-clamp: 1; line-height: 1.22; padding-bottom: 0; }
+.bm-today.fit-3 .bm-job-note { font-size: calc(17 * var(--u)); -webkit-line-clamp: 1; margin-top: 0 !important; }
+.bm-today.fit-3 .bm-job-people { flex-direction: row; flex-wrap: wrap; max-width: calc(170 * var(--u)); }
+.bm-today.fit-3 .bm-pp span { display: none; }
+.bm-pages { display: flex; align-items: center; gap: calc(8 * var(--u)); justify-content: center; font-size: calc(18 * var(--u)); color: var(--hm-dim); }
+.bm-pages i { width: calc(12 * var(--u)); height: calc(12 * var(--u)); border-radius: 50%; background: var(--bm-line); }
+.bm-pages i.on { background: var(--bm-chip); }
+.bm-pages span { margin-left: calc(8 * var(--u)); }

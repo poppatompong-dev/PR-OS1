@@ -7,7 +7,7 @@
  * Themes: ?theme=a ม่วงเข้ม · b สว่าง · c กรมท่า-ทอง. ?static=1 stops motion.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { fetchMonitorAnnouncements, fetchMonitorEvents, fetchMonitorTeam } from "@/lib/monitor/client";
 import type { MonitorAnnouncement, MonitorAssignee, MonitorEvent } from "@/lib/monitor/types";
@@ -137,6 +137,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
   };
 
   const todayCount = board?.todayJobs.length ?? 0;
+  const fit = useTodayFit(board?.todayJobs ?? [], now);
   // ธีมเทศกาลตามวันที่ (?fest=loy ใช้ดูตัวอย่าง)
   const festival = isFestivalKey(fest) ? previewFestival(fest) : today ? festivalFor(today) : null;
 
@@ -168,13 +169,13 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
           <div className="bm-st"><b>{board?.stats.week ?? 0}</b><span>7 วันข้างหน้า</span></div>
         </div>
 
-        <section className={`bm-today${todayCount === 1 ? " is-one" : ""}${todayCount >= 3 ? " is-many" : ""}${todayCount >= 5 ? " is-lots" : ""}`}>
+        <section className={`bm-today${todayCount === 1 ? " is-one" : ""}${todayCount >= 3 ? " is-many" : ""}${todayCount >= 5 ? " is-lots" : ""} fit-${fit.level}`}>
           <span className="bm-chip">{today ? thaiLongDate(today).replace(/^วัน\S+ที่ /, "วันที่ ") : ""}</span>
           {todayCount === 0 ? (
             <p className="bm-empty">{(board?.stats.today ?? 0) > 0 ? "งานวันนี้เสร็จครบแล้ว 👍" : "วันนี้ไม่มีงานตามแผน"}</p>
           ) : (
-            <div className="bm-today-list">
-              {board!.todayJobs.map((e) => {
+            <div className="bm-today-list" ref={fit.ref}>
+              {fit.shown.map((e) => {
                 const t = screenTitle(e);
                 return (
                   <article className={`bm-job${isDone(e, now) ? " is-done" : ""}`} key={e.id} {...link(e)}>
@@ -184,6 +185,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
                         <div className="bm-job-time">
                           {thaiTime(e.startTime, e.endTime)}
                           {isDone(e, now) ? <span className="bm-done">✓ จบแล้ว</span> : null}
+                          <span className="bm-time-place">📍 {e.locationName || "ไม่ระบุสถานที่"}</span>
                         </div>
                         <h2 className={`bm-job-title ${titleSize(t)}`}>{t}</h2>
                         <p className="bm-job-place">📍 {e.locationName || "ไม่ระบุสถานที่"}</p>
@@ -206,6 +208,12 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
               })}
             </div>
           )}
+          {fit.pages > 1 ? (
+            <div className="bm-pages" aria-label={`หน้า ${fit.page + 1} จาก ${fit.pages}`}>
+              {Array.from({ length: fit.pages }, (_, i) => <i key={i} className={i === fit.page ? "on" : ""} />)}
+              <span>งานวันนี้ {todayCount} งาน · สลับทุก 8 วิ</span>
+            </div>
+          ) : null}
         </section>
 
         <section className="bm-days">
@@ -293,4 +301,54 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
       )}
     </div>
   );
+}
+
+/**
+ * งานวันนี้ต้องเห็นครบทุกงาน (owner, 4 Nov 2026: งานทับกันเมื่อมี 3 งาน + หมายเหตุ).
+ * Shrinks step by step (fit-0 → fit-1 คนเรียงแถวนอน → fit-2 คนไปด้านขวา → fit-3 บรรทัดเดียว) until the list
+ * fits its card; if it still does not, shows the jobs a page at a time (8 s each).
+ */
+function useTodayFit(jobs: MonitorEvent[], now: number) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [level, setLevel] = useState(0);
+  const [perPage, setPerPage] = useState<number | null>(null);
+  const [page, setPage] = useState(0);
+  const key = jobs.map((e) => `${e.id}:${e.shortNote ?? ""}:${e.assigneeDetail.length}:${isDone(e, now) ? 1 : 0}`).join("|");
+  const [size, setSize] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let last = 0;
+    const ro = new ResizeObserver(() => {
+      const h = Math.round(el.parentElement?.clientHeight ?? 0);
+      if (Math.abs(h - last) > 4) { last = h; setSize(h); }
+    });
+    ro.observe(el.parentElement ?? el);
+    return () => ro.disconnect();
+  }, [jobs.length > 0]);
+
+  // Start over whenever the jobs or the screen change.
+  useLayoutEffect(() => { setLevel(0); setPerPage(null); setPage(0); }, [key, size]);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || perPage !== null) return;
+    if (el.scrollHeight <= el.clientHeight + 2) return;
+    if (level < 3) { setLevel(level + 1); return; }
+    // Still too tall at the smallest size: as many whole jobs as fit, page by page.
+    const kids = Array.from(el.children) as HTMLElement[];
+    let used = 0, n = 0;
+    for (const k of kids) { used += k.offsetHeight + 12; if (used > el.clientHeight) break; n++; }
+    setPerPage(Math.max(1, n));
+  });
+
+  const pages = perPage ? Math.ceil(jobs.length / perPage) : 1;
+  useEffect(() => {
+    if (pages <= 1) return;
+    const t = setInterval(() => setPage((p) => (p + 1) % pages), 8000);
+    return () => clearInterval(t);
+  }, [pages]);
+  const shown = perPage ? jobs.slice((page % pages) * perPage, (page % pages) * perPage + perPage) : jobs;
+  return { ref, level, shown, pages, page: page % pages };
 }
