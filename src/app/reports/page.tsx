@@ -18,6 +18,7 @@ import type { RangePreset } from "@/lib/date";
 import { FileSpreadsheet, Printer, Sparkles } from "lucide-react";
 import {
   addDays,
+  appraisalLabel,
   fiscalYearLabel,
   resolveRange,
   safeRange,
@@ -73,6 +74,8 @@ export default async function ReportsPage({
     { value: "this-month", label: "เดือนนี้" },
     { value: "this-quarter", label: "ไตรมาสนี้" },
     { value: "fiscal-year", label: fiscalYearLabel(today) },
+    { value: "appraisal-1", label: appraisalLabel(1, today) },
+    { value: "appraisal-2", label: appraisalLabel(2, today) },
     { value: "last-12-months", label: "ย้อนหลัง 12 เดือน" },
   ];
 
@@ -314,7 +317,7 @@ export default async function ReportsPage({
       {tab === "person" ? (
         <section className="panel">
           <h2>รายงานการปฏิบัติงานรายบุคคล</h2>
-          <PersonReport events={report.events} />
+          <PersonReport events={report.events} rangeQuery={rangeQuery} />
         </section>
       ) : null}
 

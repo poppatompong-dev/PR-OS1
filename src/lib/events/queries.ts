@@ -26,6 +26,8 @@ export type ScheduleFilters = {
   status?: string; // draft | published | completed | canceled | all
   departmentId?: string; // master id | all
   search?: string;
+  /** Row cap (default 100). Reports pass a bigger one. */
+  limit?: number;
 };
 
 const EVENT_SELECT = `
@@ -73,7 +75,9 @@ export async function getScheduleEvents(
     .is("deleted_at", null)
     .order("event_date", { ascending: true })
     .order("start_time", { ascending: true })
-    .limit(100);
+    // The schedule screens show ~2 weeks; reports ask for a whole round/year
+    // (owner, 4 Nov 2026: a fiscal year passes 100 jobs within weeks).
+    .limit(filters.limit ?? 100);
 
   if (filters.from) query = query.gte("event_date", filters.from);
   if (filters.to) query = query.lte("event_date", filters.to);

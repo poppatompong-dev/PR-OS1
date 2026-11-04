@@ -23,6 +23,7 @@ export type PeriodRow = {
 };
 
 export type PersonRow = {
+  personId: string;
   personName: string;
   total: number;
   acknowledged: number;
@@ -118,6 +119,7 @@ export function byPerson(events: PrEvent[]): PersonRow[] {
       let row = rows.get(name);
       if (!row) {
         row = {
+          personId: assignment.person.id,
           personName: name,
           total: 0,
           acknowledged: 0,
@@ -151,6 +153,7 @@ export function byPerson(events: PrEvent[]): PersonRow[] {
       // Jobs that never required an acknowledgement are not held against anyone.
       const answerable = row.acknowledged + row.pending;
       return {
+        personId: row.personId,
         personName: row.personName,
         total: row.total,
         acknowledged: row.acknowledged,

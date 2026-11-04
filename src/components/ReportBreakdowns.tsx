@@ -70,7 +70,9 @@ export function PeriodReport({
 }
 
 /** What each person actually did — the sheet an appraisal is written from. */
-export function PersonReport({ events }: { events: PrEvent[] }) {
+export function PersonReport({ events, rangeQuery }: { events: PrEvent[]; rangeQuery?: string }) {
+  // "📄 ใบสรุป" = the one-page appraisal sheet (owner, 4 Nov 2026 · แบบ C).
+  const sheetHref = (id: string) => `/reports/person/${id}${rangeQuery ? `?${rangeQuery}` : ""}`;
   const rows = byPerson(events);
 
   if (rows.length === 0) return <p className="empty-note">ไม่มีงานที่มอบหมายในช่วงเวลานี้</p>;
@@ -101,6 +103,11 @@ export function PersonReport({ events }: { events: PrEvent[] }) {
                 <td>
                   <strong>{row.personName}</strong>
                   <div className="table-note">{row.departments.join(" · ")}</div>
+                  {row.personId ? (
+                    <a className="table-note sheet-link" href={sheetHref(row.personId)} target="_blank" rel="noreferrer">
+                      📄 ใบสรุป
+                    </a>
+                  ) : null}
                 </td>
                 <td className="num">{row.total}</td>
                 <td className="num">{row.urgent}</td>
@@ -129,7 +136,14 @@ export function PersonReport({ events }: { events: PrEvent[] }) {
       <ul className="only-narrow stat-cards">
         {rows.map((row) => (
           <li key={row.personName} className="stat-card">
-            <h3>{row.personName}</h3>
+            <h3>
+              {row.personName}
+              {row.personId ? (
+                <a className="sheet-link" href={sheetHref(row.personId)} target="_blank" rel="noreferrer">
+                  {" "}📄 ใบสรุป
+                </a>
+              ) : null}
+            </h3>
             <p className="stat-lead">
               <strong>{row.total}</strong> งาน · รับทราบ {row.ackRate === null ? "—" : PERCENT.format(row.ackRate)}
             </p>

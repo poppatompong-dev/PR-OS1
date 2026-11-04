@@ -79,6 +79,7 @@ export async function getReportData(filters: {
       from: filters.from,
       to: filters.to,
       departmentId: filters.departmentId,
+      limit: 3000,
     })
   )
     .filter((e) => !isTestTitle(e.title))

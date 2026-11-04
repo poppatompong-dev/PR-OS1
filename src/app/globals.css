@@ -3978,3 +3978,4 @@ textarea:focus-visible {
 .tv-reload .button { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .tv-reload span { font-size: 12px; color: var(--muted, #6b6475); }
 @media (max-width: 640px) { .tv-reload { align-items: stretch; margin-left: 0; width: 100%; } .tv-reload span { text-align: center; } }
+.sheet-link { display: inline-block; margin-top: 2px; color: var(--purple, #5e2f73); font-weight: 600; text-decoration: none; }

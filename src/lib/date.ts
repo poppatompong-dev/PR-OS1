@@ -26,7 +26,9 @@ export type RangePreset =
   | "this-quarter"
   | "fiscal-year"
   | "last-12-months"
-  | "next-30-days";
+  | "next-30-days"
+  | "appraisal-1"
+  | "appraisal-2";
 
 /** Last day of a month, as YYYY-MM-DD. */
 function endOfMonth(year: number, month: number): string {
@@ -60,6 +62,17 @@ export function resolveRange(preset: RangePreset, today = todayInBangkok()): { f
       return { from: `${startYear}-10-01`, to: `${startYear + 1}-09-30` };
     }
 
+    // รอบประเมินผลการปฏิบัติงาน (owner, 4 Nov 2026): รอบ 1 = 1 ต.ค.–31 มี.ค.,
+    // รอบ 2 = 1 เม.ย.–30 ก.ย. ของปีงบประมาณที่วันนี้อยู่
+    case "appraisal-1": {
+      const startYear = m >= 10 ? y : y - 1;
+      return { from: `${startYear}-10-01`, to: `${startYear + 1}-03-31` };
+    }
+    case "appraisal-2": {
+      const startYear = m >= 10 ? y : y - 1;
+      return { from: `${startYear + 1}-04-01`, to: `${startYear + 1}-09-30` };
+    }
+
     case "last-12-months": {
       const startYear = m === 12 ? y : y - 1;
       const startMonth = m === 12 ? 1 : m + 1;
@@ -70,6 +83,21 @@ export function resolveRange(preset: RangePreset, today = todayInBangkok()): { f
     default:
       return { from: today, to: addDays(today, 30) };
   }
+}
+
+/** "รอบประเมิน 1/2570" for the appraisal round preset, in the fiscal year of `today`. */
+export function appraisalLabel(round: 1 | 2, today = todayInBangkok()): string {
+  const [y, m] = today.split("-").map(Number);
+  const endYear = m >= 10 ? y + 1 : y;
+  return `รอบประเมิน ${round}/${endYear + 543}`;
+}
+
+/** The appraisal round a range is exactly, e.g. { round: 1, label: "รอบที่ 1/2570" }, else null. */
+export function appraisalRoundOf(from: string, to: string): { round: 1 | 2; label: string } | null {
+  const fy = Number(from.slice(0, 4));
+  if (from.endsWith("-10-01") && to === `${fy + 1}-03-31`) return { round: 1, label: `รอบที่ 1/${fy + 1 + 543}` };
+  if (from.endsWith("-04-01") && to === `${fy}-09-30`) return { round: 2, label: `รอบที่ 2/${fy + 543}` };
+  return null;
 }
 
 /** The Buddhist-era label for the fiscal year that `today` falls in. */
