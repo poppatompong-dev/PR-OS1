@@ -142,7 +142,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
   const festival = isFestivalKey(fest) ? previewFestival(fest) : today ? festivalFor(today) : null;
 
   return (
-    <div className={`hm bm bm--${theme}${staticMode ? " hm--still" : ""}${festival ? ` bm--fest-${festival.key}` : ""}`}>
+    <div className={`hm bm bm--${theme}${staticMode ? " hm--still" : ""}${festival ? ` bm--fest-${festival.key}` : ""} bm-space-${Math.min(fit.level, 2)}`}>
       <FestivalLayer festival={festival?.key ?? null} />
       <header className="hm-head bm-head">
         <span className="bm-seal">
@@ -169,8 +169,14 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
           <div className="bm-st"><b>{board?.stats.week ?? 0}</b><span>7 วันข้างหน้า</span></div>
         </div>
 
-        <section className={`bm-today${todayCount === 1 ? " is-one" : ""}${todayCount >= 3 ? " is-many" : ""}${todayCount >= 5 ? " is-lots" : ""} fit-${fit.level}`}>
-          <span className="bm-chip">{today ? thaiLongDate(today).replace(/^วัน\S+ที่ /, "วันที่ ") : ""}</span>
+        <section className={`bm-today${todayCount === 1 ? " is-one" : ""}${todayCount >= 3 ? " is-many" : ""}${todayCount >= 5 ? " is-lots" : ""} fit-${Math.max(0, fit.level - 2)}${board?.todayJobs.some((e) => !isDone(e, now)) ? " has-upcoming" : ""}`}>
+          <div className="bm-today-head">
+            <span className="bm-chip">{today ? thaiLongDate(today).replace(/^วัน\S+ที่ /, "วันที่ ") : ""}</span>
+            {/* งานเยอะ: ตัวเลข 3 ช่องด้านบนย่อมาอยู่ตรงนี้ เพื่อให้งานวันนี้ได้พื้นที่เต็ม */}
+            <span className="bm-today-mini">
+              <b>{board?.stats.today ?? 0}</b> งานวันนี้ · <b className={(board?.stats.pending ?? 0) > 0 ? "is-warn" : ""}>{board?.stats.pending ?? 0}</b> ยังไม่รับงาน · <b>{board?.stats.week ?? 0}</b> 7 วันข้างหน้า
+            </span>
+          </div>
           {todayCount === 0 ? (
             <p className="bm-empty">{(board?.stats.today ?? 0) > 0 ? "งานวันนี้เสร็จครบแล้ว 👍" : "วันนี้ไม่มีงานตามแผน"}</p>
           ) : (
@@ -305,8 +311,11 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
 
 /**
  * งานวันนี้ต้องเห็นครบทุกงาน (owner, 4 Nov 2026: งานทับกันเมื่อมี 3 งาน + หมายเหตุ).
- * Shrinks step by step (fit-0 → fit-1 คนเรียงแถวนอน → fit-2 คนไปด้านขวา → fit-3 บรรทัดเดียว) until the list
- * fits its card; if it still does not, shows the jobs a page at a time (8 s each).
+ * Makes room first, then shrinks (owner: เน้นงานวันนี้ให้หมดก่อน):
+ *   1 the three number tiles fold into one line, today's card grows to the top
+ *   2 the bottom row of 6 days steps aside, today's card grows to the bottom
+ *   3 fit-1 people in a row · 4 fit-2 people beside the job · 5 fit-3 one line each
+ * Still too tall → whole jobs a page at a time (8 s each).
  */
 function useTodayFit(jobs: MonitorEvent[], now: number) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -316,17 +325,13 @@ function useTodayFit(jobs: MonitorEvent[], now: number) {
   const key = jobs.map((e) => `${e.id}:${e.shortNote ?? ""}:${e.assigneeDetail.length}:${isDone(e, now) ? 1 : 0}`).join("|");
   const [size, setSize] = useState(0);
 
+  // The screen size (not the card's: the card itself grows as room is made).
   useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    let last = 0;
-    const ro = new ResizeObserver(() => {
-      const h = Math.round(el.parentElement?.clientHeight ?? 0);
-      if (Math.abs(h - last) > 4) { last = h; setSize(h); }
-    });
-    ro.observe(el.parentElement ?? el);
-    return () => ro.disconnect();
-  }, [jobs.length > 0]);
+    const on = () => setSize(window.innerWidth * 10000 + window.innerHeight);
+    on();
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
 
   // Start over whenever the jobs or the screen change.
   useLayoutEffect(() => { setLevel(0); setPerPage(null); setPage(0); }, [key, size]);
@@ -335,7 +340,7 @@ function useTodayFit(jobs: MonitorEvent[], now: number) {
     const el = ref.current;
     if (!el || perPage !== null) return;
     if (el.scrollHeight <= el.clientHeight + 2) return;
-    if (level < 3) { setLevel(level + 1); return; }
+    if (level < 5) { setLevel(level + 1); return; }
     // Still too tall at the smallest size: as many whole jobs as fit, page by page.
     const kids = Array.from(el.children) as HTMLElement[];
     let used = 0, n = 0;

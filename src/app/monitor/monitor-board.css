@@ -255,3 +255,26 @@
 .bm-pages i { width: calc(12 * var(--u)); height: calc(12 * var(--u)); border-radius: 50%; background: var(--bm-line); }
 .bm-pages i.on { background: var(--bm-chip); }
 .bm-pages span { margin-left: calc(8 * var(--u)); }
+
+/* งานวันนี้ได้พื้นที่ก่อน (4 พ.ย. 2569): พับตัวเลข 3 ช่อง → หลบแถวล่าง 6 วัน → ค่อยย่อตัวหนังสือ */
+.bm-today-head { display: flex; align-items: center; gap: calc(18 * var(--u)); flex-wrap: wrap; }
+.bm-today-mini { display: none; font-size: calc(22 * var(--u)); color: var(--hm-dim); }
+.bm-today-mini b { color: var(--hm-text); font-size: calc(28 * var(--u)); font-family: "JetBrains Mono Variable", "JetBrains Mono", monospace; }
+.bm-today-mini b.is-warn { color: var(--hm-wait); }
+.bm-space-1 .bm-stats, .bm-space-2 .bm-stats { display: none; }
+.bm-space-1 .bm-today, .bm-space-2 .bm-today { grid-row: 1 / span 4; }
+.bm-space-1 .bm-today-mini, .bm-space-2 .bm-today-mini { display: inline; }
+.bm-space-2 .bm-cells { display: none; }
+
+/* งานที่จบแล้ว (มีงานถัดไปรออยู่): ย่อเหลือบรรทัดเดียว เวลา · ชื่องาน · ✓ — คืนพื้นที่ให้งานที่กำลังจะมาถึง (4 พ.ย. 2569) */
+.bm-today.has-upcoming .bm-job.is-done { grid-template-columns: 1fr; gap: 0; opacity: .5; filter: grayscale(.6); }
+.bm-today.has-upcoming .bm-job.is-done .bm-job-people,
+.bm-today.has-upcoming .bm-job.is-done .bm-job-place,
+.bm-today.has-upcoming .bm-job.is-done .bm-job-note,
+.bm-today.has-upcoming .bm-job.is-done .bm-time-place,
+.bm-today.has-upcoming .bm-job.is-done .bm-job-icon { display: none; }
+.bm-today.has-upcoming .bm-job.is-done .bm-job-info { display: block; }
+.bm-today.has-upcoming .bm-job.is-done .bm-job-text { display: flex; align-items: baseline; gap: calc(16 * var(--u)); min-width: 0; }
+.bm-today.has-upcoming .bm-job.is-done .bm-job-time { font-size: calc(22 * var(--u)); display: flex; flex-wrap: nowrap; gap: calc(10 * var(--u)); flex: none; }
+.bm-today.has-upcoming .bm-job.is-done .bm-job-title { font-size: calc(24 * var(--u)); -webkit-line-clamp: 1; padding: 0; line-height: 1.3; }
+.bm-today.has-upcoming .bm-job.is-done .bm-done { font-size: calc(18 * var(--u)); }
