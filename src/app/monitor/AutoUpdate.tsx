@@ -1,9 +1,10 @@
 "use client";
 
 // The office TV keeps /monitor open for days. Without this it never sees a
-// deploy until someone turns it off and on (owner, 3 Nov 2026). Every 3
-// minutes (and when the screen wakes) it asks which build is live and reloads
-// if it is not the one it is running. It also reloads once a day at 05:30 so a
+// deploy until someone turns it off and on (owner, 3 Nov 2026). Every minute
+// (and when the screen wakes) it asks which build is live and reloads if it is
+// not the one it is running — or if an admin pressed "รีเฟรชทีวีตอนนี้"
+// in /settings since this page loaded (k changed; 4 Nov 2026). It also reloads once a day at 05:30 so a
 // browser that has been open for days starts fresh.
 
 import { useEffect } from "react";
@@ -11,7 +12,12 @@ import { useEffect } from "react";
 const MINE = process.env.NEXT_PUBLIC_BUILD_SHA ?? "";
 const KEY = "pr-os-tv-reload";
 
-function reloadOnce(reason: string) {
+function reloadOnce(reason: string, force = false) {
+  if (force) {
+    console.info(`[tv] reload: ${reason}`);
+    window.location.reload();
+    return;
+  }
   try {
     const last = Number(sessionStorage.getItem(KEY) ?? 0);
     if (Date.now() - last < 10 * 60_000) return; // a CDN still serving the old build: try later
@@ -26,14 +32,21 @@ function reloadOnce(reason: string) {
 export function AutoUpdate() {
   useEffect(() => {
     if (!MINE) return;
+    let seenKick: string | null = null;
     const check = () =>
       fetch(`/api/monitor/version?t=${Date.now()}`, { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : null))
-        .then((j: { v?: string } | null) => {
-          if (j?.v && j.v !== MINE) reloadOnce("new build");
+        .then((j: { v?: string; k?: string | null } | null) => {
+          if (!j) return;
+          if (typeof j.k === "string") {
+            if (seenKick === null) seenKick = j.k;
+            else if (j.k !== seenKick) return reloadOnce("admin pressed reload", true);
+          }
+          if (j.v && j.v !== MINE) reloadOnce("new build");
         })
         .catch(() => undefined);
-    const id = window.setInterval(check, 3 * 60_000);
+    check();
+    const id = window.setInterval(check, 60_000);
     const wake = () => {
       if (document.visibilityState === "visible") check();
     };

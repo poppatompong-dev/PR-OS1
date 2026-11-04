@@ -4,7 +4,7 @@ import { blockWritesInDemoMode } from "@/lib/demo-guard";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { can, getSessionUser, UI_ROLES, type AppRole } from "@/lib/auth/roles";
 import { initialPassword, normalizeUsername } from "@/lib/settings/team";
 import { processDueNotifications } from "@/lib/notifications/queue";
@@ -803,4 +803,14 @@ export async function messagePersonTelegram(formData: FormData) {
     new_values: { message, photo: hasPhoto ? { type: photo.type, bytes: photo.size } : null },
   });
   done(undefined, `ส่งข้อความ${hasPhoto ? "พร้อมรูป" : ""}ถึง ${p!.display_name} ทาง Telegram แล้ว`);
+}
+
+/** ปุ่ม "รีเฟรชทีวีตอนนี้" (owner, 4 Nov 2026): the TV reloads within a minute. */
+export async function reloadTv() {
+  await blockWritesInDemoMode();
+  const { user } = await requireAdmin();
+  const { error } = await createAdminClient()
+    .from("settings")
+    .upsert({ key: "tv_reload_at", value: new Date().toISOString(), description: "ปุ่มสั่งรีเฟรชทีวี (หน้าตั้งค่า)", updated_at: new Date().toISOString(), updated_by: user.id });
+  done(error ? `สั่งรีเฟรชไม่สำเร็จ: ${error.message}` : undefined, error ? undefined : "สั่งรีเฟรชทีวีแล้ว — ทีวีจะโหลดใหม่ภายใน 1 นาที");
 }

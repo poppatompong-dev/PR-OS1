@@ -3972,3 +3972,8 @@ textarea:focus-visible {
 .mp-pin span { transform: rotate(45deg); color: #fff; font: 700 15px/1 system-ui, sans-serif; }
 .mp-pin.is-active { background: #c2410c; }
 .leaflet-container { font-family: inherit; }
+
+/* ปุ่มรีเฟรชทีวี (หน้าตั้งค่า, 4 พ.ย. 2569) */
+.tv-reload { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
+.tv-reload .button { display: inline-flex; align-items: center; gap: 6px; }
+.tv-reload span { font-size: 13px; color: var(--muted, #6b6475); }

@@ -19,6 +19,7 @@ import {
 import {
   addMasterItem,
   processNotificationQueue,
+  reloadTv,
   setMasterActive,
   setupLineRichMenu,
   updateNotificationSettings,
@@ -160,6 +161,12 @@ export default async function SettingsPage({
         <p className="tv-link-alt">
           แบบใหม่ ธีมกรมท่า + โพโพกับฟูฟู 5 ท่า (ยังไม่เป็นค่าเริ่มต้น): <b>{tvAddress}?v=3d</b> — มาสคอตเป็นวิดีโอวนสั้น ทีวีแค่เล่นวิดีโอ จึงลื่น; ถ้าเล่นไม่ได้จะเป็นภาพนิ่ง (บังคับภาพนิ่ง: เติม <b>&amp;static=1</b>)
         </p>
+        <form action={reloadTv} className="tv-reload">
+          <button type="submit" className="button secondary">
+            <RotateCcw size={16} aria-hidden="true" /> รีเฟรชทีวีตอนนี้
+          </button>
+          <span>ทีวีที่เปิดจออยู่จะโหลดหน้าใหม่ภายใน 1 นาที (ปกติหลังแก้ระบบทีวีรีเฟรชเองอยู่แล้ว)</span>
+        </form>
       </section>
 
       {/* ---- Notifications ---- */}
