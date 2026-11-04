@@ -343,3 +343,25 @@
 .tv-gag .card{position:absolute;left:0;top:0;width:190px;padding:12px;background:#fff;border:5px solid #1b1024;border-radius:18px;box-shadow:6px 6px 0 #1b1024;text-align:center;color:#1b1024;font-weight:900;display:flex;flex-direction:column;align-items:center;gap:2px;opacity:0}.tv-gag .card b{font-size:26px}.tv-gag .card span{font-size:30px;color:#c0182c}
 .tv-gag .note20{position:absolute;left:0;top:0;width:120px;height:62px;background:linear-gradient(135deg,#7fc77a,#3f8f4a);border:4px solid #1b1024;border-radius:8px;color:#fff;font-weight:900;font-size:36px;display:grid;place-items:center;text-shadow:2px 2px 0 #1b1024;opacity:0}
 .tv-gag .sign{position:absolute;left:0;top:0;padding:10px 18px;background:#ffd36b;border:5px solid #1b1024;border-radius:14px;box-shadow:5px 5px 0 #1b1024;color:#1b1024;font-weight:900;font-size:34px;white-space:nowrap;opacity:0}
+
+/* ฉากเทคนิคการ์ตูนญี่ปุ่น (tv-scenes.ts) — บนเวทีเดียวกับแก็ก */
+.tv-scene .st{position:absolute;inset:0}
+.tv-scene .st>div{position:absolute;left:0;top:0}
+.tv-scene .boom{opacity:0;width:620px;height:300px;display:grid;place-items:center}.tv-scene .boom svg{position:absolute;inset:0}.tv-scene .boom b{position:relative;font-size:64px;color:#1b1024;font-weight:900;white-space:nowrap}
+.tv-scene .sfx{font-size:150px;font-weight:900;color:#ffd36b;-webkit-text-stroke:8px #1b1024;paint-order:stroke fill;opacity:0;white-space:nowrap;letter-spacing:4px}
+.tv-scene .flash,.tv-scene .focus{width:1920px;height:1080px;opacity:0}
+.tv-scene .reddim{width:1920px;height:1080px;opacity:0;background:radial-gradient(circle at 50% 80%,rgba(255,40,40,.3),rgba(120,0,0,.55))}
+.tv-scene .sparkbg{width:1920px;height:1080px;opacity:0;background:radial-gradient(circle at 50% 80%,rgba(255,170,220,.5),rgba(255,210,240,.12) 40%,transparent 62%)}
+.tv-scene .gloom{width:200px;height:220px;opacity:0;background:repeating-linear-gradient(90deg,rgba(40,20,70,.85) 0 6px,transparent 6px 22px);-webkit-mask:linear-gradient(#000,transparent);mask:linear-gradient(#000,transparent)}
+.tv-scene .cloud{width:240px;height:90px;opacity:0}
+.tv-scene .soul{width:90px;height:120px;opacity:0}
+.tv-scene .tear{width:16px;height:0;background:repeating-linear-gradient(180deg,rgba(190,232,255,.95) 0 14px,rgba(95,184,255,.85) 14px 28px);border:3px solid #1b1024;border-top:0;border-radius:0 0 10px 10px;opacity:0;background-size:100% 28px;animation:tv-tearflow .35s linear infinite}
+@keyframes tv-tearflow{to{background-position:0 28px}}
+.tv-scene .drop{width:46px;height:64px;opacity:0}
+.tv-scene .blush{width:70px;height:26px;opacity:0;background:repeating-linear-gradient(115deg,#ff5d8a 0 5px,transparent 5px 11px);border-radius:50%}
+.tv-scene .bub{border-radius:50%;border:3px solid rgba(255,255,255,.9);background:rgba(255,255,255,.18);opacity:0}
+.tv-scene .fire{width:330px;height:460px;opacity:0;filter:blur(2px)}
+.tv-scene .dust{width:520px;height:300px;opacity:0}
+.tv-scene .zap{width:300px;height:80px;opacity:0}
+.tv-scene .ucard{width:440px;padding:18px 26px;background:#ff3b4f;color:#fff;border:6px solid #1b1024;border-radius:18px;box-shadow:8px 8px 0 #1b1024;font-size:56px;font-weight:900;text-align:center;opacity:0;white-space:nowrap}
+.tv-scene .dots{font-size:90px;font-weight:900;color:#fff;-webkit-text-stroke:5px #1b1024;paint-order:stroke fill;opacity:0}
