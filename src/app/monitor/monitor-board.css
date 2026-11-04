@@ -278,3 +278,8 @@
 .bm-today.has-upcoming .bm-job.is-done .bm-job-time { font-size: calc(22 * var(--u)); display: flex; flex-wrap: nowrap; gap: calc(10 * var(--u)); flex: none; }
 .bm-today.has-upcoming .bm-job.is-done .bm-job-title { font-size: calc(24 * var(--u)); -webkit-line-clamp: 1; padding: 0; line-height: 1.3; }
 .bm-today.has-upcoming .bm-job.is-done .bm-done { font-size: calc(18 * var(--u)); }
+
+/* ตัวการ์ตูนเต็มตัวป่วนจอ (TvCast, 4 พ.ย. 2569) — ลอยเหนือทุกอย่าง แต่กดทะลุได้ */
+.bm > .tv-cast, .tv-cast { position: fixed !important; inset: 0; width: 100vw; height: 100vh; z-index: 40 !important; pointer-events: none; overflow: hidden; margin: 0; }
+.tv-cast-sp { position: absolute; left: 0; top: 0; background-size: contain; background-repeat: no-repeat; background-position: 50% 100%; will-change: transform; }
+.tv-cast-mask { position: absolute; overflow: hidden; }

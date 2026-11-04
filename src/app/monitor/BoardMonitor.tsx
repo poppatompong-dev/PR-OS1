@@ -19,6 +19,7 @@ import { Avatar } from "@/components/Avatar";
 import "./monitor-hero.css";
 import { TeamPulse } from "./TeamPulse";
 import { TeamBench } from "./TeamBench";
+import { TvCast } from "./TvCast";
 import { FestivalLayer, FestivalStage } from "./FestivalLayer";
 import { festivalFor, isFestivalKey, previewFestival } from "@/lib/monitor/festivals";
 import "./monitor-board.css";
@@ -136,6 +137,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
     return <Avatar key={`${p.name}-${k}`} personId={id} name={p.name} size={size} eager className={`bm-face ${ackClass(p)} ${cls}`} />;
   };
 
+  const castPeople = useMemo(() => Object.values(team.ids), [team.ids]);
   const todayCount = board?.todayJobs.length ?? 0;
   const fit = useTodayFit(board?.todayJobs ?? [], now);
   // ธีมเทศกาลตามวันที่ (?fest=loy ใช้ดูตัวอย่าง)
@@ -305,6 +307,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
       ) : (
         <div className="hm-ticker hm-ticker--quiet bm-ticker">พิมพ์ &quot;ประกาศ ข้อความ&quot; ในแชทบอท เพื่อขึ้นประกาศที่นี่ · ไม่มีงานเปลี่ยนแปลงหรือยกเลิก</div>
       )}
+      <TvCast still={staticMode} people={castPeople} off={team.off} />
     </div>
   );
 }
