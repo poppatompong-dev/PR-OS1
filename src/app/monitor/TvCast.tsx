@@ -144,6 +144,8 @@ export function TvCast({ still, people, off }: { still: boolean; people: string[
       if (!alive) return;
       const h = bangkokHour();
       if (!fast && (document.hidden || h < 7 || h >= 19)) return schedule(300);
+      // A birthday show is on (TvBirthday) — let it have the screen.
+      if (document.documentElement.dataset.tvShow) return schedule(30);
       let f = ACTS[Math.floor(Math.random() * ACTS.length)];
       while (f === last) f = ACTS[Math.floor(Math.random() * ACTS.length)];
       last = f;

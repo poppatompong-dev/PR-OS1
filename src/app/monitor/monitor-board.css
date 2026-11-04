@@ -292,3 +292,30 @@
 .bm-medal { width: calc(22 * var(--u)); height: calc(22 * var(--u)); font-size: calc(12 * var(--u)); box-shadow: 0 0 0 calc(2 * var(--u)) var(--bm-card, #2a1f36); }
 .bm-bench-out { top: calc(var(--face) * .42); right: calc(-14 * var(--u)); width: calc(24 * var(--u)); height: calc(24 * var(--u)); padding: 0; display: grid; place-items: center; font-size: calc(13 * var(--u)); border-radius: 50%; box-shadow: 0 0 0 calc(2 * var(--u)) var(--bm-card, #2a1f36); }
 .bm-bench-p.is-out .bm-bench-face { border-color: #ffd36b; box-shadow: 0 0 0 calc(3 * var(--u)) rgba(255, 211, 107, .35), 0 calc(6 * var(--u)) calc(14 * var(--u)) rgba(0, 0, 0, .4); }
+
+/* อวยพรวันเกิด (4 พ.ย. 2569 · B + A + C): ป้ายหัวจอทั้งวัน + โชว์ใหญ่ทุก 30 นาที */
+/* วันเกิด: ป้ายใช้ที่ของดวงจันทร์เทศกาล + ช่อง 📸 ยอดออกงาน (วันเดียว) */
+.bm--bday .bm-pulse-item:first-child { display: none; }
+.bm-bday { display: flex; align-items: center; gap: calc(14 * var(--u)); flex: none; margin-left: auto; padding: calc(10 * var(--u)) calc(22 * var(--u)) calc(10 * var(--u)) calc(12 * var(--u)); border-radius: calc(24 * var(--u)); background: linear-gradient(135deg, #ff6fb5, #7a3f96); box-shadow: 0 0 calc(30 * var(--u)) rgba(255, 111, 181, .4); color: #fff; }
+.bm-bday.is-live { animation: bm-bday-glow 2.4s ease-in-out infinite; }
+@keyframes bm-bday-glow { 50% { box-shadow: 0 0 calc(50 * var(--u)) rgba(255, 211, 107, .65); transform: scale(1.03); } }
+.bm-bday-faces { display: flex; flex: none; }
+.bm-bday-face { width: calc(84 * var(--u)); height: calc(84 * var(--u)); border-radius: 50%; border: calc(5 * var(--u)) solid #ffd36b; background: #fff; object-fit: cover; display: grid; place-items: center; font-weight: 800; font-size: calc(30 * var(--u)); color: #7a3f96; }
+.bm-bday-face + .bm-bday-face { margin-left: calc(-22 * var(--u)); }
+.bm-bday-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.bm-bday-text b { font-size: calc(32 * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bm-bday-text span { font-size: calc(22 * var(--u)); color: #ffe3a0; }
+
+.bm > .tv-bday, .tv-bday { position: fixed !important; inset: 0; width: 100vw; height: 100vh; z-index: 45 !important; pointer-events: none; overflow: hidden; margin: 0; visibility: hidden; }
+.tv-bday.is-on { visibility: visible; }
+.tv-bday canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tv-bday-dim { position: absolute; inset: 0; opacity: 0; background: radial-gradient(circle at 50% 45%, rgba(20, 8, 30, .35), rgba(10, 4, 16, .85)); }
+.tv-bday-card { position: absolute; left: 0; right: 0; top: 50%; translate: 0 -50%; text-align: center; opacity: 0; }
+.tv-bday-faces { display: flex; justify-content: center; }
+.tv-bday-face { width: calc(300 * var(--u)); height: calc(300 * var(--u)); border-radius: 50%; border: calc(10 * var(--u)) solid #ffd36b; box-shadow: 0 0 calc(60 * var(--u)) rgba(255, 211, 107, .55); background: #fff; object-fit: cover; display: grid; place-items: center; font-size: calc(110 * var(--u)); font-weight: 800; color: #7a3f96; }
+.tv-bday-face + .tv-bday-face { margin-left: calc(-40 * var(--u)); }
+.tv-bday-card h2 { font-size: calc(110 * var(--u)); margin: calc(14 * var(--u)) 0 0; font-weight: 900; line-height: 1.1; background: linear-gradient(90deg, #ffd36b, #ff8fd1, #9fd2ff, #ffd36b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.tv-bday-card p { font-size: calc(52 * var(--u)); margin: 0; font-weight: 800; color: #fff; }
+.tv-bday-card small { text-shadow: 0 calc(2 * var(--u)) calc(10 * var(--u)) #000; display: block; max-width: calc(1300 * var(--u)); margin: calc(12 * var(--u)) auto 0; font-size: calc(34 * var(--u)); color: #ffe3a0; }
+.tv-bday-big { position: absolute; left: 0; right: 0; top: calc(130 * var(--u)); text-align: center; font-size: calc(110 * var(--u)); font-weight: 900; color: #ffd36b; text-shadow: 0 calc(6 * var(--u)) 0 #7a3f96, 0 0 calc(40 * var(--u)) #ff6fb5; opacity: 0; white-space: nowrap; }
+.tv-bday-crew { position: absolute; inset: 0; }

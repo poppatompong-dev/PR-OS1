@@ -20,6 +20,8 @@ import "./monitor-hero.css";
 import { TeamPulse } from "./TeamPulse";
 import { TeamBench } from "./TeamBench";
 import { TvCast } from "./TvCast";
+import { BirthdayBanner, BirthdayShow } from "./TvBirthday";
+import { birthdayToday } from "@/lib/monitor/birthday";
 import { FestivalLayer, FestivalStage } from "./FestivalLayer";
 import { festivalFor, isFestivalKey, previewFestival } from "@/lib/monitor/festivals";
 import "./monitor-board.css";
@@ -138,13 +140,26 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
   };
 
   const castPeople = useMemo(() => Object.values(team.ids), [team.ids]);
+  // อวยพรวันเกิด: today's job titled วันเกิด/HBD → its people. ?bday=<personId> previews.
+  const [bdayPreview, setBdayPreview] = useState<string | null>(null);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("bday");
+    if (q && q !== "fast") setBdayPreview(q);
+  }, []);
+  const bday = useMemo(() => {
+    if (!today) return null;
+    const real = birthdayToday(events, today, (n) => team.ids[n]);
+    if (real || !bdayPreview) return real;
+    const name = Object.keys(team.ids).find((n) => team.ids[n] === bdayPreview);
+    return name ? { people: [{ name, short: shortName(name), personId: bdayPreview }], wish: "", names: shortName(name) } : null;
+  }, [events, today, team.ids, bdayPreview]);
   const todayCount = board?.todayJobs.length ?? 0;
   const fit = useTodayFit(board?.todayJobs ?? [], now);
   // ธีมเทศกาลตามวันที่ (?fest=loy ใช้ดูตัวอย่าง)
   const festival = isFestivalKey(fest) ? previewFestival(fest) : today ? festivalFor(today) : null;
 
   return (
-    <div className={`hm bm bm--${theme}${staticMode ? " hm--still" : ""}${festival ? ` bm--fest-${festival.key}` : ""} bm-space-${Math.min(fit.level, 2)}`}>
+    <div className={`hm bm bm--${theme}${staticMode ? " hm--still" : ""}${festival ? ` bm--fest-${festival.key}` : ""}${bday ? " bm--bday" : ""} bm-space-${Math.min(fit.level, 2)}`}>
       <FestivalLayer festival={festival?.key ?? null} />
       <header className="hm-head bm-head">
         <span className="bm-seal">
@@ -156,7 +171,11 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
           <p>ตารางงานฝ่ายบริการและเผยแพร่วิชาการ</p>
           {festival?.chip ? <span className="bm-fest-chip">{festival.chip}</span> : null}
         </div>
-        <FestivalStage festival={festival?.key ?? null} still={staticMode} daysLeft={festival?.daysLeft} />
+        {bday ? (
+          <BirthdayBanner bday={bday} off={team.off} still={staticMode} />
+        ) : (
+          <FestivalStage festival={festival?.key ?? null} still={staticMode} daysLeft={festival?.daysLeft} />
+        )}
         <TeamPulse still={staticMode} noFace={team.off} />
         <div className="hm-clock bm-clock">
           <b>{clock ? `${clock.hh}.${clock.mm}` : "--.--"}<small> น.</small></b>
@@ -308,6 +327,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
         <div className="hm-ticker hm-ticker--quiet bm-ticker">พิมพ์ &quot;ประกาศ ข้อความ&quot; ในแชทบอท เพื่อขึ้นประกาศที่นี่ · ไม่มีงานเปลี่ยนแปลงหรือยกเลิก</div>
       )}
       <TvCast still={staticMode} people={castPeople} off={team.off} />
+      {bday ? <BirthdayShow bday={bday} still={staticMode} off={team.off} team={castPeople} /> : null}
     </div>
   );
 }
