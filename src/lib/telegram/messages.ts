@@ -143,7 +143,8 @@ export function tgTask(t: TaskItem, kind: BubbleKind, changes: FieldChange[] = [
   for (let i = 0; i < nav.length; i += 2) buttons.push(nav.slice(i, i + 2));
   const extra: TgButton[] = [];
   if (pts.length) extra.push({ text: `🗺️ ดูพิกัด${pts.length > 1 ? ` (${pts.length} จุด)` : ""}`, web_app: { url: appUrl(`/liff/add-event/map?tg=1&e=${t.event.id}`) } });
-  if (files > 0) extra.push({ text: `📎 ไฟล์แนบ (${files})`, url: appUrl(`/events/${t.event.id}`) });
+  // Opens inside Telegram (no web login needed) — 5 Nov 2026.
+  if (files > 0) extra.push({ text: `📎 ไฟล์แนบ (${files})`, web_app: { url: appUrl(`/liff/add-event/files?tg=1&e=${t.event.id}`) } });
   if (extra.length) buttons.push(extra);
   return { text: lines.join("\n"), buttons };
 }

@@ -1,61 +1,31 @@
 "use client";
 
-// Files of one job, inside LINE. liff.init → ID token → /api/liff/attachments.
-// Tapping a file asks for a 60-second link and opens it in LINE's browser.
+// Files of one job, inside LINE (LIFF) or Telegram (Mini App, ?tg=1 — owner,
+// 5 Nov 2026: the Telegram card's 📎 used to open the web page, which asks for
+// a web login the team doesn't have). Tapping a file asks for a 60-second link.
 
 import { useEffect, useState } from "react";
 import styles from "../add-event.module.css";
 import { fileKind } from "@/lib/attachments/rules";
+import { useMiniApp } from "../host";
 
-type Liff = {
-  init(opts: { liffId: string }): Promise<void>;
-  isLoggedIn(): boolean;
-  login(opts?: { redirectUri?: string }): void;
-  getIDToken(): string | null;
-  isInClient(): boolean;
-  closeWindow(): void;
-};
 type FileRow = { id: string; fileName: string; mimeType: string | null; sizeBytes: number | null; thumb?: string | null };
 type Data = { title: string; eventDate: string; files: FileRow[] };
-
-const SDK = "https://static.line-scdn.net/liff/edge/2/sdk.js";
-
-function loadSdk(): Promise<Liff> {
-  const w = window as unknown as { liff?: Liff };
-  if (w.liff) return Promise.resolve(w.liff);
-  return new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = SDK;
-    s.async = true;
-    s.onload = () => (w.liff ? resolve(w.liff) : reject(new Error("LIFF SDK ไม่พร้อม")));
-    s.onerror = () => reject(new Error("โหลด LIFF ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่"));
-    document.head.appendChild(s);
-  });
-}
-
 
 const mb = (n: number | null) => (n ? `${(n / 1024 / 1024).toFixed(1)} MB` : "");
 
 export function FilesView({ liffId }: { liffId: string }) {
-  const [liff, setLiff] = useState<Liff | null>(null);
+  const { host, error: startError } = useMiniApp(liffId);
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!host) return;
     (async () => {
       try {
-        const sdk = await loadSdk();
-        await sdk.init({ liffId });
-        if (!sdk.isLoggedIn()) {
-          sdk.login({ redirectUri: window.location.href });
-          return;
-        }
-        setLiff(sdk);
         const eventId = new URLSearchParams(window.location.search).get("e") ?? "";
-        const res = await fetch(`/api/liff/attachments?e=${encodeURIComponent(eventId)}`, {
-          headers: { Authorization: `Bearer ${sdk.getIDToken() ?? ""}` },
-        });
+        const res = await fetch(`/api/liff/attachments?e=${encodeURIComponent(eventId)}`, { headers: { Authorization: host.auth() } });
         const body = await res.json();
         if (!res.ok) throw new Error(body.error ?? "เปิดไฟล์แนบไม่สำเร็จ");
         setData(body as Data);
@@ -63,21 +33,22 @@ export function FilesView({ liffId }: { liffId: string }) {
         setError(e instanceof Error ? e.message : "เปิดไฟล์แนบไม่สำเร็จ");
       }
     })();
-  }, [liffId]);
+  }, [host]);
 
   async function open(f: FileRow) {
-    if (!liff) return;
+    if (!host) return;
     setOpening(f.id);
     setError(null);
     try {
       const res = await fetch("/api/liff/attachments", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${liff.getIDToken() ?? ""}` },
+        headers: { "Content-Type": "application/json", Authorization: host.auth() },
         body: JSON.stringify({ id: f.id }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "เปิดไฟล์ไม่สำเร็จ");
-      window.location.href = body.url;
+      if (host.kind === "telegram") host.openLink(body.url);
+      else window.location.href = body.url;
     } catch (e) {
       setError(e instanceof Error ? e.message : "เปิดไฟล์ไม่สำเร็จ");
     } finally {
@@ -92,8 +63,8 @@ export function FilesView({ liffId }: { liffId: string }) {
         {data ? <p className={styles.muted}>{data.title}</p> : null}
       </header>
       <section className={styles.card}>
-        {error ? <p className={styles.err}>{error}</p> : null}
-        {!data && !error ? <p className={styles.muted}>กำลังโหลด…</p> : null}
+        {error || startError ? <p className={styles.err}>{error ?? startError}</p> : null}
+        {!data && !error && !startError ? <p className={styles.muted}>กำลังโหลด…</p> : null}
         {data && data.files.length === 0 ? <p className={styles.muted}>งานนี้ยังไม่มีไฟล์แนบ</p> : null}
         {data && data.files.length > 0 ? (
           <ul className="file-tiles">

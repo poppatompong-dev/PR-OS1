@@ -71,6 +71,11 @@ async function authenticateTelegram(initData: string, admin: SupabaseClient): Pr
   return { ok: true, caller: { personId: person.id, displayName: person.display_name, userId: profile?.id ?? null, via: "telegram" } };
 }
 
+/** A phone form's token: LINE "Bearer <ID token>" or Telegram "tma <initData>". */
+export function isPhoneAuth(header: string | null | undefined): boolean {
+  return /^(Bearer|tma) \S/.test(header ?? "");
+}
+
 export async function authenticateLiff(request: Request, admin: SupabaseClient): Promise<LiffAuthResult> {
   const header = request.headers.get("authorization") ?? "";
   if (header.startsWith("tma ")) return authenticateTelegram(header.slice(4).trim(), admin);

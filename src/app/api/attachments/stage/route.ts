@@ -1,12 +1,12 @@
 // One-time upload slot for a file that goes with a new job (web form or the
-// LINE form). Auth: a web session that may create jobs, or a LINE ID token
-// (Bearer) of a linked team member. The browser then uploads straight to
+// LINE / Telegram form). Auth: a web session that may create jobs, or the phone
+// form's token (LINE "Bearer" / Telegram "tma") of a linked team member. The browser then uploads straight to
 // Storage with the returned token; the job save moves the file into place.
 
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { can, getSessionUser } from "@/lib/auth/roles";
-import { authenticateLiff } from "@/lib/liff/auth";
+import { authenticateLiff, isPhoneAuth } from "@/lib/liff/auth";
 import { createStagedUpload } from "@/lib/attachments/staging";
 import { isSupabaseConfigured } from "@/lib/env";
 import { DEMO_WRITE_MESSAGE } from "@/lib/demo-guard";
@@ -17,7 +17,10 @@ export async function POST(request: Request) {
   if (!isSupabaseConfigured()) return NextResponse.json({ error: DEMO_WRITE_MESSAGE }, { status: 503 });
   const admin = createAdminClient();
 
-  if ((request.headers.get("authorization") ?? "").startsWith("Bearer ")) {
+  // Phone forms: LINE sends "Bearer <ID token>", Telegram sends "tma <initData>"
+  // (5 Nov 2026: only Bearer was routed here, so Telegram fell through to the
+  // web-login check and every file failed with "กรุณาเข้าสู่ระบบก่อน").
+  if (isPhoneAuth(request.headers.get("authorization"))) {
     const auth = await authenticateLiff(request, admin);
     if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   } else {
