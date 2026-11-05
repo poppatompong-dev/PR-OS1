@@ -41,6 +41,7 @@ import {
   pulseReply,
 } from "@/lib/telegram/pulse";
 import { TRIAL_STEPS, markTrial, trialDone } from "@/lib/trial";
+import { JOKE_PROMPT, decideJoke, parseJokeCommand, submitJoke } from "@/lib/tv-jokes";
 import {
   KEYBOARD,
   STATUS_TOAST,
@@ -138,6 +139,11 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
     return [PULSE_NOTE_THANKS];
   }
 
+  // ตู้ส่งมุก: "มุก" was sent alone a moment ago → this text is the joke.
+  if (!raw.startsWith("/") && (await takePendingAction(ctx.admin, stateKey(chatId), "tv_joke"))) {
+    return [{ text: await submitJoke(ctx.admin, person, raw) }];
+  }
+
   const pendingAssignment = await takePendingReason(ctx.admin, stateKey(chatId));
   if (pendingAssignment && !raw.startsWith("/")) return finishUnavailable(ctx, person, pendingAssignment, raw);
 
@@ -146,6 +152,12 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
   if (announce !== null) {
     const res = await createAnnouncement(ctx.admin, { text: announce, personId: person.id, authorName: person.displayName, source: "telegram" });
     return [{ text: esc(res.ok ? announceDoneText(res.message, res.endsAt) : res.error) }];
+  }
+  const joke = parseJokeCommand(text);
+  if (joke !== null) {
+    if (joke) return [{ text: await submitJoke(ctx.admin, person, joke) }];
+    await setPendingAction(ctx.admin, stateKey(chatId), "tv_joke", 10);
+    return [{ text: JOKE_PROMPT }];
   }
   if (/^(รูปของฉัน|รูปฉัน|avatar)$/i.test(text.replace(/\s+/g, ""))) {
     const r = await markTrial(ctx.admin, person.id, "avatar").catch(() => null);
@@ -341,6 +353,13 @@ async function handleCallback(ctx: Ctx, q: NonNullable<TgUpdate["callback_query"
     const toAdmins = pulseAdminText(person.displayName, p.id);
     if (toAdmins) await tellAdminsByTelegram(ctx.admin, toAdmins);
     await sendTelegram(chatId, pulseReply(p.id));
+    return;
+  }
+
+  if (p.a === "jk" && p.id) {
+    const r = await decideJoke(ctx.admin, p.id, p.v === "1", person);
+    await answerCallback(q.id, r.toast);
+    if (r.done && messageId) await editTelegram(chatId, messageId, { text: r.done });
     return;
   }
 

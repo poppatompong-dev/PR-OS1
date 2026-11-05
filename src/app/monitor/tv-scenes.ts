@@ -10,6 +10,7 @@
 // people reading the job queue are barely interrupted.
 
 import gsap from "gsap";
+import { MALE_IDS } from "@/lib/monitor/catchphrases";
 
 export const SCENE_EARTH = "00000000-0000-0000-0000-000000000502";
 /** earth: needs พี่เอิร์ธ (+ ป้าจิตร) · n: people (never พี่ไป๋) · all: whole cast · badge: a real badge holder */
@@ -23,6 +24,38 @@ export const SCENES = [
   { key: "B5", all: true }, // ไฟลุก ทั้งทีมสู้!
   { key: "C1", badge: true }, // ได้เหรียญ ตาดาว
   { key: "C2", badge: true }, // วิ่งมารับเหรียญ เส้นความเร็ว
+  // 5 Nov 2026 ("feedback ดี คิดเผื่อยาว ๆ"): TvCast casts these from the data it has.
+  { key: "J", kind: "joke" }, // มุกจากตู้ส่งมุก (หรือมุกสำรอง) — R = [คนเล่า, คนฟัง…]
+  { key: "FL1", kind: "fest", fest: ["loy", "loycd"], n: 2 }, // ลอยกระทง ขอพร งานด่วนลอยกลับ
+  { key: "FL2", kind: "fest", fest: ["loy", "loycd"], earth: true }, // ลอยกระทง เงาป้าจิตร
+  { key: "FN1", kind: "fest", fest: ["newyear"], n: 3 }, // ของขวัญปีใหม่
+  { key: "FN2", kind: "fest", fest: ["newyear", "cny"], all: true }, // นับถอยหลัง พลุ
+  { key: "FS1", kind: "fest", fest: ["songkran"], n: 2 }, // สงกรานต์
+  { key: "T1", kind: "time", all: true }, // พักเที่ยง
+  { key: "T2", kind: "time", n: 1 }, // เช้า สายแล้ว
+  { key: "T3", kind: "time", n: 2, pai: true }, // ศุกร์แล้ว เต้น
+  { key: "W1", kind: "work" }, // งานใหม่ — R = คนในงาน
+  { key: "W2", kind: "work" }, // รับทราบครบทีม
+  { key: "W3", kind: "work" }, // วันนี้เคลียร์ครบ
+  { key: "S", kind: "serial" }, // ละครตอนต่อ — R = [พี่เอิร์ธ, นักสืบ, ผู้ต้องสงสัย], data.ep 1–5
+];
+
+/** มุกสำรอง when nobody has sent one yet (office life, nobody is the butt of it). */
+export const BUILTIN_JOKES = [
+  { setup: "ประชุมสั้น ๆ แค่ 5 นาที", punch: "…ของจริง 2 ชั่วโมงครึ่ง ⏰" },
+  { setup: "หัวหน้าบอกว่า 'ไม่ด่วนนะ'", punch: "แปลว่า… ขอก่อนเที่ยง 😇" },
+  { setup: "ไฟล์งานล่าสุดชื่ออะไร?", punch: "final_final_ล่าสุดจริง ๆ_v7.jpg 📁" },
+  { setup: "แบตกล้องเหลือ 1 ขีด", punch: "…จะหมดตอนประธานขึ้นเวทีพอดี 🔋" },
+  { setup: "ถ่ายรูปหมู่ 30 ช็อต", punch: "ทุกคนหลับตา… คนละช็อต 😑📸" },
+  { setup: "Wi-Fi ห้องเราเร็วมาก", punch: "…เร็วที่จะหลุด 📶❌" },
+  { setup: "แอร์ห้องเรามีกี่โหมด?", punch: "2 โหมด: ขั้วโลกเหนือ กับ ทะเลทราย 🥶🥵" },
+  { setup: "ทำไมกลุ่มไลน์งานเงียบ?", punch: "ทุกคนกำลังพิมพ์ 'รับทราบครับ' พร้อมกัน 📱" },
+  { setup: "ขนมในตู้เย็นหายไปไหน?", punch: "…ขอบคุณที่ช่วยลดน้ำหนักให้นะคะ 🍰" },
+  { setup: "ปากกาในห้องหายไปไหนหมด?", punch: "ไปประชุมกับคนยืม… ไม่กลับมาอีกเลย 🖊️" },
+  { setup: "กาแฟแก้วที่ 3 ช่วยอะไร?", punch: "ไม่ได้ช่วยให้ตื่น… แค่ใจสั่นตอนเห็นงานใหม่ ☕" },
+  { setup: "ทำไมช่างภาพไม่ค่อยโกรธ?", punch: "เพราะโฟกัสแต่เรื่องดี ๆ 📷✨" },
+  { setup: "งานด่วนกับฝนตกเหมือนกันยังไง?", punch: "มาตอนไม่ได้พกร่มทุกที ☔" },
+  { setup: "วันจันทร์กับวันศุกร์ ยาวเท่ากันมั้ย?", punch: "เท่ากัน… แต่ใจไม่เท่ากัน 😩🎉" },
 ];
 
 export const BADGE_TEXT = {
@@ -36,7 +69,7 @@ export const BADGE_TEXT = {
 
 const POSES = ["stand", "walkA", "walkB", "runA", "runB", "wave", "up"];
 const EMOS = ["", "-angry", "-shout", "-sad", "-cry", "-shock"];
-const JIT = ["standE", "standAngry", "walkA", "walkB"];
+const JIT = ["standE", "standAngry", "walkA", "walkB", "trayA", "trayB", "tiffin"];
 const url = (who, pose) => (who === "jit" ? `/cast/jit/${pose}.webp` : `/cast/${who}/${pose}.webp`);
 
 /** Warm the cache for these people's faces (all moods) before a scene starts. */
@@ -56,6 +89,7 @@ const ZAP = `<svg viewBox="0 0 300 80"><polyline points="0,40 50,10 90,60 140,15
 
 /** Plays scene i on a fresh 1920×1080 stage inside host. floor = the ticker's top in stage pixels. */
 export function playScene(i, host, floor, scale, R, data, onDone) {
+  data = data || {};
   const tv = document.createElement("div");
   tv.className = "tv-gag tv-scene";
   tv.style.transform = `scale(${scale})`;
@@ -77,9 +111,16 @@ const bubble=(t,c='')=>el('bubble '+c,t);
 const pop=(b,t)=>tl.fromTo(b,{opacity:0,scale:.4},{opacity:1,scale:1,duration:.3,ease:'back.out(2.5)'},t);
 const hide=(a,t)=>tl.to(a,{opacity:0,duration:.3},t);
 const shake=(t,n=10,amp=18)=>tl.to(st,{x:`random(-${amp},${amp})`,y:`random(-${amp},${amp})`,duration:.04,repeat:n,yoyo:true,repeatRefresh:true},t).set(st,{x:0,y:0},t+.04*(n+1));
+const E=id=>MALE_IDS.has(id)?'ครับ':'ค่ะ';
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const KT=`<svg viewBox="0 0 96 76"><ellipse cx="48" cy="62" rx="44" ry="12" fill="#6fbf5a" stroke="#1b1024" stroke-width="4"/><path d="M14 58 Q20 30 32 52 Q38 22 48 50 Q58 22 64 52 Q76 30 82 58Z" fill="#ff8fb3" stroke="#1b1024" stroke-width="4" stroke-linejoin="round"/><rect x="45" y="18" width="6" height="26" fill="#fff6d6" stroke="#1b1024" stroke-width="3"/><path d="M48 4 Q54 12 48 18 Q42 12 48 4Z" fill="#ffd36b" stroke="#1b1024" stroke-width="2"/></svg>`;
+function river(){const r=el('river');gsap.set(r,{x:0,y:FLOOR-40});return r}
+function confetti(t,n=40,x0=W*.5,y0=FLOOR-SH){tl.call(()=>{const C=['#ff5d8a','#ffd36b','#7fd3ff','#9b7bff','#7fe0a0'];for(let i=0;i<n;i++){const c=el('conf');c.style.background=C[i%C.length];gsap.fromTo(c,{x:x0,y:y0,opacity:1,rotation:0},{x:x0+(Math.random()-.5)*900,y:y0-150-Math.random()*250,rotation:Math.random()*720,duration:.7,ease:'power2.out',onComplete:()=>{gsap.to(c,{y:FLOOR,rotation:'+=360',opacity:0,duration:1.4+Math.random(),ease:'power1.in',onComplete:()=>c.remove()})}})}},null,t)}
+function firework(x,y,t,color){tl.call(()=>{for(let i=0;i<18;i++){const s=el('spark');s.style.background=color;const a=i/18*Math.PI*2;gsap.fromTo(s,{x,y,opacity:1,scale:1},{x:x+Math.cos(a)*170,y:y+Math.sin(a)*170+30,opacity:0,scale:.4,duration:1.1,ease:'power2.out',onComplete:()=>s.remove()})}},null,t)}
+function title(txt,t,dur=1.6){const b=el('ttl',txt);gsap.set(b,{x:W*.5,xPercent:-50,y:Math.max(30,FLOOR-SH-250)});tl.fromTo(b,{opacity:0,scale:.6},{opacity:1,scale:1,duration:.3,ease:'back.out(2)'},t).to(b,{opacity:0,duration:.3},t+dur);return b}
 // Board-covering effects: short and a little see-through so the queue stays readable.
 function focusLines(t,dur){dur=Math.min(dur,2);const f=el('focus',FOCUS);tl.to(f,{opacity:.6,duration:.08},t).to(f,{rotation:2,duration:.08,yoyo:true,repeat:Math.round(dur/.08),transformOrigin:'50% 52%'},t).to(f,{opacity:0,duration:.2},t+dur);return f}
-function flash(t,color='#fff'){const f=el('flash');f.style.background=color;tl.fromTo(f,{opacity:.7},{opacity:0,duration:.3},t)}
+function flash(t,color='#fff'){const f=el('flash');f.style.background=color;tl.fromTo(f,{opacity:.7},{opacity:0,duration:.3,immediateRender:false},t)}
 function impact(t){tl.set(st,{filter:'invert(1)'},t).set(st,{filter:'none'},t+.08).set(st,{filter:'invert(1)'},t+.14).set(st,{filter:'none'},t+.2)}
 function sfx(txt,x,y,t,rot=-8,size=150){const s=el('sfx',txt);s.style.fontSize=size+'px';gsap.set(s,{x,y,rotation:rot});tl.fromTo(s,{opacity:0,scale:2.2},{opacity:1,scale:1,duration:.22,ease:'back.out(3)'},t).to(s,{opacity:0,duration:.4},t+1.1);return s}
 function soul(who,t){const s=el('soul',SOUL);tl.call(()=>{const x=gsap.getProperty(who,'x'),y=gsap.getProperty(who,'y');gsap.set(s,{x:x-45,y:y-SH*.72})},null,t).to(s,{opacity:1,duration:.3},t).to(s,{y:'-=260',duration:2.4,ease:'sine.out'},t).to(s,{x:'+=40',duration:.4,yoyo:true,repeat:5,ease:'sine.inOut'},t).to(s,{opacity:0,duration:.5},t+2.2)}
@@ -111,7 +152,7 @@ const SC=[
  gloom(e,4.6,3.6);tears(e,5.0,3.0);tl.set(dots,{x:W*.40+70,y:FLOOR-SH-120},5.4).to(dots,{opacity:1,duration:.3},5.4);
  hide([her,wal,dots],8.0);tl.to([e,j],{opacity:0,duration:.5},8.6);},
 // B1 งานด่วน! ล้มหน้าทิ่ม
-()=>{const k=sprite(R[0],'walkA',-150),card=el('ucard','‼ งานด่วน! 30 นาที'),up=bubble('ครับผม!! 🫡','sm');
+()=>{const k=sprite(R[0],'walkA',-150),card=el('ucard','‼ งานด่วน! 30 นาที'),up=bubble(E(R[0])==='ครับ'?'ครับผม!! 🫡':'ได้ค่ะ!! 🫡','sm');
  follow(up,k,-60,-SH-100);
  tl.call(()=>cyc(k,'walkA','walkB',.26),null,0).to(k,{x:W*.45,duration:2.0,ease:'none'},0).call(()=>{stopCyc();show(k,'stand')},null,2.0);
  tl.set(card,{x:W*.45-220,y:-200},2.1).to(card,{opacity:1,y:FLOOR-SH-220,duration:.28,ease:'power4.in'},2.1);impact(2.38);shake(2.38,10,20);sfx('ตู้ม!!',W*.45+180,FLOOR-SH-300,2.38,10);flash(2.38,'#ff3b4f');
@@ -169,6 +210,165 @@ const SC=[
  tl.call(()=>cyc(s,'runA','runB',.06),null,.2).to(s,{x:W*.5,duration:.5,ease:'power3.out'},.2).to(s,{rotation:8,duration:.1},.2);sfx('ฟิ้ว~',W*.5-420,FLOOR-SH-120,.4,-12,120);
  tl.call(()=>{stopCyc();show(s,'wave')},null,.8).to(s,{rotation:0,duration:.2},.8);tl.set(badge,{x:W*.5-330,y:FLOOR-SH-130},.9);pop(badge,.9);hearts(s,1.0,8,data.icon||'⚡');
  tl.to(sp,{opacity:0,duration:.3},2.6);tl.call(()=>cyc(s,'runA','runB',.06),null,4.6).to(s,{x:W+260,duration:.45,ease:'power3.in'},4.6);tl.to(sp,{opacity:1,duration:.1},4.6).to(sp,{opacity:0,duration:.3},5.1);hide(badge,4.5);},
+// ---------- J มุกจากทีม (ตู้ส่งมุก Telegram / มุกสำรอง) ----------
+()=>{const t=sprite(R[0],'walkA',-150),L=R.slice(1).map((id,i)=>sprite(id,'stand',W*(.58+i*.1)));
+ gsap.set(L,{opacity:0,scaleX:-1});
+ const cr=data.name?el('credit',`💌 มุกจาก ${data.name}`):null,q1=data.setup?bubble(data.setup):null,q2=bubble(data.punch);
+ follow(q2,t,-80,-SH-120);if(q1)follow(q1,t,-80,-SH-120);
+ tl.to(L,{opacity:1,duration:.4},0).call(()=>cyc(t,'walkA','walkB',.26),null,0).to(t,{x:W*.40,duration:1.8,ease:'power1.out'},0).call(()=>{stopCyc();show(t,'wave')},null,1.8);
+ if(cr){gsap.set(cr,{x:W*.40-180,y:FLOOR-SH-250});tl.to(cr,{opacity:1,duration:.3},1.9)}
+ let k=2.1;if(q1){pop(q1,k);k+=Math.min(4,1.8+[...data.setup].length*.05);hide(q1,k);k+=.6}
+ tl.call(()=>show(t,'up-shout'),null,k);pop(q2,k);tl.to(t,{y:FLOOR-40,duration:.18,yoyo:true,repeat:1},k);k+=Math.min(4.5,2+[...data.punch].length*.05);
+ if(data.react==='laugh'){
+  tl.call(()=>L.forEach(s=>show(s,'up-shout')),null,k);sfx('ฮ่า ๆ ๆ 5555+',W*.5,FLOOR-SH-330,k,-6,110);
+  L.forEach((s,i)=>tl.to(s,{rotation:i%2?80:-80,y:FLOOR-10,duration:.35,ease:'power2.in'},k+.3+i*.15).to(s,{x:'+=8',duration:.06,yoyo:true,repeat:18},k+.7+i*.15));
+  L.forEach(s=>hearts(s,k+.5,6,'🤣'));tl.call(()=>show(t,'wave'),null,k+.4).to(t,{y:FLOOR-80,duration:.22,yoyo:true,repeat:3,ease:'power2.out'},k+.5);
+  hide([q2,cr].filter(Boolean),k+2.4);tl.to(L,{rotation:0,y:FLOOR,duration:.3},k+2.6);k+=3.2;
+ }else{
+  const crow=el('emo','🐦'),dots=el('dots','…');crow.style.filter='brightness(0)';crow.style.fontSize='80px';
+  tl.call(()=>L.forEach((s,i)=>show(s,i%2?'stand-shock':'stand-sad')),null,k);tl.set(dots,{x:W*.6,y:FLOOR-SH-150},k).to(dots,{opacity:1,duration:.3},k);
+  tl.set(crow,{x:W+40,y:Math.max(80,FLOOR-SH-380),scaleX:-1},k+.3).to(crow,{opacity:1,duration:.1},k+.3).to(crow,{x:-120,duration:3,ease:'none'},k+.3);
+  L.forEach((s,i)=>drop(s,k+.6+i*.2,40));hide(q2,k+.9);tl.call(()=>show(t,'stand-cry'),null,k+1);gloom(t,k+1,2);
+  hide([dots,cr].filter(Boolean),k+2.8);k+=3.3;
+ }
+ tl.to([t,...L],{opacity:0,duration:.5},k);},
+// ---------- FL1 ลอยกระทง ขอพร แล้วงานด่วนลอยกลับมา ----------
+()=>{const a=sprite(R[0],'walkA',-150),b=sprite(R[1],'walkA',-330),riv=river(),k1=el('kt',KT),k2=el('kt',KT);
+ follow(k1,a,30,-SH*.5);follow(k2,b,30,-SH*.5);
+ const w1=bubble(`ขอให้งานด่วนน้อยลง 🙏`,'sm'),w2=bubble(`ขอให้ได้หยุดยาว ๆ 🙏`,'sm'),big=el('ucard','‼ งานด่วน!');
+ follow(w1,a,-60,-SH-100);follow(w2,b,-120,-SH-170);
+ tl.to(riv,{opacity:1,duration:.5},0).to([k1,k2],{opacity:1,duration:.3},0).call(()=>{cyc(a,'walkA','walkB',.26);cyc(b,'walkA','walkB',.26)},null,0)
+  .to(a,{x:W*.5,duration:2,ease:'power1.out'},0).to(b,{x:W*.38,duration:2,ease:'power1.out'},0).call(()=>{stopCyc();show(a,'stand');show(b,'stand')},null,2);
+ tl.call(()=>{follows=follows.filter(f=>f[0]!==k1&&f[0]!==k2)},null,2.2).to(k1,{x:W*.5+40,y:FLOOR-64,duration:.5},2.2).to(k2,{x:W*.38+40,y:FLOOR-64,duration:.5},2.4);
+ tl.to([k1,k2],{x:'+=900',duration:5.4,ease:'none'},2.9).to([k1,k2],{y:'+=6',duration:.4,yoyo:true,repeat:12,ease:'sine.inOut'},2.9);
+ tl.call(()=>{show(a,'wave');show(b,'wave')},null,2.9);pop(w1,3.0);pop(w2,3.5);hide([w1,w2],5.2);
+ gsap.set(big,{x:W+40,y:FLOOR-130,rotation:-6});tl.to(big,{opacity:1,duration:.2},5.4).to(big,{x:W*.56,duration:1.4,ease:'power1.out'},5.4).to(big,{y:'+=8',duration:.35,yoyo:true,repeat:5},5.4);
+ tl.call(()=>{show(a,'stand-shock');show(b,'stand-shock')},null,6.4);drop(a,6.5);drop(b,6.6);sfx('เฮ้ย!!',W*.36,FLOOR-SH-300,6.5,-8,120);
+ tl.to([a,b],{scaleX:-1,duration:.01},7.4).call(()=>{cyc(a,'runA-shock','runB-shock',.08);cyc(b,'runA-shock','runB-shock',.08)},null,7.4).to([a,b],{x:-260,duration:1.2,ease:'power2.in'},7.5);dustPuff(a,7.5,1);
+ tl.to([big,riv,k1,k2],{opacity:0,duration:.5},8.8);},
+// ---------- FL2 ลอยกระทง พี่เอิร์ธขอพร เงาป้าจิตรมา ----------
+()=>{const e=sprite(R[0],'walkA',-150),riv=river(),k=el('kt',KT),sh=el('shadow'),w=bubble('ขอให้ได้ไปเที่ยวกับเพื่อน ๆ …'),fix=bubble('…กับภรรยาสุดสวยคนเดียวครับ!! 😅','sm');
+ follow(k,e,30,-SH*.5);follow(w,e,-80,-SH-110);follow(fix,e,-200,-SH-110);sh.style.backgroundImage=`url(${url('jit','standAngry')})`;
+ tl.to(riv,{opacity:1,duration:.5},0).to(k,{opacity:1,duration:.3},0).call(()=>cyc(e,'walkA','walkB',.26),null,0).to(e,{x:W*.42,duration:2,ease:'power1.out'},0).call(()=>{stopCyc();show(e,'stand')},null,2);
+ tl.call(()=>{follows=follows.filter(f=>f[0]!==k)},null,2.2).to(k,{x:W*.42+40,y:FLOOR-64,duration:.5},2.2).to(k,{x:'+=800',duration:6,ease:'none'},2.8);
+ tl.call(()=>show(e,'wave'),null,2.8);pop(w,3.0);
+ tl.fromTo(sh,{x:W+100,y:FLOOR-1960+40,opacity:0},{x:W*.42-120,opacity:.55,duration:1.2,ease:'power2.out'},4.4);
+ tl.call(()=>show(e,'stand-shock'),null,5.4);drop(e,5.5);hide(w,5.6);tl.to(e,{x:'+=6',duration:.05,yoyo:true,repeat:12},5.6);
+ pop(fix,6.3);tl.to(sh,{opacity:0,x:'+=300',duration:.8},7.6);hearts(e,7.8,6);tl.call(()=>show(e,'wave'),null,7.8);
+ hide(fix,9.0);tl.to([e,riv,k],{opacity:0,duration:.5},9.4);},
+// ---------- FN1 ปีใหม่ ของขวัญกล่องใหญ่ ----------
+()=>{const a=sprite(R[0],'walkA',-150),b=sprite(R[1],'stand',W*.56),c=R[2]?sprite(R[2],'stand',W*.68):null,gift=el('emo','🎁'),card=el('ucard','‼ งานด่วน 2 ม.ค.'),
+  s1=bubble(`สวัสดีปีใหม่~ ของขวัญ 🎁`,'sm'),s2=bubble(`ว้าว!! ขอบคุณ${E(R[1])} 😍`,'sm'),s3=bubble(`ปีใหม่ก็ยังมีงาน… 😭`,'sm');
+ gift.style.fontSize='120px';gsap.set([b,c].filter(Boolean),{scaleX:-1,opacity:0});follow(gift,a,20,-SH*.62);follow(s1,a,-60,-SH-100);follow(s2,b,-80,-SH-100);follow(s3,b,-120,-SH-100);
+ tl.to([b,c].filter(Boolean),{opacity:1,duration:.4},0).to(gift,{opacity:1,duration:.3},0).call(()=>cyc(a,'walkA','walkB',.26),null,0).to(a,{x:W*.42,duration:2,ease:'power1.out'},0).call(()=>{stopCyc();show(a,'wave')},null,2);
+ pop(s1,2.1);tl.call(()=>{follows=follows.filter(f=>f[0]!==gift)},null,3.2).to(gift,{x:W*.49,y:FLOOR-SH*.62,duration:.5,ease:'power1.inOut'},3.2);hide(s1,3.3);
+ tl.call(()=>show(b,'up'),null,3.6);pop(s2,3.6);tl.to(gift,{rotation:8,duration:.08,yoyo:true,repeat:9},4.4);hide(s2,4.9);
+ tl.to(gift,{scale:1.4,opacity:0,duration:.25},5.2);confetti(5.2,36,W*.5,FLOOR-SH*.6);flash(5.2,'#ffd36b');
+ gsap.set(card,{x:W*.5-220,y:FLOOR-SH-120});tl.fromTo(card,{opacity:0,scale:.3},{opacity:1,scale:1,duration:.35,ease:'back.out(2.5)'},5.3);
+ tl.call(()=>show(b,'stand-cry'),null,5.9);tears(b,6.0,2.4);pop(s3,6.2);hide(card,6.6);
+ if(c){tl.call(()=>show(c,'up-shout'),null,6.4);tl.to(c,{rotation:-70,duration:.3},6.8).to(c,{x:'+=8',duration:.06,yoyo:true,repeat:14},7.1);hearts(c,6.8,5,'🤣')}
+ tl.call(()=>show(a,'stand-shock'),null,6.4);hide(s3,8.4);tl.to([a,b,c].filter(Boolean),{opacity:0,duration:.5},8.8);},
+// ---------- FN2 นับถอยหลัง พลุ ทั้งทีม (ปีใหม่ / ตรุษจีน) ----------
+()=>{const n=R.length,step=Math.min(W*.108,W*.86/Math.max(n,1)),X=i=>W*.5+(i-(n-1)/2)*step;const ss=R.map((w,i)=>sprite(w,'stand',X(i)));gsap.set(ss,{opacity:0});
+ tl.to(ss,{opacity:1,duration:.3,stagger:.06},0);
+ ['3','2','1'].forEach((d,i)=>sfx(d,W*.5-40,FLOOR-SH-330,.8+i*.8,0,170));
+ const C=['#ffd36b','#ff5d8a','#7fd3ff','#9b7bff','#7fe0a0','#ff9a1f'];
+ for(let i=0;i<9;i++)firework(W*(.15+Math.random()*.7),FLOOR-SH-200-Math.random()*220,3.2+i*.32,C[i%C.length]);
+ const big=el('sfx',data.greet||'สวัสดีปีใหม่ 🎆');big.style.fontSize='120px';gsap.set(big,{x:W*.5,xPercent:-50,y:Math.max(40,FLOOR-SH-300)});
+ tl.fromTo(big,{opacity:0,scale:2.4},{opacity:1,scale:1,duration:.35,ease:'back.out(2)'},3.3).to(big,{opacity:0,duration:.4},7.2);
+ tl.call(()=>ss.forEach(s=>show(s,'up-shout')),null,3.3).to(ss,{y:FLOOR-70,duration:.22,yoyo:true,repeat:7,stagger:.05,ease:'power2.out'},3.4);
+ confetti(4.2,50,W*.5,FLOOR-SH-120);tl.call(()=>ss.forEach(s=>show(s,'wave')),null,6.0).to(ss,{opacity:0,duration:.5,stagger:.04},7.6);},
+// ---------- FS1 สงกรานต์ ปืนฉีดน้ำ vs ถังน้ำ ----------
+()=>{const a=sprite(R[0],'walkA',-150),b=sprite(R[1],'stand',W*.62),gun=el('emo','🔫'),bucket=el('emo','🪣'),hi=bubble('สุขสันต์วันสงกรานต์ 💦','sm'),rev=bubble(`เอาคืนบ้าง!! 😤`,'sm');
+ gun.style.fontSize='64px';bucket.style.fontSize='84px';gsap.set(b,{scaleX:-1,opacity:0});follow(gun,a,40,-SH*.55);follow(bucket,b,-90,-SH*.62);follow(hi,a,-60,-SH-100);follow(rev,b,-80,-SH-100);
+ tl.to(b,{opacity:1,duration:.4},0).to(gun,{opacity:1,duration:.2},0).call(()=>cyc(a,'walkA','walkB',.26),null,0).to(a,{x:W*.40,duration:1.8,ease:'power1.out'},0).call(()=>{stopCyc();show(a,'up-shout')},null,1.8);pop(hi,1.9);
+ tl.call(()=>{for(let i=0;i<22;i++){const d=el('emo','💧');d.style.fontSize='34px';gsap.fromTo(d,{x:W*.40+90,y:FLOOR-SH*.6,opacity:1},{x:W*.62-40+Math.random()*30,y:FLOOR-SH*.6+(Math.random()-.5)*80,opacity:.2,duration:.35,delay:i*.07,ease:'none',onComplete:()=>d.remove()})}},null,2.3);
+ tl.call(()=>show(b,'stand-shock'),null,2.6);drop(b,2.7,40);hide(hi,3.6);
+ tl.call(()=>show(b,'up-shout'),null,4.0);tl.to(bucket,{opacity:1,duration:.2},4.0);pop(rev,4.1);
+ tl.to(b,{x:W*.48,duration:.5,ease:'power2.out'},4.6).to(bucket,{rotation:-120,duration:.25},5.1);
+ const wave=el('splash');gsap.set(wave,{x:W*.40-130,y:FLOOR-SH-40});tl.fromTo(wave,{opacity:0,scaleY:.2,transformOrigin:'50% 0%'},{opacity:.9,scaleY:1,duration:.25},5.2).to(wave,{opacity:0,y:'+=120',duration:.6},5.6);
+ sfx('ซ่าาา!!',W*.30,FLOOR-SH-300,5.2,-8,120);tl.call(()=>show(a,'stand-cry'),null,5.3);hide(rev,5.4);
+ tl.call(()=>{show(a,'wave');show(b,'wave')},null,6.6);hearts(a,6.7,5,'💦');hearts(b,6.8,5,'😂');tl.to([gun,bucket],{opacity:0,duration:.3},7.6).to([a,b],{opacity:0,duration:.5},8.2);},
+// ---------- T1 พักเที่ยง แห่กันวิ่ง ----------
+()=>{const sign=el('sfx','🍜 พักเที่ยง!!');sign.style.fontSize='120px';gsap.set(sign,{x:W*.5,xPercent:-50,y:Math.max(40,FLOOR-SH-280)});
+ tl.fromTo(sign,{opacity:0,scale:2.4},{opacity:1,scale:1,duration:.3,ease:'back.out(2)'},0).to(sign,{rotation:3,duration:.08,yoyo:true,repeat:11},.3).to(sign,{opacity:0,duration:.3},1.6);
+ R.forEach((id,i)=>{const s=sprite(id,'runA-shout',-150-i*170);tl.call(()=>cyc(s,'runA-shout','runB-shout',.08),null,1.0+i*.18).to(s,{x:W+260+i*10,duration:2.2,ease:'power1.in'},1.0+i*.18).to(s,{y:FLOOR-12,duration:.08,yoyo:true,repeat:26},1.0+i*.18);if(i%2===0)dustPuff(s,1.2+i*.18,1.8)});
+ sfx('ตึก ตึก ตึก!',W*.3,FLOOR-SH-260,1.8,-6,110);
+ const last=sprite(R[R.length-1],'walkA',-150);gsap.set(last,{opacity:0});const wait=bubble(`รอด้วย${E(R[R.length-1])}~ 😩`,'sm');follow(wait,last,-60,-SH-100);
+ tl.set(last,{opacity:1},4.0).call(()=>cyc(last,'walkA','walkB',.36),null,4.0).to(last,{x:W*.45,duration:2.4,ease:'none'},4.0);pop(wait,4.6);tl.call(()=>cyc(last,'runA-cry','runB-cry',.08),null,6.4).to(last,{x:W+220,duration:1.1,ease:'power2.in'},6.5);hide(wait,6.6);},
+// ---------- T2 เช้า สายแล้ว! ขนมปังคาปาก ----------
+()=>{const k=sprite(R[0],'runA-shock',-150),toast=el('emo','🍞'),clk=el('emo','🕗');follow(toast,k,26,-SH*.78);toast.style.fontSize='54px';clk.style.fontSize='110px';
+ const ok=bubble(`ทันนน!! 😮‍💨`,'sm');follow(ok,k,-60,-SH-100);
+ tl.to(toast,{opacity:1,duration:.2},0).call(()=>cyc(k,'runA-shock','runB-shock',.08),null,0).to(k,{x:W*.42,duration:1.4,ease:'none'},0);dustPuff(k,0,1.4);sfx('สายแล้ว!!',W*.12,FLOOR-SH-300,.3,-8,120);
+ tl.to(k,{rotation:-100,y:FLOOR-20,duration:.18,ease:'power3.in'},1.4).to(k,{rotation:-180,y:FLOOR-SH,duration:.2},1.6).to(k,{x:'+=6',duration:.05,yoyo:true,repeat:7},1.8);
+ tl.call(()=>{follows=follows.filter(f=>f[0]!==toast)},null,1.5).to(toast,{y:'-=220',x:'+=140',rotation:360,duration:.6,ease:'power2.out'},1.5).to(toast,{y:FLOOR-SH-40,x:W*.42+10,duration:.5,ease:'bounce.out'},2.1);
+ tl.to(k,{rotation:0,y:FLOOR,duration:.35,ease:'back.out(2)'},2.4).call(()=>show(k,'stand-shock'),null,2.4);drop(k,2.7);
+ gsap.set(clk,{x:W*.55,y:FLOOR-SH-120});tl.fromTo(clk,{opacity:0,scale:.3},{opacity:1,scale:1,duration:.3,ease:'back.out(3)'},2.9).to(clk,{rotation:15,duration:.1,yoyo:true,repeat:7},3.2);
+ tl.call(()=>{follow(toast,k,26,-SH*.78);show(k,'up')},null,3.6);pop(ok,3.7);hide([ok,clk],5.0);tl.call(()=>cyc(k,'runA','runB',.08),null,5.2).to(k,{x:W+220,duration:1,ease:'power2.in'},5.2).to(toast,{opacity:0,duration:.2},6.0);},
+// ---------- T3 ศุกร์แล้ว เต้น ----------
+()=>{const a=sprite(R[0],'stand',W*.40),b=sprite(R[1],'stand',W*.58),say=bubble('ศุกร์แล้ววว~ 🎉','sm');gsap.set([a,b],{opacity:0});gsap.set(b,{scaleX:-1});follow(say,a,-60,-SH-110);
+ tl.to([a,b],{opacity:1,duration:.4},0);pop(say,.5);
+ for(let i=0;i<10;i++){const t=.8+i*.45,p=i%2?'up':'wave';tl.call(()=>{show(a,p);show(b,i%2?'wave':'up')},null,t).to([a,b],{y:FLOOR-50,duration:.2,yoyo:true,repeat:1,ease:'power2.out'},t).to(a,{rotation:i%2?8:-8,duration:.2},t).to(b,{rotation:i%2?-8:8,duration:.2},t)}
+ tl.call(()=>{for(let i=0;i<14;i++){const n=el('emo',i%2?'🎵':'🎶');gsap.fromTo(n,{x:W*.4+Math.random()*W*.2,y:FLOOR-SH,opacity:1},{y:FLOOR-SH-260,x:`+=${(Math.random()-.5)*200}`,opacity:0,duration:1.6,delay:i*.3,onComplete:()=>n.remove()})}},null,.8);
+ hide(say,3.0);tl.to([a,b],{rotation:0,duration:.2},5.4).to([a,b],{opacity:0,duration:.5},5.8);},
+// ---------- W1 งานใหม่! (จากงานจริงที่เพิ่งลงระบบ) ----------
+()=>{const n=R.length,ss=R.map((id,i)=>sprite(id,'runA-shock',-150-i*170)),card=el('ucard',`📌 งานใหม่!<br><small>${esc(data.title||'')}</small>`),ok=bubble(`รับทราบ${E(R[0])}!! 🫡`,'sm');
+ card.style.whiteSpace='normal';follow(ok,ss[0],-60,-SH-100);
+ gsap.set(card,{x:W*.5-220,y:-260});tl.to(card,{opacity:1,y:FLOOR-SH-200,duration:.35,ease:'power4.in'},.2);impact(.55);shake(.55,8,14);sfx('ตึง!',W*.5+230,FLOOR-SH-320,.55,10,120);
+ ss.forEach((s,i)=>{tl.call(()=>cyc(s,'runA-shock','runB-shock',.08),null,1.0+i*.15).to(s,{x:W*(.36+i*.09),duration:1.1,ease:'power2.out'},1.0+i*.15)});
+ tl.call(()=>{stopCyc();ss.forEach(s=>show(s,'up-shout'))},null,2.5);pop(ok,2.6);ss.forEach(s=>drop(s,2.7,40));tl.to(ss,{y:FLOOR-60,duration:.2,yoyo:true,repeat:3,stagger:.06},2.6);
+ hide([ok],4.6);tl.to(card,{opacity:0,y:'-=60',duration:.4},4.6).call(()=>ss.forEach(s=>cyc(s,'runA','runB',.08)),null,4.8).to(ss,{x:W+260,duration:1.2,ease:'power2.in',stagger:.08},4.8);},
+// ---------- W2 รับทราบครบทีม ----------
+()=>{const ss=R.map((id,i)=>sprite(id,'runA',-200-i*160)),sp=el('focus',SPEED),badge=bubble(`✅ รับทราบครบทีม! · ${esc(data.title||'')}`);
+ tl.to(sp,{opacity:1,duration:.1},.2).to(sp,{x:-300,duration:.25,repeat:7,ease:'none'},.2);
+ ss.forEach((s,i)=>{tl.call(()=>cyc(s,'runA','runB',.06),null,.2+i*.12).to(s,{x:W*(.42+i*.08),duration:.5,ease:'power3.out'},.2+i*.12)});
+ tl.call(()=>{stopCyc();ss.forEach(s=>show(s,'wave'))},null,1.2);gsap.set(badge,{x:W*.5,xPercent:-50,y:FLOOR-SH-130});pop(badge,1.2);ss.forEach(s=>hearts(s,1.3,5,'⚡'));
+ tl.to(sp,{opacity:0,duration:.3},2.2);hide(badge,4.2);tl.to(ss,{opacity:0,duration:.5},4.6);},
+// ---------- W3 วันนี้เคลียร์ครบ ----------
+()=>{const n=R.length,step=Math.min(W*.108,W*.86/Math.max(n,1)),X=i=>W*.5+(i-(n-1)/2)*step;const ss=R.map((w,i)=>sprite(w,'stand',X(i)));gsap.set(ss,{opacity:0});
+ const big=el('sfx',`🎉 วันนี้เคลียร์ครบ ${data.count||''} งาน!`);big.style.fontSize='96px';gsap.set(big,{x:W*.5,xPercent:-50,y:Math.max(40,FLOOR-SH-280)});
+ tl.to(ss,{opacity:1,duration:.3,stagger:.06},0).fromTo(big,{opacity:0,scale:2.2},{opacity:1,scale:1,duration:.35,ease:'back.out(2)'},.8).to(big,{opacity:0,duration:.4},4.6);
+ tl.call(()=>ss.forEach(s=>show(s,'up')),null,.9).to(ss,{y:FLOOR-70,duration:.22,yoyo:true,repeat:5,stagger:.05,ease:'power2.out'},1.0);confetti(1.0,50,W*.5,FLOOR-SH-100);
+ tl.call(()=>ss.forEach(s=>show(s,'wave')),null,3.4).to(ss,{opacity:0,duration:.5,stagger:.04},5.2);},
+// ---------- S ละครตอนต่อ "ปิ่นโตหายไปไหน?" (จ.–ศ. วันละตอน) ----------
+()=>{const ep=data.ep||1,EP=['','ปิ่นโตหาย!','รอยเท้าปริศนา','ผู้ต้องสงสัย','ไล่ล่าตัวจริง','ความจริงเปิดเผย'];
+ const head=title(`📺 ปิ่นโตหายไปไหน? · ตอนที่ ${ep} ${EP[ep]}`,0,1.8);const [eid,did,sid]=R;
+ let k=2.0;const end=(txt)=>{const c=title(txt,k,2.2);k+=2.6};
+ if(ep===1){const e=sprite(eid,'walkA',-150),tf=el('tif2'),go=bubble('ไปล้างมือก่อนนะ~ 🎵','sm'),cry=bubble('ปิ่นโตผมหายยย!! 😱');tf.style.backgroundImage=`url(/cast/jit/tiffin.webp)`;follow(tf,e,30,-SH*.45);follow(go,e,-60,-SH-100);follow(cry,e,-80,-SH-110);
+  tl.to(tf,{opacity:1,duration:.2},k).call(()=>cyc(e,'walkA','walkB',.26),null,k).to(e,{x:W*.40,duration:1.6,ease:'power1.out'},k).call(()=>{stopCyc();show(e,'wave');follows=follows.filter(f=>f[0]!==tf)},null,k+1.6);
+  tl.to(tf,{x:W*.40+60,y:FLOOR-70,duration:.3},k+1.7);pop(go,k+1.8);hide(go,k+3);tl.to(e,{scaleX:-1,duration:.01},k+3).call(()=>cyc(e,'walkA','walkB',.26),null,k+3).to(e,{x:-200,duration:1.4,ease:'none'},k+3);
+  const puff=el('dust');puff.innerHTML='<svg viewBox="0 0 520 300">'+Array.from({length:8},()=>`<circle cx="${160+Math.random()*200}" cy="${120+Math.random()*80}" r="${30+Math.random()*30}" fill="#efe6f7" stroke="#1b1024" stroke-width="5"/>`).join('')+'</svg>';
+  gsap.set(puff,{x:W*.40-200,y:FLOOR-260,scale:.6});tl.to(puff,{opacity:1,duration:.1},k+4.8).to(tf,{opacity:0,duration:.05},k+4.9).to(puff,{opacity:0,scale:1,duration:.5},k+5.2);sfx('ฟึ่บ!',W*.40,FLOOR-SH-280,k+4.8,-8,110);
+  tl.set(e,{scaleX:1},k+6).call(()=>cyc(e,'walkA','walkB',.26),null,k+6).to(e,{x:W*.40,duration:1.4,ease:'none'},k+6).call(()=>{stopCyc();show(e,'stand-shock')},null,k+7.4);
+  focusLines(k+7.4,1.4);soul(e,k+7.6);pop(cry,k+7.5);hide(cry,k+9.6);k+=10;end('⏩ ติดตามตอนต่อไป พรุ่งนี้!');}
+ if(ep===2){const d=sprite(did,'walkA',-150),e=sprite(eid,'stand-cry',W*.2),mg=el('emo','🔍'),say=bubble('รอยเท้าปริศนา… 🤔','sm'),go=bubble('ไปทางนั้น!!','sm'),help=bubble(`ช่วยด้วยครับ… 😢`,'sm');
+  mg.style.fontSize='70px';follow(mg,d,40,-SH*.6);follow(say,d,-60,-SH-100);follow(go,d,-60,-SH-100);follow(help,e,-60,-SH-100);gsap.set(e,{opacity:0});
+  tl.to(e,{opacity:1,duration:.3},k);pop(help,k+.2);hide(help,k+1.8);tl.to(mg,{opacity:1,duration:.2},k+.8).call(()=>cyc(d,'walkA','walkB',.3),null,k+.8).to(d,{x:W*.38,duration:1.6,ease:'none'},k+.8).call(()=>{stopCyc();show(d,'stand')},null,k+2.4);
+  for(let i=0;i<6;i++){const f=el('emo','🐾');f.style.fontSize='44px';gsap.set(f,{x:W*(.45+i*.07),y:FLOOR-50,rotation:90});tl.to(f,{opacity:1,duration:.15},k+2.6+i*.2).to(f,{opacity:0,duration:.4},k+7.4)}
+  tl.to(d,{rotation:18,duration:.3},k+2.8).to(mg,{scale:1.6,duration:.3,yoyo:true,repeat:3},k+2.8);pop(say,k+3.0);hide(say,k+4.6);tl.to(d,{rotation:0,duration:.2},k+4.6).call(()=>show(d,'up-shout'),null,k+4.8);pop(go,k+4.8);
+  hide(go,k+6);tl.call(()=>cyc(d,'runA','runB',.08),null,k+6.1).to(d,{x:W+220,duration:1.2,ease:'power2.in'},k+6.1);dustPuff(d,k+6.1,1);tl.to(e,{opacity:0,duration:.4},k+7);k+=8;end('⏩ ใครคือเจ้าของรอยเท้า? พรุ่งนี้!');}
+ if(ep===3){const s=sprite(sid,'stand',W*.62),d=sprite(did,'walkA',-150),rice=el('emo','🍚'),mg=el('emo','🔍'),got=bubble('เจอแล้ว!!','sm'),no=bubble(`ไม่ใช่${E(sid)}นะ!! 😰`,'sm'),hm=bubble('แต่… ทำไมมีข้าวติดปาก? 🧐');
+  rice.style.fontSize='40px';mg.style.fontSize='70px';gsap.set(s,{scaleX:-1,opacity:0});follow(rice,s,-6,-SH*.74);follow(mg,d,40,-SH*.6);follow(got,d,-60,-SH-100);follow(no,s,-80,-SH-100);follow(hm,d,-120,-SH-110);
+  tl.to([s,rice,mg],{opacity:1,duration:.3},k).call(()=>cyc(d,'walkA','walkB',.26),null,k).to(d,{x:W*.44,duration:1.6,ease:'power1.out'},k).call(()=>{stopCyc();show(d,'up-shout')},null,k+1.6);
+  focusLines(k+1.7,1.4);pop(got,k+1.7);tl.call(()=>show(s,'stand-shock'),null,k+1.8);drop(s,k+2);hide(got,k+3);pop(no,k+3.1);tl.to(s,{x:'+=6',duration:.05,yoyo:true,repeat:12},k+3.1);
+  hide(no,k+4.6);tl.call(()=>show(d,'stand'),null,k+4.6);pop(hm,k+4.8);tl.to(rice,{scale:2.6,duration:.4,ease:'back.out(2)'},k+5.2);sfx('!!!',W*.62,FLOOR-SH-300,k+5.4,0,120);hide(hm,k+7.2);k+=7.6;end('⏩ ตอนหน้า: ไล่ล่าตัวจริง!');}
+ if(ep===4){const s=sprite(sid,'stand',W*.56),d=sprite(did,'stand',W*.44),e=sprite(eid,'walkA',-400),cat=el('emo','🐈'),tf=el('tif2'),ex=bubble(`ข้าวมันไก่ของ${E(sid)}เองนะ! 🍗`,'sm'),meow=bubble('เมี้ยว~ 😼','sm');
+  cat.style.fontSize='96px';tf.style.backgroundImage=`url(/cast/jit/tiffin.webp)`;gsap.set(s,{scaleX:-1});gsap.set([s,d],{opacity:0});follow(ex,s,-80,-SH-100);follow(tf,cat,40,-10);follow(meow,cat,-40,-170);
+  tl.to([s,d],{opacity:1,duration:.3},k);pop(ex,k+.3);hide(ex,k+2);
+  gsap.set(cat,{x:W+80,y:FLOOR-110,scaleX:-1});tl.to([cat,tf],{opacity:1,duration:.1},k+2.2).to(cat,{x:W*.66,duration:.8,ease:'power2.out'},k+2.2);pop(meow,k+2.6);
+  tl.call(()=>{show(d,'stand-shock');show(s,'stand-shock')},null,k+2.8);sfx('ตัวจริง!!',W*.36,FLOOR-SH-300,k+3,-8,120);hide(meow,k+3.8);
+  tl.to(cat,{x:-160,duration:2.2,ease:'power1.in'},k+3.9).to(cat,{y:FLOOR-150,duration:.15,yoyo:true,repeat:13},k+3.9);
+  tl.to([d,s],{scaleX:-1,duration:.01},k+4.0).set(s,{scaleX:-1},k+4.0).call(()=>{cyc(d,'runA-shout','runB-shout',.08);cyc(s,'runA-shout','runB-shout',.08);cyc(e,'runA-cry','runB-cry',.08);gsap.set(e,{scaleX:-1,x:W+150})},null,k+4.1)
+   .to([d,s],{x:-260,duration:1.8,ease:'power1.in'},k+4.2).to(e,{x:-300,duration:2.6,ease:'none'},k+4.4);dustPuff(d,k+4.2,1.6);k+=7.2;end('⏩ ตอนจบ: ความจริงเปิดเผย · พรุ่งนี้!');}
+ if(ep===5){const cat=el('emo','🐈'),tf=el('tif2'),j=sprite('jit','walkA',W+150),e=sprite(eid,'stand',W*.30),d=sprite(did,'stand',W*.20),s=sprite(sid,'stand',W*.10),sorry=bubble('น้องเหมียวของป้าเองค่ะ ขอโทษนะคะ 🙏','sm'),more=bubble('ทำมาเผื่อทุกคนเลยค่ะ 🍱','sm'),yay=bubble('เย้!! ป้าจิตรน่ารักที่สุด 😍','sm');
+  cat.style.fontSize='96px';tf.style.backgroundImage=`url(/cast/jit/tiffin.webp)`;gsap.set(cat,{x:W*.5,y:FLOOR-110});gsap.set(tf,{x:W*.5+60,y:FLOOR-80});gsap.set([e,d,s],{opacity:0});gsap.set(j,{scaleX:-1});follow(sorry,j,-300,-SH-110);follow(more,j,-260,-SH-110);follow(yay,e,-60,-SH-100);
+  tl.to([cat,tf,e,d,s],{opacity:1,duration:.3},k).call(()=>cyc(j,'walkA','walkB',.26),null,k).to(j,{x:W*.62,duration:1.6,ease:'power1.out'},k).call(()=>{stopCyc();show(j,'standE')},null,k+1.6);
+  pop(sorry,k+1.7);tl.to(cat,{x:W*.6,y:FLOOR-SH*.55,duration:.5,ease:'power1.inOut'},k+2.4);hide(sorry,k+3.6);
+  tl.call(()=>{show(j,'trayA');cyc(j,'trayA','trayB',.3)},null,k+3.8);pop(more,k+3.9);tl.to(j,{x:W*.5,duration:1,ease:'none'},k+3.9).call(()=>{stopCyc();show(j,'trayA')},null,k+4.9);hide(more,k+5.4);
+  tl.call(()=>[e,d,s].forEach(x=>show(x,'up')),null,k+5.4).to([e,d,s],{y:FLOOR-60,duration:.2,yoyo:true,repeat:3,stagger:.06},k+5.4);pop(yay,k+5.5);[e,d,s].forEach(x=>hearts(x,k+5.6,5));confetti(k+5.6,30,W*.4,FLOOR-SH);hide(yay,k+7.6);
+  tl.to([cat,tf,j,e,d,s],{opacity:0,duration:.5},k+8);k+=8.5;end('🎬 จบบริบูรณ์ · สัปดาห์หน้าเรื่องใหม่!');}
+ },
+
 ];
 
   tl = gsap.timeline({ onComplete: () => { finish(); onDone && onDone(); } });

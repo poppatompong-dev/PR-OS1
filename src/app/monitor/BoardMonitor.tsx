@@ -327,7 +327,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
       ) : (
         <div className="hm-ticker hm-ticker--quiet bm-ticker">พิมพ์ &quot;ประกาศ ข้อความ&quot; ในแชทบอท เพื่อขึ้นประกาศที่นี่ · ไม่มีงานเปลี่ยนแปลงหรือยกเลิก</div>
       )}
-      <TvCast still={staticMode} people={castPeople} off={team.off} />
+      <TvCast still={staticMode} people={castPeople} off={team.off} events={events} festival={festival} />
       {bday ? <BirthdayShow bday={bday} still={staticMode} off={team.off} team={castPeople} /> : null}
     </div>
   );

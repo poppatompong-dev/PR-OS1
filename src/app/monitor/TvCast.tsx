@@ -12,7 +12,12 @@ import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { CAST_IDS, CAST_POSES, castUrl, type CastPose } from "@/lib/monitor/cast";
 import { EARTH_ID, GAG_COUNT, GAG_HOME_TIME, playGag, preloadGags } from "./tv-gags";
-import { BADGE_TEXT, SCENES, playScene, preloadScene } from "./tv-scenes";
+import { BADGE_TEXT, BUILTIN_JOKES, SCENES, playScene, preloadScene } from "./tv-scenes";
+import { catchphrase } from "@/lib/monitor/catchphrases";
+import { isDone, screenTitle } from "@/lib/monitor/board";
+import { bangkokNow } from "@/lib/monitor/thai-time";
+import type { MonitorEvent } from "@/lib/monitor/types";
+import type { Festival } from "@/lib/monitor/festivals";
 
 // "สร้างความครื้นเครงแบบถี่ ๆ ไปก่อน แต่ไม่ให้กระทบคนดูคิวงานมากนัก · ทุกตัวละครควรมี
 // บทบาทพอ ๆ กัน" (owner, 4 Nov 2026): every slot is short (≤10 s) with 25–45 s of a
@@ -20,7 +25,22 @@ import { BADGE_TEXT, SCENES, playScene, preloadScene } from "./tv-scenes";
 // Whoever has been on screen least plays the next role (antics, scenes and gags
 // all count), so nobody hogs the screen. พี่ไป๋ (senior) only gets the cheerful
 // parts: ordinary antics, ทั้งทีมสู้ and her own badge.
-const ROTATION = ["act", "scene", "act", "gag"] as const;
+// 5 Nov 2026 ("feedback ดี คิดเผื่อยาว ๆ"): a sixth slot for the long-run variety —
+// time-of-day scenes, the Mon–Fri serial, festival scenes and jokes from the
+// Telegram joke box — and real-work moments (new job, all acknowledged, day
+// cleared) jump the queue.
+const ROTATION = ["act", "scene", "act", "gag", "act", "extra"] as const;
+type SceneMeta = { key: string; kind?: string; fest?: string[]; earth?: boolean; badge?: boolean; all?: boolean; n?: number; pai?: boolean };
+type Job = { key: "W1" | "W2" | "W3"; roles: string[]; data: Record<string, unknown> };
+type Joke = { id: string; personId: string; name: string; setup: string; punch: string };
+const SERIAL_EVERY_MIN = 25;
+const FEST_EVERY_MIN = 8;
+/** Bangkok minutes-of-day windows for the time scenes (Fri only for T3). */
+const TIME_WINDOWS: Record<string, { from: number; to: number; every: number; fri?: boolean }> = {
+  T2: { from: 7 * 60 + 50, to: 8 * 60 + 40, every: 20 }, // เช้า สายแล้ว
+  T1: { from: 11 * 60 + 45, to: 12 * 60 + 15, every: 12 }, // พักเที่ยง
+  T3: { from: 13 * 60, to: 16 * 60 + 30, every: 40, fri: true }, // ศุกร์แล้ว
+};
 const GAG_WITH_TEAM = 7; // น้องชวนไปต่อ — needs กุ๊ก แป้ง นัท on screen
 const TEAM_FOR_GAG = ["00000000-0000-0000-0000-000000000503", "00000000-0000-0000-0000-000000000505", "00000000-0000-0000-0000-000000000504"];
 const PAI = "00000000-0000-0000-0000-000000000501";
@@ -34,10 +54,36 @@ function bangkokHour(): number {
   return Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
 }
 
-export function TvCast({ still, people, off }: { still: boolean; people: string[]; off: Set<string> }) {
+export function TvCast({ still, people, off, events = [], festival = null }: { still: boolean; people: string[]; off: Set<string>; events?: MonitorEvent[]; festival?: Festival | null }) {
   const stage = useRef<HTMLDivElement>(null);
   const cast = people.filter((id) => CAST_IDS.includes(id) && !off.has(id));
   const key = cast.join(",");
+  const festRef = useRef<Festival | null>(festival);
+  festRef.current = festival;
+  const workQ = useRef<Job[]>([]);
+  const seen = useRef<{ ids: Map<string, boolean>; day: string; cleared: boolean } | null>(null);
+
+  // Real-work moments: compare each board load with the last one.
+  useEffect(() => {
+    const now = bangkokNow();
+    const live = events.filter((e) => e.status !== "canceled" && e.eventDate >= now.iso);
+    const castOf = (e: MonitorEvent) => [...new Set(e.assigneeDetail.map((a) => a.personId).filter((id): id is string => !!id && cast.includes(id)))].slice(0, 3);
+    const todays = live.filter((e) => e.eventDate === now.iso);
+    const cleared = todays.length > 0 && todays.every((e) => isDone(e, now.minutes));
+    const prev = seen.current;
+    if (prev && prev.day === now.iso) {
+      for (const e of live) {
+        const ids = castOf(e);
+        if (!ids.length) continue;
+        if (!prev.ids.has(e.id)) workQ.current.push({ key: "W1", roles: ids, data: { title: screenTitle(e).slice(0, 30) } });
+        else if (e.allAck && prev.ids.get(e.id) === false) workQ.current.push({ key: "W2", roles: ids, data: { title: screenTitle(e).slice(0, 24) } });
+      }
+      if (cleared && !prev.cleared) workQ.current.push({ key: "W3", roles: [], data: { count: todays.length } });
+      workQ.current = workQ.current.slice(-4);
+    }
+    if (live.length || prev) seen.current = { ids: new Map(live.map((e) => [e.id, e.allAck])), day: now.iso, cleared };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events, key]);
 
   useEffect(() => {
     const root = stage.current;
@@ -81,6 +127,17 @@ export function TvCast({ still, people, off }: { still: boolean; people: string[
       return s;
     }
     const done = (...ss: Sprite[]) => () => ss.forEach((s) => { s.stop(); s.el.remove(); });
+    // คำพูดติดปาก: a little bubble over the head (counter-flipped so it reads right).
+    const say = (s: Sprite, flip = 1) => {
+      const t = Math.random() < 0.6 ? catchphrase(s.id) : null;
+      if (!t) return;
+      const b = document.createElement("div");
+      b.className = "tv-cast-say";
+      b.textContent = t;
+      b.style.fontSize = `${20 * u()}px`;
+      b.style.transform = `translateX(-50%) scaleX(${flip})`;
+      s.el.appendChild(b);
+    };
     const W = () => window.innerWidth;
     const floorY = () => box(".bm-ticker")?.top ?? window.innerHeight - 60 * u();
 
@@ -91,8 +148,8 @@ export function TvCast({ still, people, off }: { still: boolean; people: string[
       gsap.set(c.el, { x: x0, y, scaleX: dir });
       return gsap.timeline({ onComplete: done(c) })
         .call(() => c.cycle("walkA", "walkB", 0.2)).to(c.el, { x: mid, duration: Math.abs(mid - x0) / v, ease: "none" })
-        .call(() => c.stop("wave")).to(c.el, { rotation: -5, duration: 0.25, yoyo: true, repeat: 5, transformOrigin: "50% 100%" })
-        .call(() => c.cycle("walkA", "walkB", 0.2)).to(c.el, { x: x1, rotation: 0, duration: Math.abs(x1 - mid) / v, ease: "none" });
+        .call(() => { c.stop("wave"); say(c, dir); }).to(c.el, { rotation: -5, duration: 0.3, yoyo: true, repeat: 7, transformOrigin: "50% 100%" })
+        .call(() => { c.el.querySelector(".tv-cast-say")?.remove(); c.cycle("walkA", "walkB", 0.2); }).to(c.el, { x: x1, rotation: 0, duration: Math.abs(x1 - mid) / v, ease: "none" });
     }
     function runAcross() {
       const c = make(nextId()); const y = floorY(); const dir = Math.random() < 0.5 ? 1 : -1; const d = 2.8;
@@ -113,8 +170,8 @@ export function TvCast({ still, people, off }: { still: boolean; people: string[
       return gsap.timeline({ onComplete: () => { c.stop(); m.remove(); } })
         .to(c.el, { y: h + 95 * u(), duration: 0.45, ease: "back.out(2)" })
         .to(c.el, { rotation: -10, duration: 0.35, transformOrigin: "50% 100%" }).to(c.el, { rotation: 10, duration: 0.5 }).to(c.el, { rotation: 0, duration: 0.25 })
-        .call(() => c.set("wave")).to(c.el, { y: h + 70 * u(), duration: 0.25 }).to(c.el, { rotation: -4, duration: 0.2, yoyo: true, repeat: 3 })
-        .call(() => c.set("stand")).to(c.el, { y: h * 2 + 10, duration: 0.3, ease: "power2.in" });
+        .call(() => { c.set("wave"); say(c); }).to(c.el, { y: h + 70 * u(), duration: 0.25 }).to(c.el, { rotation: -4, duration: 0.25, yoyo: true, repeat: 5 })
+        .call(() => { c.set("stand"); c.el.querySelector(".tv-cast-say")?.remove(); }).to(c.el, { y: h * 2 + 10, duration: 0.3, ease: "power2.in" });
     }
     function climbCard() {
       const t = box(".bm-today"); if (!t) return walkTicker();
@@ -185,29 +242,114 @@ export function TvCast({ still, people, off }: { still: boolean; people: string[
     loadBadges();
     const badgeTimer = setInterval(loadBadges, 30 * 60_000);
     timers.add(badgeTimer);
+    const META = SCENES as SceneMeta[];
+    const idx = (k: string) => META.findIndex((s) => s.key === k);
+    const notPai = (id: string) => id !== PAI;
+    const isFest = (s: SceneMeta) => !!s.fest && (preview || (!!festRef.current && s.fest.includes(festRef.current.key)));
     const canScene = (i: number) => {
-      const s = SCENES[i] as { earth?: boolean; badge?: boolean; all?: boolean; n?: number };
+      const s = META[i];
+      if (s.kind === "work") return preview;
+      if (s.fest && !isFest(s)) return false;
+      if (s.kind === "serial") return gagsOn && cast.filter((id) => id !== EARTH_ID && notPai(id)).length >= 2;
       if (s.earth) return gagsOn;
       if (s.badge) return holders.size > 0;
       if (s.all) return cast.length >= 3;
-      return cast.filter((id) => id !== PAI).length >= (s.n ?? 1);
+      return cast.filter((id) => s.pai || notPai(id)).length >= (s.n ?? 1);
     };
-    const nextScene = (): { i: number; roles: string[]; data: { label?: string; icon?: string } } | null => {
-      let i: number;
-      if (sceneOnly >= 0) i = sceneOnly;
-      else {
-        if (!sceneBag.some(canScene)) sceneBag = shuffle(SCENES.map((_, k) => k));
-        const k = sceneBag.findIndex(canScene);
-        if (k < 0) return null;
-        i = sceneBag.splice(k, 1)[0];
+    // มุก: sent jokes first (least told), then the built-in ones in a shuffled bag.
+    let jokes: Joke[] = [];
+    const told = new Map<string, number>();
+    let builtin: number[] = [];
+    const loadJokes = () =>
+      fetch("/api/monitor/jokes").then((r) => (r.ok ? r.json() : null)).then((j: { jokes?: Joke[] } | null) => { if (j?.jokes) jokes = j.jokes; }).catch(() => undefined);
+    loadJokes();
+    timers.add(setInterval(loadJokes, 10 * 60_000));
+    const nextJoke = (): { setup: string; punch: string; personId?: string; name?: string } => {
+      const sent = [...jokes].sort((a, b) => (told.get(a.id) ?? 0) - (told.get(b.id) ?? 0));
+      // A sent joke is told up to 6 times before the built-ins mix back in.
+      if (sent.length && (told.get(sent[0].id) ?? 0) < 6 && Math.random() < 0.8) {
+        told.set(sent[0].id, (told.get(sent[0].id) ?? 0) + 1);
+        return sent[0];
       }
+      if (!builtin.length) builtin = shuffle(BUILTIN_JOKES.map((_, k) => k));
+      return BUILTIN_JOKES[builtin.pop()!];
+    };
+    // ละครตอนต่อ: same detective and suspect all week (seeded by the week number).
+    const serialRoles = (): string[] => {
+      const pool = cast.filter((id) => id !== EARTH_ID && notPai(id)).sort();
+      const wk = Math.floor((Date.now() / 86_400_000 + 3) / 7);
+      const d = pool[wk % pool.length], sus = pool[(wk + 1 + (wk % Math.max(1, pool.length - 1))) % pool.length];
+      return [EARTH_ID, d, sus === d ? pool[(pool.indexOf(d) + 1) % pool.length] : sus];
+    };
+    const serialEp = (): number => {
+      const ep = Number(q.get("ep"));
+      if (ep >= 1 && ep <= 5) return ep;
+      const wd = new Date(`${bangkokNow().iso}T00:00:00Z`).getUTCDay();
+      return wd >= 1 && wd <= 5 ? wd : 0;
+    };
+    const castScene = (i: number): { i: number; roles: string[]; data: Record<string, unknown> } | null => {
       if (!canScene(i)) return null;
-      const s = SCENES[i] as { earth?: boolean; badge?: boolean; all?: boolean; n?: number };
+      const s = META[i];
+      if (s.kind === "work") {
+        const sample = cast.filter(notPai).slice(0, 2);
+        return { i, roles: s.key === "W3" ? shuffle(cast) : sample, data: { title: "ตัวอย่าง: ถ่ายภาพงานประชุม", count: 3 } };
+      }
+      if (s.kind === "serial") { const r = serialRoles(); bump(r); return { i, roles: r, data: { ep: serialEp() || 1 } }; }
+      if (s.kind === "joke") {
+        const j = nextJoke();
+        const teller = j.personId && cast.includes(j.personId) ? j.personId : (pick(1, notPai) ?? [cast[0]])[0];
+        if (j.personId === teller) bump([teller]);
+        const ears = pick(Math.min(2, cast.filter((id) => id !== teller && notPai(id)).length), (id) => id !== teller && notPai(id)) ?? [];
+        // พี่ไป๋'s own joke always gets the laugh.
+        const react = teller === PAI || Math.random() < 0.65 ? "laugh" : "flat";
+        return { i, roles: [teller, ...ears], data: { setup: j.setup, punch: j.punch, name: j.name, react } };
+      }
+      if (s.fest && s.all) {
+        const f = festRef.current?.key;
+        const greet = f === "cny" ? "ซินเจียยู่อี่ ซินนี้ฮวดไช้ 🧧" : `สวัสดีปีใหม่ ${(festRef.current?.chip.match(/\d{4}/) ?? [String(new Date().getFullYear() + 544)])[0]} 🎆`;
+        bump(cast);
+        return { i, roles: shuffle(cast), data: { greet } };
+      }
       if (s.earth) { bump([EARTH_ID]); return { i, roles: [EARTH_ID], data: {} }; }
       if (s.all) { bump(cast); return { i, roles: shuffle(cast), data: {} }; }
       if (s.badge) { const r = pick(1, (id) => holders.has(id)); return r ? { i, roles: r, data: holders.get(r[0])! } : null; }
-      const r = pick(s.n ?? 1, (id) => id !== PAI);
-      return r ? { i, roles: r, data: {} } : null;
+      const r = pick(Math.min(s.n ?? 1, cast.filter((id) => s.pai || notPai(id)).length), (id) => !!s.pai || notPai(id));
+      return r && r.length >= Math.min(s.n ?? 1, 2) ? { i, roles: r, data: {} } : null;
+    };
+    const nextScene = () => {
+      if (sceneOnly >= 0) return castScene(sceneOnly);
+      if (sceneFast) {
+        // preview: every scene in order
+        const i = sceneCursor++ % META.length;
+        return castScene(i) ?? castScene(idx("B3"));
+      }
+      const anime = (k: number) => !META[k].kind && canScene(k);
+      if (!sceneBag.some(anime)) sceneBag = shuffle(META.map((_, k) => k).filter((k) => !META[k].kind));
+      const k = sceneBag.findIndex(anime);
+      return k < 0 ? null : castScene(sceneBag.splice(k, 1)[0]);
+    };
+    let sceneCursor = 0;
+    const lastAt = new Map<string, number>();
+    const minsSince = (k: string) => (Date.now() - (lastAt.get(k) ?? 0)) / 60_000;
+    // The sixth slot: time scene → serial → festival → joke.
+    const nextExtra = () => {
+      const now = bangkokNow();
+      const fri = new Date(`${now.iso}T00:00:00Z`).getUTCDay() === 5;
+      for (const [k, w] of Object.entries(TIME_WINDOWS)) {
+        if (now.minutes >= w.from && now.minutes <= w.to && (!w.fri || fri) && minsSince(k) >= w.every) {
+          const sc = castScene(idx(k));
+          if (sc) { lastAt.set(k, Date.now()); return sc; }
+        }
+      }
+      if (serialEp() && minsSince("S") >= SERIAL_EVERY_MIN) {
+        const sc = castScene(idx("S"));
+        if (sc) { lastAt.set("S", Date.now()); return sc; }
+      }
+      if (festRef.current && minsSince("F") >= FEST_EVERY_MIN) {
+        const fs = shuffle(META.map((_, k) => k).filter((k) => META[k].kind === "fest" && canScene(k)));
+        for (const k of fs) { const sc = castScene(k); if (sc) { lastAt.set("F", Date.now()); return sc; } }
+      }
+      return castScene(idx("J"));
     };
     const nextGag = (): number | null => {
       const late = bangkokHour() >= 16;
@@ -233,6 +375,22 @@ export function TvCast({ still, people, off }: { still: boolean; people: string[
       if (document.documentElement.dataset.tvShow) return schedule(30);
       const kind = sceneFast ? "scene" : jitFast ? "gag" : fast ? "act" : ROTATION[slot++ % ROTATION.length];
       const s = u();
+      const play = async (sc: { i: number; roles: string[]; data: Record<string, unknown> }) => {
+        await preloadScene(sc.roles);
+        if (!alive) return;
+        gag = playScene(sc.i, root!, floorY() / u(), u(), sc.roles, sc.data, () => { gag = null; schedule(after()); });
+      };
+      // Something just happened on the board → show it now (not in previews).
+      const job = preview ? undefined : workQ.current.shift();
+      if (job) {
+        const roles = job.key === "W3" ? shuffle(cast) : job.roles;
+        bump(roles);
+        if (roles.length) return play({ i: idx(job.key), roles, data: job.data });
+      }
+      if (kind === "extra") {
+        const sc = nextExtra();
+        if (sc) return play(sc);
+      }
       if (kind === "gag" && gagsOn) {
         const g = nextGag();
         if (g !== null) {
@@ -240,14 +398,9 @@ export function TvCast({ still, people, off }: { still: boolean; people: string[
           return;
         }
       }
-      if (kind === "scene" || kind === "gag") {
+      if (kind === "scene" || kind === "gag" || kind === "extra") {
         const sc = nextScene();
-        if (sc) {
-          await preloadScene(sc.roles);
-          if (!alive) return;
-          gag = playScene(sc.i, root!, floorY() / u(), u(), sc.roles, sc.data, () => { gag = null; schedule(after()); });
-          return;
-        }
+        if (sc) return play(sc);
       }
       let f = ACTS[Math.floor(Math.random() * ACTS.length)];
       while (f === last) f = ACTS[Math.floor(Math.random() * ACTS.length)];

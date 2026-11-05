@@ -325,7 +325,7 @@ export async function takePendingReason(admin: SupabaseClient, lineUserId: strin
 }
 
 /** Other one-step chat waits (e.g. "send your photo"); shares the reason table. */
-export async function setPendingAction(admin: SupabaseClient, chatKey: string, action: "avatar_photo" | "pulse_note", minutes = 15) {
+export async function setPendingAction(admin: SupabaseClient, chatKey: string, action: "avatar_photo" | "pulse_note" | "tv_joke", minutes = 15) {
   await admin.from("line_chat_state").upsert({
     line_user_id: chatKey,
     pending_action: action,
@@ -335,7 +335,7 @@ export async function setPendingAction(admin: SupabaseClient, chatKey: string, a
 }
 
 /** True (and cleared) when this chat was waiting for `action`. */
-export async function takePendingAction(admin: SupabaseClient, chatKey: string, action: "avatar_photo" | "pulse_note"): Promise<boolean> {
+export async function takePendingAction(admin: SupabaseClient, chatKey: string, action: "avatar_photo" | "pulse_note" | "tv_joke"): Promise<boolean> {
   const { data } = await admin
     .from("line_chat_state")
     .select("pending_action, expires_at")

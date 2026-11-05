@@ -365,3 +365,16 @@
 .tv-scene .zap{width:300px;height:80px;opacity:0}
 .tv-scene .ucard{width:440px;padding:18px 26px;background:#ff3b4f;color:#fff;border:6px solid #1b1024;border-radius:18px;box-shadow:8px 8px 0 #1b1024;font-size:56px;font-weight:900;text-align:center;opacity:0;white-space:nowrap}
 .tv-scene .dots{font-size:90px;font-weight:900;color:#fff;-webkit-text-stroke:5px #1b1024;paint-order:stroke fill;opacity:0}
+.tv-scene .river{width:1920px;height:46px;opacity:0;background:repeating-linear-gradient(90deg,rgba(90,170,255,.85) 0 40px,rgba(140,205,255,.85) 40px 80px);border-top:4px solid #1b1024;animation:tv-river 2s linear infinite}
+@keyframes tv-river{to{background-position:80px 0}}
+.tv-scene .kt{width:96px;height:76px;opacity:0}
+.tv-scene .conf{width:14px;height:22px;border-radius:3px;opacity:0}
+.tv-scene .spark{width:16px;height:16px;border-radius:50%;opacity:0;box-shadow:0 0 14px 4px rgba(255,255,255,.6)}
+.tv-scene .ttl{padding:12px 26px;background:#1b1024;color:#ffd36b;border:5px solid #ffd36b;border-radius:18px;font-size:44px;font-weight:900;white-space:nowrap;opacity:0;box-shadow:6px 6px 0 rgba(0,0,0,.4)}
+.tv-scene .credit{padding:6px 14px;background:#ff5d8a;color:#fff;border:4px solid #1b1024;border-radius:999px;font-size:26px;font-weight:900;white-space:nowrap;opacity:0}
+.tv-scene .tif2{width:64px;height:80px;background-size:contain;background-repeat:no-repeat;opacity:0}
+.tv-scene .splash{width:260px;height:300px;opacity:0;background:radial-gradient(ellipse at 50% 0%,rgba(140,210,255,.95),rgba(80,160,255,.6) 60%,transparent 72%);border-radius:40% 40% 50% 50%}
+.tv-scene .ucard small{display:block;font-size:34px;line-height:1.2;margin-top:6px}
+/* คำพูดติดปาก (catchphrases.ts) ตอนตัวการ์ตูนโบกมือ */
+.tv-cast-sp .tv-cast-say{position:absolute;left:50%;bottom:102%;padding:.35em .7em;background:#fff;color:#1b1024;border:3px solid #1b1024;border-radius:14px;box-shadow:3px 3px 0 #1b1024;font-weight:900;white-space:nowrap;animation:tv-say-pop .3s cubic-bezier(.3,1.8,.5,1) both}
+@keyframes tv-say-pop{from{opacity:0;scale:.4}to{opacity:1;scale:1}}
