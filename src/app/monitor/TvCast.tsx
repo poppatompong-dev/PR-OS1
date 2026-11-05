@@ -34,6 +34,7 @@ type SceneMeta = { key: string; kind?: string; fest?: string[]; earth?: boolean;
 type Job = { key: "W1" | "W2" | "W3"; roles: string[]; data: Record<string, unknown> };
 type Joke = { id: string; personId: string; name: string; setup: string; punch: string };
 const SERIAL_EVERY_MIN = 25;
+const SERIAL_FROM = "2026-11-09"; // first Monday after it shipped
 const FEST_EVERY_MIN = 8;
 /** Bangkok minutes-of-day windows for the time scenes (Fri only for T3). */
 const TIME_WINDOWS: Record<string, { from: number; to: number; every: number; fri?: boolean }> = {
@@ -284,7 +285,9 @@ export function TvCast({ still, people, off, events = [], festival = null }: { s
     const serialEp = (): number => {
       const ep = Number(q.get("ep"));
       if (ep >= 1 && ep <= 5) return ep;
-      const wd = new Date(`${bangkokNow().iso}T00:00:00Z`).getUTCDay();
+      const today = bangkokNow().iso;
+      if (today < SERIAL_FROM) return 0; // start on a Monday, not mid-story
+      const wd = new Date(`${today}T00:00:00Z`).getUTCDay();
       return wd >= 1 && wd <= 5 ? wd : 0;
     };
     const castScene = (i: number): { i: number; roles: string[]; data: Record<string, unknown> } | null => {
