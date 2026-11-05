@@ -43,6 +43,23 @@ import {
 import { TRIAL_STEPS, markTrial, trialDone } from "@/lib/trial";
 import { JOKE_PROMPT, decideJoke, parseJokeCommand, submitJoke } from "@/lib/tv-jokes";
 import {
+  HOW,
+  IDEA_PROMPT,
+  LOOK_PROMPT,
+  didNotGetText,
+  matchIntent,
+  myDayText,
+  myWeekText,
+  nextJobText,
+  rolesIn,
+  roleKey,
+  smallTalk,
+  tipText,
+  titleFor,
+  whatCanText,
+  whoWithText,
+} from "@/lib/telegram/chat";
+import {
   KEYBOARD,
   STATUS_TOAST,
   cb,
@@ -144,6 +161,11 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
     return [{ text: await submitJoke(ctx.admin, person, raw) }];
   }
 
+  // ขอลุค / ไอเดียแก็ก: the text after the prompt goes to the admins.
+  for (const kind of ["look_request", "gag_idea"] as const) {
+    if (!raw.startsWith("/") && (await takePendingAction(ctx.admin, stateKey(chatId), kind))) return [await forwardWish(ctx, person, kind, raw)];
+  }
+
   const pendingAssignment = await takePendingReason(ctx.admin, stateKey(chatId));
   if (pendingAssignment && !raw.startsWith("/")) return finishUnavailable(ctx, person, pendingAssignment, raw);
 
@@ -159,7 +181,7 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
     await setPendingAction(ctx.admin, stateKey(chatId), "tv_joke", 10);
     return [{ text: JOKE_PROMPT }];
   }
-  if (/^(รูปของฉัน|รูปฉัน|avatar)$/i.test(text.replace(/\s+/g, ""))) {
+  if (/^(🖼)?(รูปของฉัน|รูปฉัน|avatar|เปลี่ยนรูป)$/i.test(text.replace(/\s+/g, ""))) {
     const r = await markTrial(ctx.admin, person.id, "avatar").catch(() => null);
     const out = [await avatarMessage(ctx, person)];
     if (r?.first && r.done >= TRIAL_STEPS.length) out.push(tgTrialComplete());
@@ -194,10 +216,97 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
   }
   if (/^(📋)?(รายการงาน|แก้งาน|แก้ไขงาน|จัดการงาน|ยกเลิกงาน|เลื่อนงาน|ลบงาน|\/jobs)$/.test(text.replace(/\s+/g, ""))) return [tgJobs()];
   if (/^(เพิ่มงาน|สร้างงาน|\/add)/.test(text.replace(/\s+/g, ""))) return [tgAddEvent()];
+  const said = await chatReply(ctx, person, chatId, text);
+  if (said) return said;
   const faq = matchFaq(text);
   if (faq === "start" || faq === "telegram") return [tgHelp()];
   if (faq) return [{ text: esc(faqText(faq, false).replace("ที่เมนูด้านล่าง", "ในแชท LINE หรือที่เว็บ")) }];
-  return [tgHelp()];
+  return [{ text: didNotGetText(titleFor(person.id, person.displayName)), keyboard: KEYBOARD }];
+}
+
+/** คุยแบบพูดธรรมดา (5 Nov 2026) — keyword answers from lib/telegram/chat.ts. */
+async function chatReply(ctx: Ctx, person: LinePerson, chatId: number, text: string): Promise<TgMessage[] | null> {
+  const intent = matchIntent(text);
+  if (!intent) return null;
+  const title = titleFor(person.id, person.displayName);
+  const today = todayInBangkok();
+  const mine = (from: string, to: string) => loadTasks(ctx.admin, { from, to, personId: person.id });
+  const nextOf = (tasks: TaskItem[]) => tasks.find((t) => t.event.eventDate > today || (t.event.eventDate === today && (t.event.endTime ?? t.event.startTime) >= bangkokHhmmNow())) ?? null;
+  switch (intent) {
+    case "my_today":
+      return [{ text: myDayText(title, "วันนี้", await mine(today, today)) }];
+    case "my_tomorrow": {
+      const d = addDays(today, 1);
+      return [{ text: myDayText(title, "พรุ่งนี้", await mine(d, d)) }];
+    }
+    case "my_week":
+      return [{ text: myWeekText(title, today, await mine(today, addDays(today, 6))) }];
+    case "my_next":
+      return [{ text: nextJobText(title, nextOf(await mine(today, addDays(today, 30)))) }];
+    case "who_with": {
+      const next = nextOf(await mine(today, addDays(today, 30)));
+      const team = next ? await loadTasks(ctx.admin, { from: next.event.eventDate, to: next.event.eventDate }) : [];
+      return [{ text: whoWithText(title, next, team) }];
+    }
+    case "tip": {
+      let keys = rolesIn(text);
+      if (!keys.length) {
+        const next = nextOf(await mine(today, addDays(today, 14)));
+        const k = next ? roleKey(next.roleName) : null;
+        if (k) keys = [k];
+      }
+      return [{ text: tipText(keys) }];
+    }
+    case "how_avatar":
+      return [{ text: HOW.how_avatar }, await avatarMessage(ctx, person)];
+    case "how_attach":
+    case "how_unavailable":
+    case "how_joke":
+    case "how_add":
+      return [{ text: HOW[intent], keyboard: KEYBOARD }];
+    case "what_can":
+      return [{ text: whatCanText(title), keyboard: KEYBOARD }];
+    case "look":
+    case "idea": {
+      const kind = intent === "look" ? "look_request" : "gag_idea";
+      const rest = text.replace(/^\s*(ขอลุค|ขอฉายา|อยากได้ลุค|เปลี่ยนลุค|ไอเดียแก็ก|ไอเดีย|เสนอแก็ก|อยากให้มีแก็ก|ขอแก็ก)\s*[:：]?\s*/, "").trim();
+      if (rest.length >= 4) return [await forwardWish(ctx, person, kind, rest)];
+      await setPendingAction(ctx.admin, stateKey(chatId), kind, 15);
+      return [{ text: intent === "look" ? LOOK_PROMPT : IDEA_PROMPT }];
+    }
+    default:
+      return [{ text: smallTalk(intent, title) }];
+  }
+}
+
+function bangkokHhmmNow(): string {
+  return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+}
+
+/** ขอลุค / ไอเดียแก็ก → logged + every admin gets it on Telegram. */
+async function forwardWish(ctx: Ctx, person: LinePerson, kind: "look_request" | "gag_idea", raw: string): Promise<TgMessage> {
+  const textIn = raw.trim().slice(0, 500);
+  if (textIn.length < 4) return { text: "สั้นไปนิด เล่าเพิ่มอีกหน่อยได้ไหม 🙂" };
+  const title = titleFor(person.id, person.displayName);
+  await ctx.admin.from("audit_logs").insert({
+    entity_type: "person",
+    entity_id: person.id,
+    action: kind,
+    changed_by: null,
+    summary: kind === "look_request" ? "ขอลุคพิเศษตัวการ์ตูน (Telegram)" : "เสนอไอเดียแก็กการ์ตูน (Telegram)",
+    new_values: { text: textIn, via: "telegram" },
+  });
+  await tellAdminsByTelegram(
+    ctx.admin,
+    `${kind === "look_request" ? "✨ <b>ขอลุคพิเศษ</b>" : "🎬 <b>ไอเดียแก็ก</b>"} จาก ${esc(title)}\n\n${esc(textIn)}`,
+  );
+  return {
+    text:
+      kind === "look_request"
+        ? `💌 ส่งคำขอลุคถึงแอดมินแล้ว ${esc(title)} · จะได้ตัวอย่างให้เลือกก่อนขึ้นจอนะ`
+        : `🎬 ได้ไอเดียแล้ว ขอบคุณ ${esc(title)}! ถ้าได้ทำเป็นฉาก จะขึ้นชื่อคนคิดบนจอด้วย`,
+    keyboard: KEYBOARD,
+  };
 }
 
 

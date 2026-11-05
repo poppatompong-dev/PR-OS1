@@ -40,6 +40,7 @@ import { avatarUrl, hasAvatar } from "@/lib/avatars";
 import { isTelegramConfigured } from "@/lib/env";
 import { callName } from "@/lib/names";
 import { getBotUsername } from "@/lib/telegram/api";
+import { movedToTelegram, movedToTelegramText } from "@/lib/line/moved";
 import { LIFF_ADD_EVENT_URL } from "@/lib/liff/config";
 import { LINK_TOKEN_MINUTES, createLinkToken } from "@/lib/telegram/link";
 import {
@@ -320,10 +321,11 @@ async function handleText(ctx: Ctx, ev: LineEvent, person: LinePerson | null): P
     const pendingAssignment = await takePendingReason(ctx.admin, userId);
     if (pendingAssignment) return finishUnavailable(ctx, person, pendingAssignment, raw);
   }
-  if (cmd === "help") return [helpMessage()];
-  if (!person) return notLinkedReply(ctx, userId);
-  if (cmd) return runCommand(ctx, cmd, person, false);
+  if (!person) return cmd === "help" ? [helpMessage()] : notLinkedReply(ctx, userId);
   if (isLinkTelegramCommand(raw)) return [await telegramLinkReply(ctx, person)];
+  if (movedToTelegram(person)) return [text(movedToTelegramText(callName(person.displayName), await getBotUsername()))];
+  if (cmd === "help") return [helpMessage()];
+  if (cmd) return runCommand(ctx, cmd, person, false);
   if (isJobsCommand(raw)) {
     return [
       text(

@@ -5,6 +5,7 @@
 // "รับทราบแล้ว" instead of a second status card being sent.
 
 import { formatThaiDate } from "@/lib/format";
+import { dailyTip, roleKey, titleFor } from "@/lib/telegram/chat";
 import type { TaskItem } from "@/lib/line/data";
 import { ackLabelFor, type FieldChange } from "@/lib/line/change-diff";
 import { COMMANDS, UNAVAILABLE_PRESETS, appUrl, bangkokHhmm, type BubbleKind, type StatusKind } from "@/lib/line/messages";
@@ -84,7 +85,7 @@ export function tgJobs(): TgMessage {
 export const KEYBOARD: string[][] = [
   [COMMANDS.mine, COMMANDS.today],
   [COMMANDS.tomorrow, COMMANDS.pending],
-  ["📋 รายการงาน", "รูปของฉัน", COMMANDS.help],
+  ["📋 รายการงาน", "🖼 เปลี่ยนรูป", COMMANDS.help],
 ];
 
 function when(t: TaskItem): string {
@@ -191,10 +192,14 @@ function mark(t: TaskItem) {
 export function tgDailySummary(personName: string, today: TaskItem[], tomorrow: TaskItem[]): TgMessage {
   const pending = [...today, ...tomorrow].filter((t) => !t.acknowledged && !t.unavailable).length;
   const day = (ts: TaskItem[]) => ts.map((t) => `${mark(t)} <b>${t.event.startTime}</b> ${ic(t.event)} ${esc(t.event.title)}\n      📍 ${esc(t.event.locationName)} · 👤 ${esc(t.roleName)}`);
-  const lines = [`☀️ อรุณสวัสดิ์ครับ ${esc(callName(personName))}`];
+  const first = today[0] ?? tomorrow[0];
+  const lines = [`☀️ อรุณสวัสดิ์ครับ ${esc(first ? titleFor(first.personId, personName) : callName(personName))}`];
   if (today.length) lines.push("", `📌 <b>วันนี้</b> · ${esc(dayShort(today[0].event.eventDate))}`, ...day(today));
   if (tomorrow.length) lines.push("", `🗓 <b>พรุ่งนี้</b> · ${esc(dayShort(tomorrow[0].event.eventDate))}`, ...day(tomorrow));
   lines.push("", pending > 0 ? `⏳ ยังไม่รับทราบ ${pending} งาน → กด "${COMMANDS.mine}"` : "✅ รับทราบครบแล้ว ขอบคุณครับ 🙏");
+  // ทิปส่วนตัว 1 บรรทัด (5 Nov 2026): rides on this message, never a message of its own.
+  const role = first ? roleKey(first.roleName) : null;
+  if (role && first) lines.push(`💡 ${esc(dailyTip(role, first.event.eventDate))}`);
   return { text: lines.join("\n"), keyboard: KEYBOARD };
 }
 
@@ -246,10 +251,11 @@ function helpLines(): string[] {
     `📋 <b>รายการงาน</b> → ปุ่ม "งาน" ซ้ายล่าง: ดู · เพิ่ม · ✏️ แก้ · ยกเลิก`,
     `📋 <b>${COMMANDS.mine}</b> → รับทราบ / ไม่สะดวก`,
     `👥 <b>${COMMANDS.today}</b> · <b>${COMMANDS.tomorrow}</b> · <b>${COMMANDS.pending}</b>`,
-    `🖼 <b>รูปของฉัน</b> → ดูรูปการ์ตูนบนจอ`,
     `📢 <b>ประกาศ</b> ข้อความ → ขึ้นจอทีวี`,
     `      เช่น <code>ประกาศ ประชุม 9 โมง ห้อง 1</code>`,
-    `😂 <b>มุก</b> → ส่งมุกให้ตัวการ์ตูนเล่าบนจอ`,
+    `😂 <b>มุก</b> → ส่งมุกให้ตัวการ์ตูนเล่าบนจอ · 🎬 <b>ไอเดีย</b> → เสนอเรื่องแก็ก`,
+    `🖼 <b>เปลี่ยนรูป</b> · ✨ <b>ขอลุค</b> → ลุค/ฉายาพิเศษ`,
+    `💬 ถามแบบพูดธรรมดาได้: "พรุ่งนี้มีงานไหม" "ใครไปด้วย" "ทิปพิธีกร"`,
     "",
     `🌐 รายงาน · ตั้งค่า → <a href="${esc(appUrl("/"))}">เว็บ PR-OS</a>`,
   ];
