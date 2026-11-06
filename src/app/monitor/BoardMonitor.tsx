@@ -25,6 +25,8 @@ import { birthdayToday } from "@/lib/monitor/birthday";
 import { WelcomeBanner, WelcomeShow } from "./TvWelcome";
 import { WELCOME_CYCLE_MS, WELCOME_DEFAULT_VARIANT, WELCOME_LABELS, WELCOME_ROLE, WELCOME_WARM, asWelcomeVariant, welcomeToday, type WelcomeVariant } from "@/lib/monitor/welcome";
 import { nickname } from "@/lib/monitor/nicknames";
+import { SHOWCASE_DEFAULT_LOOK, TvShowcase, type ShowcaseLook } from "./TvShowcase";
+import type { ShowcaseItem } from "@/lib/monitor/showcase";
 import { FestivalLayer, FestivalStage } from "./FestivalLayer";
 import { festivalFor, isFestivalKey, previewFestival } from "@/lib/monitor/festivals";
 import "./monitor-board.css";
@@ -100,6 +102,43 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
     const id = window.setInterval(loadWorld, 20 * 60_000);
     return () => window.clearInterval(id);
   }, []);
+
+  // โชว์ผลงาน in the leftover bottom space (owner, 6 Nov 2026). ?sc=1|2|3 previews a look.
+  const [showcaseItems, setShowcaseItems] = useState<ShowcaseItem[]>([]);
+  const [scLook, setScLook] = useState<ShowcaseLook>(SHOWCASE_DEFAULT_LOOK);
+  useEffect(() => {
+    const q = Number(new URLSearchParams(window.location.search).get("sc"));
+    if (q === 1 || q === 2 || q === 3) setScLook(q);
+    const loadShowcase = () =>
+      fetch("/api/monitor/showcase")
+        .then((r) => (r.ok ? r.json() : { items: [] }))
+        .then((j: { items?: ShowcaseItem[] }) => setShowcaseItems(Array.isArray(j.items) ? j.items : []))
+        .catch(() => undefined);
+    loadShowcase();
+    const id = window.setInterval(loadShowcase, 15 * 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  // ชื่องานยาวในแถบล่าง (owner, 6 Nov 2026): titles wrap, and a cell whose jobs
+  // don't fit scrolls up slowly, pauses, and comes back — nothing is cut off.
+  const cellsRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const root = cellsRef.current;
+    if (!root) return;
+    const measure = () => {
+      root.querySelectorAll<HTMLElement>(".bm-cell-body").forEach((body) => {
+        const roll = body.firstElementChild as HTMLElement | null;
+        if (!roll) return;
+        const over = roll.scrollHeight - body.clientHeight;
+        roll.classList.toggle("is-roll", over > 2 && !staticMode);
+        roll.style.setProperty("--roll", `${-Math.max(0, over)}px`);
+        roll.style.animationDuration = `${Math.max(8, over / 6 + 6)}s`;
+      });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  });
 
   useEffect(() => {
     const loadTeam = () =>
@@ -319,7 +358,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
         </section>
       </main>
 
-      <footer className="bm-cells">
+      <footer className="bm-cells" ref={cellsRef}>
         {(board?.cells ?? []).map((c) => {
           const p = dayParts(c.iso);
           return (
@@ -327,19 +366,27 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
               <div className="bm-cell-h">
                 <b>{p.d}</b> {p.mon} <i>{p.wd}</i>
               </div>
-              {c.events.slice(0, 2).map((e) => (
-                <div className="bm-cell-x" key={e.id} {...link(e)}>
-                  <JobIconTile title={e.title} icon={e.icon} size="calc(22 * var(--u))" className="bm-inline-icon" />
-                  {thaiTime(e.startTime)} {screenTitle(e)}
+              <div className="bm-cell-body">
+                <div className="bm-cell-roll">
+                  {c.events.map((e) => (
+                    <div className="bm-cell-x" key={e.id} {...link(e)}>
+                      <JobIconTile title={e.title} icon={e.icon} size="calc(22 * var(--u))" className="bm-inline-icon" />
+                      <em>{thaiTime(e.startTime)}</em> {screenTitle(e)}
+                    </div>
+                  ))}
                 </div>
-              ))}
-              {c.events.length > 2 ? <div className="bm-cell-x bm-more">+ อีก {c.events.length - 2} งาน</div> : null}
+              </div>
             </div>
           );
         })}
         {board && board.cells.length < 6 ? (
-          <div className="bm-cell bm-cell-rest" style={{ gridColumn: `span ${6 - board.cells.length}` }}>
-            ✨ {board.cells.length || board.dayRows.length ? "หลังจากนี้ยังว่าง" : "ยังไม่มีงานข้างหน้า"} · งานใหม่ขึ้นทันทีที่เผยแพร่
+          <div className={`bm-cell bm-cell-rest${showcaseItems.length ? " has-sc" : ""}`} style={{ gridColumn: `span ${6 - board.cells.length}` }}>
+            <TvShowcase
+              items={showcaseItems}
+              look={scLook}
+              still={staticMode}
+              fallback={`✨ ${board.cells.length || board.dayRows.length ? "หลังจากนี้ยังว่าง" : "ยังไม่มีงานข้างหน้า"} · งานใหม่ขึ้นทันทีที่เผยแพร่`}
+            />
           </div>
         ) : null}
       </footer>
