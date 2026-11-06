@@ -344,6 +344,14 @@ export function didNotGetText(title: string, mom = false): string {
   ].join("\n");
 }
 
+/** The bot could not answer, so the question went to the admins (6 Nov 2026). */
+export function questionSentText(title: string, mom = false): string {
+  return [
+    mom ? `💌 แม่ส่งคำถามนี้ถึงแอดมินให้แล้วค่ะ${esc(title)} เดี๋ยวคำตอบเด้งกลับมาในแชทนี้นะคะ` : `📨 ส่งคำถามถึงแอดมินแล้ว ${esc(title)} · คำตอบจะเด้งกลับมาในแชทนี้`,
+    'เรื่องงานของตัวเองถามบอทได้ทันที เช่น "พรุ่งนี้มีงานไหม" · "ใครไปด้วย" · "ทำอะไรได้บ้าง"',
+  ].join("\n");
+}
+
 export const IDEA_PROMPT = [
   "🎬 <b>ไอเดียแก็กการ์ตูน</b>",
   "เล่ามาเลย (ภายใน 15 นาที): ใครทำอะไร แล้วฮาตรงไหน",

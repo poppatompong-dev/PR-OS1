@@ -40,6 +40,7 @@ import {
   pulseNoteAdminText,
   pulseReply,
 } from "@/lib/telegram/pulse";
+import { Q_TAG, answerQuestion, forwardQuestion, looksLikeQuestion } from "@/lib/telegram/questions";
 import { TRIAL_STEPS, markTrial, trialDone } from "@/lib/trial";
 import { JOKE_PROMPT, decideJoke, parseJokeCommand, submitJoke } from "@/lib/tv-jokes";
 import {
@@ -47,6 +48,7 @@ import {
   IDEA_PROMPT,
   LOOK_PROMPT,
   didNotGetText,
+  questionSentText,
   matchIntent,
   momAddr,
   momOn,
@@ -90,6 +92,7 @@ export type TgUpdate = {
     text?: string;
     photo?: Array<{ file_id: string; file_size?: number; width: number; height: number }>;
     document?: { file_id: string; mime_type?: string; file_size?: number };
+    reply_to_message?: { message_id: number; text?: string; caption?: string };
   };
   callback_query?: {
     id: string;
@@ -119,6 +122,16 @@ export async function handleTelegramUpdate(ctx: Ctx, u: TgUpdate): Promise<void>
     return;
   }
   if (typeof m.text !== "string") return;
+  // An admin answering a team question: Reply on the "#Qxxxxx" message.
+  const repliedTo = m.reply_to_message?.text ?? m.reply_to_message?.caption ?? "";
+  if (Q_TAG.test(repliedTo) && !m.text.trim().startsWith("/")) {
+    const me = await findPersonByTelegramChatId(ctx.admin, chatId);
+    const done = me ? await answerQuestion(ctx.admin, me, repliedTo, m.text) : null;
+    if (done) {
+      for (const msg of done) await sendTelegram(chatId, msg);
+      return;
+    }
+  }
   const out = await handleText(ctx, chatId, m.text.trim());
   for (const msg of out) await sendTelegram(chatId, msg);
 }
@@ -224,6 +237,8 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
   if (faq === "start" || faq === "telegram") return [tgHelp()];
   if (faq) return [{ text: esc(faqText(faq, false).replace("ที่เมนูด้านล่าง", "ในแชท LINE หรือที่เว็บ")) }];
   const v = await voiceOf(ctx, person);
+  // Not something the bot knows: a real question goes to the admins (6 Nov 2026).
+  if (looksLikeQuestion(text) && (await forwardQuestion(ctx.admin, person, text)) > 0) return [{ text: questionSentText(v.title, v.mom), keyboard: KEYBOARD }];
   return [{ text: didNotGetText(v.title, v.mom), keyboard: KEYBOARD }];
 }
 

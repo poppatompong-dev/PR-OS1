@@ -185,3 +185,56 @@ test("โหมดแม่: women on the team only — the men and anyone unlis
   assert.doesNotMatch(textTo(await say(db, 502, "สวัสดีครับ"), 502), /แม่|ลูก/);
   assert.match(textTo(await say(db, 506, "สวัสดีค่ะ"), 506), /แม่|ลูก/);
 });
+
+// ---- คำถามที่บอทตอบไม่ได้ → แอดมิน → ตอบกลับผ่านบอท (6 Nov 2026) ----------------
+import { looksLikeQuestion } from "@/lib/telegram/questions";
+
+const EARTH = "00000000-0000-0000-0000-000000000502";
+const seedQ = () =>
+  fakeDb({
+    people: [...people, { id: EARTH, display_name: "นายธนันธร พันธุ์รอด", line_user_id: null, telegram_chat_id: 502, is_active: true }],
+    settings: [{ key: "line_admin_person_ids", value: [ADMIN, EARTH] }],
+    assignments: [asg("a1", PANG_ID, "ภาพนิ่ง"), asg("a2", KAE, "ภาพวิดีโอ")],
+  });
+const replyTo = async (db: any, chatId: number, repliedText: string, text: string) => {
+  const { handleTelegramUpdate } = await import("@/lib/telegram/webhook");
+  const f = captureFetch();
+  try {
+    await handleTelegramUpdate({ admin: db }, { update_id: uid++, message: { message_id: uid, chat: { id: chatId, type: "private" }, text, reply_to_message: { message_id: 7, text: repliedText } } } as any);
+    return f.calls.filter((c) => c.url.endsWith("/sendMessage"));
+  } finally { f.restore(); }
+};
+
+test("what counts as a question for the admins", () => {
+  for (const q of ["เบิกค่าเดินทางยังไงคะ", "ชุดวันจันทร์ใส่สีอะไร", "upload pdf ได้มั้ย?"]) assert.equal(looksLikeQuestion(q), true, q);
+  for (const q of ["5555", "ฮ่าๆๆ", "โอเคค่ะ", "👍👍", "qwerty zz", "ค่ะ"]) assert.equal(looksLikeQuestion(q), false, q);
+});
+
+test("a question the bot can't answer reaches both admins, and the answer comes back", async () => {
+  const db = seedQ();
+  const ask = await say(db, 506, "ชุดวันจันทร์งานต้อนรับใส่สีอะไรคะ");
+  assert.match(textTo(ask, 506), /ส่งคำถามนี้ถึงแอดมิน|ส่งคำถามถึงแอดมินแล้ว/);
+  const toAdmin = textTo(ask, 999);
+  assert.match(toAdmin, /คำถามจาก แข[\s\S]*ชุดวันจันทร์[\s\S]*#Q[A-Z0-9]{5}/);
+  assert.match(textTo(ask, 502), /#Q[A-Z0-9]{5}/);
+  assert.ok(db.tables.audit_logs.some((r: any) => r.action === "team_question" && r.entity_id === KAE));
+
+  const ans = await replyTo(db, 502, toAdmin, "ชุดผ้าไทยโทนสีชมพูนะ");
+  assert.match(textTo(ans, 506), /แอดมินตอบคำถามแล้ว[\s\S]*ชุดผ้าไทยโทนสีชมพู[\s\S]*คำถาม: ชุดวันจันทร์/);
+  assert.match(textTo(ans, 502), /ส่งคำตอบถึงแขแล้ว/);
+  assert.match(textTo(ans, 999), /ตอบคำถาม #Q[A-Z0-9]{5} ของแขแล้ว/);
+  assert.ok(db.tables.audit_logs.some((r: any) => r.action === "team_answer" && r.entity_id === KAE));
+});
+
+test("questions: laughs still get the gentle reply, admins' own odd texts are not forwarded, staff can't answer", async () => {
+  const db = seedQ();
+  const laugh = await say(db, 505, "55555");
+  assert.equal(textTo(laugh, 999), "");
+  assert.match(textTo(laugh, 505), /งงนิดนึง|ยังไม่เข้าใจ/);
+  const own = await say(db, 502, "ช่วยดูให้หน่อยว่าทำไมทีวีไม่ขึ้น");
+  assert.equal(textTo(own, 999), "");
+  // a staff member replying to a #Q text is just chat, nothing is sent to the asker
+  const ask = await say(db, 506, "เบิกค่าเดินทางยังไงคะ");
+  const fake = await replyTo(db, 505, textTo(ask, 999), "ไม่รู้เหมือนกัน");
+  assert.equal(textTo(fake, 506), "");
+});
