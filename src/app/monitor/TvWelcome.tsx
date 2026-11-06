@@ -34,7 +34,7 @@ export function WelcomeBanner({ welcome, still }: { welcome: Welcome; still: boo
     <div className={`bm-wel bm-wel--v${welcome.variant}${still ? "" : " is-live"}`} aria-label={`ยินดีต้อนรับ ${welcome.role}`}>
       <span className="bm-wel-icon" aria-hidden="true">{welcome.variant === 3 ? "💐" : "🎉"}</span>
       <span className="bm-wel-text">
-        <b>ยินดีต้อนรับ</b>
+        <b>ยินดีต้อนรับ{welcome.label ? ` · ${welcome.label}` : ""}</b>
         <span>{welcome.role}</span>
       </span>
     </div>
@@ -53,7 +53,8 @@ export function WelcomeShow({ welcome, still, off, team }: { welcome: Welcome; s
     if (!el || still) return;
     const root: HTMLDivElement = el;
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    const fast = new URLSearchParams(window.location.search).get("welcome") === "fast";
+    const qs = new URLSearchParams(window.location.search);
+    const fast = qs.get("welcome") === "fast" || qs.get("wv") === "all";
     const html = document.documentElement;
     const pal = PALETTE[v];
 
@@ -245,6 +246,7 @@ export function WelcomeShow({ welcome, still, off, team }: { welcome: Welcome; s
       </div>
       <div className="tv-wel-cur is-l" />
       <div className="tv-wel-cur is-r" />
+      {welcome.label ? <div className="tv-wel-label">{welcome.label}</div> : null}
       <div className="tv-wel-top">{v === 3 ? <span className="tv-wel-garland">🌸🌼🌺🌸🌼🌺🌸🌼🌺🌸🌼🌺🌸🌼🌺🌸</span> : null}</div>
     </div>
   );

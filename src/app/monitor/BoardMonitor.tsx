@@ -23,7 +23,7 @@ import { TvCast } from "./TvCast";
 import { BirthdayBanner, BirthdayShow } from "./TvBirthday";
 import { birthdayToday } from "@/lib/monitor/birthday";
 import { WelcomeBanner, WelcomeShow } from "./TvWelcome";
-import { WELCOME_DEFAULT_VARIANT, WELCOME_ROLE, WELCOME_WARM, asWelcomeVariant, welcomeToday, type WelcomeVariant } from "@/lib/monitor/welcome";
+import { WELCOME_CYCLE_MS, WELCOME_DEFAULT_VARIANT, WELCOME_LABELS, WELCOME_ROLE, WELCOME_WARM, asWelcomeVariant, welcomeToday, type WelcomeVariant } from "@/lib/monitor/welcome";
 import { nickname } from "@/lib/monitor/nicknames";
 import { FestivalLayer, FestivalStage } from "./FestivalLayer";
 import { festivalFor, isFestivalKey, previewFestival } from "@/lib/monitor/festivals";
@@ -157,17 +157,24 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
     return name ? { people: [{ name, short: nickname(bdayPreview, name), personId: bdayPreview }], wish: "", names: nickname(bdayPreview, name) } : null;
   }, [events, today, team.ids, bdayPreview]);
   // ต้อนรับคนมาใหม่: today's job titled ต้อนรับ + โอน/ย้าย/มาใหม่. ?welcome=fast&wv=1|2|3 previews.
-  const [welPreview, setWelPreview] = useState<{ on: boolean; v: WelcomeVariant | null }>({ on: false, v: null });
+  // ?welcome=fast&wv=all — the team picks on the TV (6 Nov 2026): looks 1→2→3, each labelled.
+  const [welPreview, setWelPreview] = useState<{ on: boolean; v: WelcomeVariant | null; all: boolean }>({ on: false, v: null, all: false });
+  const [welCycle, setWelCycle] = useState<WelcomeVariant>(1);
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
-    setWelPreview({ on: q.has("welcome"), v: asWelcomeVariant(q.get("wv")) });
+    const all = q.get("wv") === "all";
+    setWelPreview({ on: q.has("welcome") || all, v: asWelcomeVariant(q.get("wv")), all });
+    if (!all) return;
+    const t = setInterval(() => setWelCycle((v) => ((v % 3) + 1) as WelcomeVariant), WELCOME_CYCLE_MS);
+    return () => clearInterval(t);
   }, []);
   const welcome = useMemo(() => {
     if (!today) return null;
+    if (welPreview.all) return { role: WELCOME_ROLE, warm: WELCOME_WARM, variant: welCycle, label: WELCOME_LABELS[welCycle] };
     const real = welcomeToday(events, today, welPreview.v ?? undefined);
     if (real || !welPreview.on) return real;
     return { role: WELCOME_ROLE, warm: WELCOME_WARM, variant: welPreview.v ?? WELCOME_DEFAULT_VARIANT };
-  }, [events, today, welPreview]);
+  }, [events, today, welPreview, welCycle]);
   const todayCount = board?.todayJobs.length ?? 0;
   const fit = useTodayFit(board?.todayJobs ?? [], now);
   // ธีมเทศกาลตามวันที่ (?fest=loy ใช้ดูตัวอย่าง)

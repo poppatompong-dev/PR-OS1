@@ -15,7 +15,10 @@ export type WelcomeVariant = (typeof WELCOME_VARIANTS)[number];
 /** Owner picked 3 ดอกไม้ (6 Nov 2026). */
 export const WELCOME_DEFAULT_VARIANT: WelcomeVariant = 3;
 
-export type Welcome = { role: string; warm: string; variant: WelcomeVariant };
+export type Welcome = { role: string; warm: string; variant: WelcomeVariant; label?: string };
+/** /tv?wv=all — big corner tag so the team can say which one they like. */
+export const WELCOME_LABELS: Record<WelcomeVariant, string> = { 1: "แบบ 1 · แดง–ทอง", 2: "แบบ 2 · กรมท่า–ทอง", 3: "แบบ 3 · ดอกไม้" };
+export const WELCOME_CYCLE_MS = 20_000;
 
 const NEWCOMER = /ต้อนรับ/;
 const MOVED_IN = /โอน|ย้าย|มาใหม่|คนใหม่|รับตำแหน่ง|บรรจุ/;
