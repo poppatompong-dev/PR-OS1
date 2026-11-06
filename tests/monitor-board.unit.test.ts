@@ -30,7 +30,7 @@ test("today card keeps finished jobs at the bottom; numbers count the whole day"
   assert.equal(b.stats.pending, 1);
 });
 
-test("right side: next 4 days with work, empty days skipped; bottom: 6 days after", () => {
+test("right side: next 4 days with work, empty days skipped; bottom: the next days with work", () => {
   const b = buildBoard(
     [ev("a", "2026-10-30", "09:00"), ev("b", "2026-10-31", "09:00"), ev("c1", "2026-11-01", "09:00"), ev("c2", "2026-11-01", "14:00"), ev("d", "2026-11-04", "09:00"), ev("e", "2026-11-06", "09:00")],
     T,
@@ -38,9 +38,17 @@ test("right side: next 4 days with work, empty days skipped; bottom: 6 days afte
   );
   assert.deepEqual(b.dayRows.map((d) => d.iso), ["2026-10-30", "2026-10-31", "2026-11-01", "2026-11-04"]);
   assert.equal(b.dayRows[2].events.length, 2);
-  assert.deepEqual(b.cells.map((c) => c.iso), ["2026-11-05", "2026-11-06", "2026-11-07", "2026-11-08", "2026-11-09", "2026-11-10"]);
-  assert.deepEqual(b.cells[1].events.map((e) => e.id), ["e"]);
+  assert.deepEqual(b.cells.map((c) => c.iso), ["2026-11-06"]); // no empty cards (พี่เอิร์ธ, 6 Nov 2026)
+  assert.deepEqual(b.cells[0].events.map((e) => e.id), ["e"]);
   assert.equal(b.stats.week, 5); // 6 Nov is day 8
+});
+
+test("bottom: at most 6 days, each with work, in date order", () => {
+  const days = ["2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02", "2026-11-05", "2026-11-09", "2026-11-10", "2026-11-12", "2026-11-20", "2026-11-21", "2026-11-25"];
+  const b = buildBoard(days.map((d, i) => ev(`x${i}`, d, "09:00")), T, m("09:00"), { horizonDays: 60 });
+  assert.deepEqual(b.cells.map((c) => c.iso), ["2026-11-05", "2026-11-09", "2026-11-10", "2026-11-12", "2026-11-20", "2026-11-21"]);
+  assert.ok(b.cells.every((c) => c.events.length > 0));
+  assert.deepEqual(buildBoard([ev("a", "2026-10-30", "09:00")], T, m("09:00")).cells, []);
 });
 
 test("Thai time, short titles, long titles", () => {

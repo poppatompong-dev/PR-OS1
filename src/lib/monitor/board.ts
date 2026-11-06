@@ -3,7 +3,9 @@
 //   left card all of today's jobs; finished ones stay, faded, at the bottom
 //             (คุณกุ๊ก 3 Nov 2026: "อยากให้ค้างอยู่ทั้งวัน" — gone the next day)
 //   right     the next 4 days that have work (empty days skipped)
-//   bottom    the 6 calendar days after those, up to 2 jobs each
+//   bottom    the next 6 days with work after those, up to 2 jobs each — empty
+//             days skipped like the right side (พี่เอิร์ธ, 6 Nov 2026: no empty
+//             cards); fewer than 6 → one wide "ยังว่าง" box closes the row
 // Covered by tests/monitor-board.unit.test.ts.
 
 import type { MonitorEvent } from "@/lib/monitor/types";
@@ -44,11 +46,7 @@ export function buildBoard(events: MonitorEvent[], today: string, now: number, o
   for (const e of live) if (e.eventDate > today) later.set(e.eventDate, [...(later.get(e.eventDate) ?? []), e]);
   const dayRows = [...later.keys()].sort().slice(0, rows).map((iso) => ({ iso, events: later.get(iso)! }));
 
-  const start = dayRows.length ? dayRows[dayRows.length - 1].iso : today;
-  const cells = Array.from({ length: cellCount }, (_, i) => {
-    const iso = addDaysIso(start, i + 1);
-    return { iso, events: later.get(iso) ?? [] };
-  });
+  const cells = [...later.keys()].sort().slice(rows, rows + cellCount).map((iso) => ({ iso, events: later.get(iso)! }));
 
   return {
     stats: {

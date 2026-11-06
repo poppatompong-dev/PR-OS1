@@ -327,7 +327,6 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
               <div className="bm-cell-h">
                 <b>{p.d}</b> {p.mon} <i>{p.wd}</i>
               </div>
-              {c.events.length === 0 ? <div className="bm-cell-x is-none">ไม่มีงาน</div> : null}
               {c.events.slice(0, 2).map((e) => (
                 <div className="bm-cell-x" key={e.id} {...link(e)}>
                   <JobIconTile title={e.title} icon={e.icon} size="calc(22 * var(--u))" className="bm-inline-icon" />
@@ -338,6 +337,11 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
             </div>
           );
         })}
+        {board && board.cells.length < 6 ? (
+          <div className="bm-cell bm-cell-rest" style={{ gridColumn: `span ${6 - board.cells.length}` }}>
+            ✨ {board.cells.length || board.dayRows.length ? "หลังจากนี้ยังว่าง" : "ยังไม่มีงานข้างหน้า"} · งานใหม่ขึ้นทันทีที่เผยแพร่
+          </div>
+        ) : null}
       </footer>
 
       {ticker.length > 0 ? (
