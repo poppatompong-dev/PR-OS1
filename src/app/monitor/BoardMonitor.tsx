@@ -22,6 +22,8 @@ import { TeamBench } from "./TeamBench";
 import { TvCast } from "./TvCast";
 import { BirthdayBanner, BirthdayShow } from "./TvBirthday";
 import { birthdayToday } from "@/lib/monitor/birthday";
+import { WelcomeBanner, WelcomeShow } from "./TvWelcome";
+import { WELCOME_DEFAULT_VARIANT, WELCOME_ROLE, WELCOME_WARM, asWelcomeVariant, welcomeToday, type WelcomeVariant } from "@/lib/monitor/welcome";
 import { nickname } from "@/lib/monitor/nicknames";
 import { FestivalLayer, FestivalStage } from "./FestivalLayer";
 import { festivalFor, isFestivalKey, previewFestival } from "@/lib/monitor/festivals";
@@ -154,13 +156,25 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
     const name = Object.keys(team.ids).find((n) => team.ids[n] === bdayPreview);
     return name ? { people: [{ name, short: nickname(bdayPreview, name), personId: bdayPreview }], wish: "", names: nickname(bdayPreview, name) } : null;
   }, [events, today, team.ids, bdayPreview]);
+  // ต้อนรับคนมาใหม่: today's job titled ต้อนรับ + โอน/ย้าย/มาใหม่. ?welcome=fast&wv=1|2|3 previews.
+  const [welPreview, setWelPreview] = useState<{ on: boolean; v: WelcomeVariant | null }>({ on: false, v: null });
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    setWelPreview({ on: q.has("welcome"), v: asWelcomeVariant(q.get("wv")) });
+  }, []);
+  const welcome = useMemo(() => {
+    if (!today) return null;
+    const real = welcomeToday(events, today, welPreview.v ?? undefined);
+    if (real || !welPreview.on) return real;
+    return { role: WELCOME_ROLE, warm: WELCOME_WARM, variant: welPreview.v ?? WELCOME_DEFAULT_VARIANT };
+  }, [events, today, welPreview]);
   const todayCount = board?.todayJobs.length ?? 0;
   const fit = useTodayFit(board?.todayJobs ?? [], now);
   // ธีมเทศกาลตามวันที่ (?fest=loy ใช้ดูตัวอย่าง)
   const festival = isFestivalKey(fest) ? previewFestival(fest) : today ? festivalFor(today) : null;
 
   return (
-    <div className={`hm bm bm--${theme}${staticMode ? " hm--still" : ""}${festival ? ` bm--fest-${festival.key}` : ""}${bday ? " bm--bday" : ""} bm-space-${Math.min(fit.level, 2)}`}>
+    <div className={`hm bm bm--${theme}${staticMode ? " hm--still" : ""}${festival ? ` bm--fest-${festival.key}` : ""}${bday ? " bm--bday" : ""}${welcome ? " bm--wel" : ""} bm-space-${Math.min(fit.level, 2)}`}>
       <FestivalLayer festival={festival?.key ?? null} />
       <header className="hm-head bm-head">
         <span className="bm-seal">
@@ -172,7 +186,9 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
           <p>ตารางงานฝ่ายบริการและเผยแพร่วิชาการ</p>
           {festival?.chip ? <span className="bm-fest-chip">{festival.chip}</span> : null}
         </div>
-        {bday ? (
+        {welcome ? (
+          <WelcomeBanner welcome={welcome} still={staticMode} />
+        ) : bday ? (
           <BirthdayBanner bday={bday} off={team.off} still={staticMode} />
         ) : (
           <FestivalStage festival={festival?.key ?? null} still={staticMode} daysLeft={festival?.daysLeft} />
@@ -329,6 +345,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
       )}
       <TvCast still={staticMode} people={castPeople} off={team.off} events={events} festival={festival} />
       {bday ? <BirthdayShow bday={bday} still={staticMode} off={team.off} team={castPeople} /> : null}
+      {welcome ? <WelcomeShow welcome={welcome} still={staticMode} off={team.off} team={castPeople} /> : null}
     </div>
   );
 }

@@ -378,3 +378,69 @@
 /* คำพูดติดปาก (catchphrases.ts) ตอนตัวการ์ตูนโบกมือ */
 .tv-cast-sp .tv-cast-say{position:absolute;left:50%;bottom:102%;padding:.35em .7em;background:#fff;color:#1b1024;border:3px solid #1b1024;border-radius:14px;box-shadow:3px 3px 0 #1b1024;font-weight:900;white-space:nowrap;animation:tv-say-pop .3s cubic-bezier(.3,1.8,.5,1) both}
 @keyframes tv-say-pop{from{opacity:0;scale:.4}to{opacity:1;scale:1}}
+
+/* ธีมต้อนรับคนมาใหม่ (6 Nov 2026) — TvWelcome.tsx · 1 แดง–ทอง · 2 กรมท่า–ทอง · 3 ดอกไม้ */
+.bm--wel .bm-pulse-item:first-child { display: none; }
+.bm-wel { display: flex; align-items: center; gap: calc(14 * var(--u)); flex: none; margin-left: auto; padding: calc(10 * var(--u)) calc(26 * var(--u)) calc(10 * var(--u)) calc(16 * var(--u)); border-radius: calc(24 * var(--u)); color: #fff; border: calc(3 * var(--u)) solid #ffd36b; }
+.bm-wel--v1 { background: linear-gradient(135deg, #b3122e, #6e0a1c); box-shadow: 0 0 calc(30 * var(--u)) rgba(255, 211, 107, .45); }
+.bm-wel--v2 { background: linear-gradient(135deg, #1d3d6e, #0c1e3c); box-shadow: 0 0 calc(30 * var(--u)) rgba(255, 211, 107, .45); }
+.bm-wel--v3 { background: linear-gradient(135deg, #f7a8c4, #c96a9a); border-color: #fff4d6; box-shadow: 0 0 calc(30 * var(--u)) rgba(255, 183, 207, .55); }
+.bm-wel.is-live { animation: bm-wel-glow 2.6s ease-in-out infinite; }
+@keyframes bm-wel-glow { 50% { box-shadow: 0 0 calc(50 * var(--u)) rgba(255, 211, 107, .7); transform: scale(1.03); } }
+.bm-wel-icon { font-size: calc(56 * var(--u)); line-height: 1; }
+.bm-wel-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.bm-wel-text b { font-size: calc(34 * var(--u)); white-space: nowrap; color: #ffe08a; }
+.bm-wel--v3 .bm-wel-text b { color: #fff; text-shadow: 0 calc(2 * var(--u)) 0 #a24876; }
+.bm-wel-text span { font-size: calc(22 * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.bm > .tv-wel, .tv-wel { position: fixed !important; inset: 0; width: 100vw; height: 100vh; z-index: 46 !important; pointer-events: none; overflow: hidden; margin: 0; visibility: hidden; }
+.tv-wel.is-on { visibility: visible; }
+.tv-wel > * { position: absolute; }
+.tv-wel canvas { inset: 0; width: 100%; height: 100%; }
+.tv-wel-dim { inset: 0; background: rgba(8, 4, 12, .82); opacity: 0; }
+.tv-wel-back { inset: 0; opacity: 0; overflow: hidden; }
+.tv-wel--v1 .tv-wel-back { background: radial-gradient(ellipse at 50% 30%, #4a0d18 0%, #1a0509 70%); }
+.tv-wel--v2 .tv-wel-back { background: radial-gradient(ellipse at 50% 30%, #1d3a66 0%, #07122a 72%); }
+.tv-wel--v3 .tv-wel-back { background: radial-gradient(ellipse at 50% 30%, #fff1e2 0%, #f3cfd9 75%); }
+.tv-wel-beam { display: none; position: absolute; top: -10%; width: 36%; height: 130%; background: linear-gradient(180deg, rgba(255, 240, 190, .55), rgba(255, 240, 190, 0) 85%); clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%); transform-origin: 50% 0; mix-blend-mode: screen; }
+.tv-wel--v2 .tv-wel-beam { display: block; }
+.tv-wel-beam.is-a { left: 2%; transform: rotate(-24deg); }
+.tv-wel-beam.is-b { right: 2%; transform: rotate(24deg); }
+.tv-wel.is-lit .tv-wel-beam.is-a { animation: tv-wel-sweep-a 3.2s ease-in-out infinite alternate; }
+.tv-wel.is-lit .tv-wel-beam.is-b { animation: tv-wel-sweep-b 3.2s ease-in-out infinite alternate; }
+@keyframes tv-wel-sweep-a { from { transform: rotate(-30deg); } to { transform: rotate(-6deg); } }
+@keyframes tv-wel-sweep-b { from { transform: rotate(30deg); } to { transform: rotate(6deg); } }
+.tv-wel-carpet { left: 0; right: 0; top: 42%; bottom: 0; transform-origin: 50% 100%; opacity: 0; background: #e3b54e;
+  clip-path: polygon(42.6% 0, 57.4% 0, 73.6% 100%, 26.4% 100%); }
+.tv-wel-carpet::before { content: ""; position: absolute; inset: 0; clip-path: polygon(43.3% 0, 56.7% 0, 72% 100%, 28% 100%);
+  background: linear-gradient(180deg, #6e0a1c 0%, #a30f28 35%, #c8142f 100%); }
+.tv-wel-carpet::after { content: ""; position: absolute; inset: 0; clip-path: polygon(43.3% 0, 56.7% 0, 72% 100%, 28% 100%);
+  background: repeating-linear-gradient(180deg, rgba(255, 255, 255, .05) 0 calc(18 * var(--u)), transparent calc(18 * var(--u)) calc(40 * var(--u))); }
+.tv-wel-crew { inset: 0; }
+.tv-wel-words { left: 0; right: 0; top: 11%; text-align: center; opacity: 0; }
+.tv-wel-big { font-size: calc(132 * var(--u)); font-weight: 900; line-height: 1.35; white-space: nowrap;
+  background: linear-gradient(180deg, #fff4c2 0%, #ffd36b 45%, #c98a12 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 calc(6 * var(--u)) 0 rgba(60, 20, 0, .55)) drop-shadow(0 0 calc(30 * var(--u)) rgba(255, 211, 107, .5)); }
+.tv-wel-role { margin-top: calc(10 * var(--u)); font-size: calc(58 * var(--u)); font-weight: 800; color: #fff; text-shadow: 0 calc(3 * var(--u)) calc(12 * var(--u)) rgba(0, 0, 0, .7); }
+.tv-wel-warm { margin-top: calc(8 * var(--u)); font-size: calc(40 * var(--u)); font-weight: 700; color: #ffe3a0; text-shadow: 0 calc(2 * var(--u)) calc(10 * var(--u)) rgba(0, 0, 0, .7); }
+.tv-wel--v3 .tv-wel-big { background: linear-gradient(180deg, #ffd36b 0%, #e79a1c 60%, #b8650c 100%); -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 calc(5 * var(--u)) 0 #fff) drop-shadow(0 calc(8 * var(--u)) calc(18 * var(--u)) rgba(162, 72, 118, .45)); }
+.tv-wel--v3 .tv-wel-role { color: #8a2f5c; text-shadow: 0 calc(2 * var(--u)) 0 #fff; }
+.tv-wel--v3 .tv-wel-warm { color: #b0477b; text-shadow: 0 calc(2 * var(--u)) 0 #fff; }
+.tv-wel-cur { top: 0; bottom: 0; width: 50.5%; }
+.tv-wel-cur.is-l { left: 0; }
+.tv-wel-cur.is-r { right: 0; }
+.tv-wel--v1 .tv-wel-cur { background: repeating-linear-gradient(90deg, #7d0a1d 0 calc(30 * var(--u)), #b3122e calc(55 * var(--u)), #7d0a1d calc(80 * var(--u))); }
+.tv-wel--v2 .tv-wel-cur { background: repeating-linear-gradient(90deg, #0a1a36 0 calc(30 * var(--u)), #1f4278 calc(55 * var(--u)), #0a1a36 calc(80 * var(--u))); }
+.tv-wel--v3 .tv-wel-cur { background: repeating-linear-gradient(90deg, #e7c9a8 0 calc(30 * var(--u)), #fff3e2 calc(55 * var(--u)), #e7c9a8 calc(80 * var(--u))); }
+.tv-wel-cur.is-l { box-shadow: inset calc(-10 * var(--u)) 0 0 #e3b54e; }
+.tv-wel-cur.is-r { box-shadow: inset calc(10 * var(--u)) 0 0 #e3b54e; }
+.tv-wel-top { left: 0; right: 0; top: 0; height: 10%; display: flex; align-items: flex-end; justify-content: center; overflow: hidden;
+  border-bottom: calc(8 * var(--u)) solid #e3b54e; }
+.tv-wel--v1 .tv-wel-top { background: radial-gradient(circle at 50% -40%, #c8102e 60%, #7d0a1d 61%) 0 0 / calc(240 * var(--u)) 100%, #7d0a1d; }
+.tv-wel--v2 .tv-wel-top { background: radial-gradient(circle at 50% -40%, #1f4278 60%, #0a1a36 61%) 0 0 / calc(240 * var(--u)) 100%, #0a1a36; }
+.tv-wel--v3 .tv-wel-top { background: #fff3e2; border-bottom-color: #f2a7c3; }
+.tv-wel-garland { font-size: calc(54 * var(--u)); letter-spacing: calc(8 * var(--u)); white-space: nowrap; line-height: 1; padding-bottom: calc(6 * var(--u)); }
+.tv-wel-crew, .tv-wel canvas, .tv-wel-words { z-index: 1; }
+.tv-wel-cur { z-index: 2; }
+.tv-wel-top { z-index: 3; }
