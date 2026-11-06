@@ -27,11 +27,19 @@ export function titleFor(personId: string, displayName: string): string {
 
 // ---- โหมดแม่ (owner, 5–6 Nov 2026: "บอทคุณแม่" — the affectionate แม่/ลูก talk of
 // Thai LGBTQ+ slang). Medium level, chat replies only: job cards, the 07:00
-// summary and every date/time/place stay plain. On for everyone except พี่ไป๋
-// (senior — always polite); anyone can say "ปิดโหมดแม่" (people.metadata.mom = "off").
+// summary and every date/time/place stay plain. Women on the team only, never
+// พี่ไป๋ (senior — always polite) and never the men (owner, 6 Nov 2026). A new
+// woman on the team gets it once her id is added to MOM_IDS. Anyone in the list
+// can say "ปิดโหมดแม่" (people.metadata.mom = "off").
 export const PAI_ID = "00000000-0000-0000-0000-000000000501";
+export const MOM_IDS = new Set([
+  "00000000-0000-0000-0000-000000000504", // นัท
+  PANG_ID, // พรินเซสแป้ง
+  "00000000-0000-0000-0000-000000000506", // แข
+  "dd5a7eb4-d62a-45bc-b11b-33dae93d6b49", // ภัส
+]);
 export function momOn(personId: string, metadata: Record<string, unknown> | null | undefined): boolean {
-  if (personId === PAI_ID) return false;
+  if (!MOM_IDS.has(personId)) return false;
   return metadata?.mom !== "off";
 }
 /** How แม่ calls you: ลูก + nickname (no "พี่" — ลูกพี่ means boss). */

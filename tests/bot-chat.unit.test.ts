@@ -153,7 +153,7 @@ test("โหมดแม่: พี่ไป๋ always gets the polite voice, ev
   const db = withPai();
   const hi = textTo(await say(db, 501, "สวัสดีค่ะ"), 501);
   assert.doesNotMatch(hi, /แม่|ลูก/);
-  assert.match(textTo(await say(db, 501, "เปิดโหมดแม่"), 501), /ภาษาสุภาพ/);
+  assert.match(textTo(await say(db, 501, "เปิดโหมดแม่"), 501), /แบบปกติ/);
   assert.doesNotMatch(textTo(await say(db, 501, "สวัสดีค่ะ"), 501), /แม่|ลูก/);
 });
 
@@ -170,4 +170,18 @@ test("โหมดแม่ never touches the 07:00 summary", async () => {
   const { tgDailySummary } = await import("@/lib/telegram/messages");
   const t: any = { personId: KAE, personName: "x", roleName: "ภาพนิ่ง", acknowledged: true, unavailable: false, event: { title: "ง", icon: null, eventDate: today, startTime: "09:00", endTime: null, locationName: "ห้อง", status: "published" } };
   assert.doesNotMatch(tgDailySummary("x", [t], []).text, /แม่/);
+});
+
+test("โหมดแม่: women on the team only — the men and anyone unlisted get the plain voice", async () => {
+  const db = seed();
+  db.tables.people.push(
+    { id: "00000000-0000-0000-0000-000000000502", display_name: "นายธนันธร พันธุ์รอด", line_user_id: null, telegram_chat_id: 502, is_active: true },
+    { id: "00000000-0000-0000-0000-000000000503", display_name: "นายประชารักษ์ ประทุมโทน", line_user_id: null, telegram_chat_id: 503, is_active: true },
+  );
+  for (const [chat, text] of [[502, "สวัสดีครับ"], [503, "เหนื่อยจัง"], [999, "ขอบคุณครับ"]] as const) {
+    assert.doesNotMatch(textTo(await say(db, chat, text), chat), /แม่|ลูก/, `${chat} ${text}`);
+  }
+  assert.match(textTo(await say(db, 502, "เปิดโหมดแม่"), 502), /แบบปกติ/);
+  assert.doesNotMatch(textTo(await say(db, 502, "สวัสดีครับ"), 502), /แม่|ลูก/);
+  assert.match(textTo(await say(db, 506, "สวัสดีค่ะ"), 506), /แม่|ลูก/);
 });

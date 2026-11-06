@@ -291,10 +291,11 @@ async function voiceOf(ctx: Ctx, person: LinePerson): Promise<{ mom: boolean; ti
 }
 
 async function setMom(ctx: Ctx, person: LinePerson, on: boolean): Promise<TgMessage> {
+  if (!momOn(person.id, null)) return { text: "🙂 บอทคุยกับบัญชีนี้แบบปกติครับ", keyboard: KEYBOARD };
   const { data } = await ctx.admin.from("people").select("metadata").eq("id", person.id).maybeSingle();
   const metadata = { ...((data?.metadata as Record<string, unknown>) ?? {}), mom: on ? "on" : "off" };
   await ctx.admin.from("people").update({ metadata }).eq("id", person.id);
-  if (on && !momOn(person.id, metadata)) return { text: "🙏 บัญชีนี้บอทใช้ภาษาสุภาพเสมอครับ", keyboard: KEYBOARD };
+  if (on && !momOn(person.id, metadata)) return { text: "🙂 บอทคุยกับบัญชีนี้แบบปกติครับ", keyboard: KEYBOARD };
   return {
     text: on
       ? `💅 เปิดโหมดแม่แล้วค่ะ${esc(momAddr(person.id, person.displayName))} มีอะไรทักแม่ได้ตลอดนะคะ ✨`
