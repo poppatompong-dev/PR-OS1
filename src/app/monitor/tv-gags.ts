@@ -48,9 +48,9 @@ const BANG=`<svg viewBox="0 0 100 100" width="110" height="110"><polygon points=
 const bubble=(txt,cls='')=>{const b=el('bubble '+cls);b.innerHTML=txt;return b};
 const pop=(b,t)=>tl.fromTo(b,{opacity:0,scale:0.4},{opacity:1,scale:1,duration:0.3,ease:'back.out(2.5)'},t);
 const hide=(arr,t)=>tl.to(arr,{opacity:0,duration:0.3},t);
-function sweat(who,t,dur){tl.call(()=>{const iv=setInterval(()=>{const x=gsap.getProperty(who,'x'),y=gsap.getProperty(who,'y');for(let i=0;i<3;i++){const s=el('sweat');gsap.fromTo(s,{x:x-20+i*18,y:y-SH+40,opacity:1},{x:x-70-i*30+Math.random()*140,y:y-SH-30+i*20,opacity:0,duration:0.5,onComplete:()=>s.remove()})}},280);ivs.push(iv);setTimeout(()=>clearInterval(iv),dur*1000)},null,t)}
+function sweat(who,t,dur){tl.call(()=>{const iv=setInterval(()=>{const x=gsap.getProperty(who,'x'),y=gsap.getProperty(who,'y');for(let i=0;i<3;i++){const s=el('sweat');gsap.fromTo(s,{x:x+(i-1)*95-11,y:y-SH-6,opacity:1},{x:x+(i-1)*150-11,y:y-SH-60+i*14,opacity:0,duration:0.5,onComplete:()=>s.remove()})}},280);ivs.push(iv);setTimeout(()=>clearInterval(iv),dur*1000)},null,t)}
 function dust(who,t,dur,dx=-40){tl.call(()=>{const iv=setInterval(()=>{const x=gsap.getProperty(who,'x'),y=gsap.getProperty(who,'y');const p=el('puff');gsap.fromTo(p,{x:x+dx,y:y-30,opacity:0.9,scale:0.6},{x:x+dx*2.2,y:y-60,opacity:0,scale:1.4,duration:0.6,onComplete:()=>p.remove()})},220);ivs.push(iv);setTimeout(()=>clearInterval(iv),dur*1000)},null,t)}
-function hearts(who,t,n=8){tl.call(()=>{for(let i=0;i<n;i++){const h=el('emo','❤️');const x=gsap.getProperty(who,'x'),y=gsap.getProperty(who,'y');gsap.fromTo(h,{x:x-20+Math.random()*60,y:y-SH+30,opacity:1,scale:0.6},{y:y-SH-170-Math.random()*80,x:`+=${(Math.random()-.5)*140}`,opacity:0,scale:1.2,duration:1.6,delay:i*0.16,onComplete:()=>h.remove()})}},null,t)}
+function hearts(who,t,n=8){tl.call(()=>{for(let i=0;i<n;i++){const h=el('emo','❤️');const x=gsap.getProperty(who,'x'),y=gsap.getProperty(who,'y');gsap.fromTo(h,{x:x-28+(Math.random()-.5)*150,y:y-SH-40,opacity:1,scale:0.6},{y:y-SH-170-Math.random()*80,x:`+=${(Math.random()-.5)*140}`,opacity:0,scale:1.2,duration:1.6,delay:i*0.16,onComplete:()=>h.remove()})}},null,t)}
 function reset(){tl&&tl.kill();stopCyc();follows=[];tv.querySelectorAll(':scope>div').forEach(e=>e.remove())}
 
 const GAGS=[
@@ -126,7 +126,7 @@ const GAGS=[
  tl.call(()=>{gsap.set(j,{scaleX:-1});show(j,JIT.walkA);cyc(j,JIT.walkA,JIT.walkB,0.26);cyc(e,EAR.walkA,EAR.walkB,0.26);gsap.set(e,{scaleX:-1})},null,9.3).to([j,e],{x:'-=1300',duration:3.0,ease:'power1.in'},9.4);},
 // 8 น้องชวนไปต่อ
 ()=>{const e=sprite(EAR.stand,W*0.34), ks=['cook','pang','nat'], n=ks.map((k,i)=>sprite(TEAM[k].walkA,W+150+i*170));
- const ask=bubble('ไปกินหมูกระทะต่อไหมพี่? 🔥'), go=bubble('ไป!!! 🙌','sm'), sh=el('shadow'), bye=bubble('พี่…ขอกลับก่อนนะ 🏃','sm'), lol=bubble('555+ 😂','sm');
+ const ask=bubble('ไปกินหมูกระทะต่อไหมพี่? 🔥'), go=bubble('ไป!!! 🙌','sm'), sh=(()=>{const d=el('shadow');tv.prepend(d);return d})(), bye=bubble('พี่…ขอกลับก่อนนะ 🏃','sm'), lol=bubble('555+ 😂','sm');
  gsap.set(e,{opacity:0}); n.forEach(d=>gsap.set(d,{scaleX:-1})); follow(ask,n[0],-260,-SH-120); follow(go,e,-40,-SH-100); follow(bye,e,-100,-SH-100); follow(lol,n[1],-40,-SH-100);
  tl.to(e,{opacity:1,duration:0.4},0);
  tl.call(()=>n.forEach((d,i)=>cyc(d,TEAM[ks[i]].walkA,TEAM[ks[i]].walkB,0.26)),null,0.2); n.forEach((d,i)=>tl.to(d,{x:W*0.52+i*170,duration:2.4,ease:'power1.out'},0.2));
@@ -146,17 +146,17 @@ const GAGS=[
  tl.call(()=>cyc(j,JIT.walkA,JIT.walkB,0.26),null,2.6).to(j,{x:W*0.66,duration:1.8,ease:'power1.out'},2.6).call(()=>{ivs.forEach(clearInterval);ivs=[];show(j,JIT.standE)},null,4.4);
  hide(say,4.4);
  tl.to(wal,{keyframes:[{x:W*0.53,y:FLOOR-SH-140,duration:0.45,ease:'power1.out'},{x:W*0.66-10,y:FLOOR-SH*0.36,duration:0.45,ease:'power1.in'}]},4.6); hearts(j,5.6,6); pop(her,5.7);
- tl.call(()=>{gsap.set(coin,{x:W*0.66-20,y:FLOOR-SH*0.6,opacity:1})},null,6.6).to(coin,{keyframes:[{x:W*0.53,y:FLOOR-SH-120,duration:0.4,ease:'power1.out'},{x:W*0.40-20,y:FLOOR-SH-20,duration:0.4,ease:'power1.in'},{y:FLOOR-SH-90,duration:0.25,ease:'power1.out'},{y:FLOOR-SH-10,duration:0.25,ease:'bounce.out'}]},6.6);
+ tl.call(()=>{gsap.set(coin,{x:W*0.66-20,y:FLOOR-SH*0.6,opacity:1})},null,6.6).to(coin,{keyframes:[{x:W*0.53,y:FLOOR-SH-120,duration:0.4,ease:'power1.out'},{x:W*0.40-20,y:FLOOR-SH-80,duration:0.4,ease:'power1.in'},{y:FLOOR-SH-150,duration:0.25,ease:'power1.out'},{y:FLOOR-SH-80,duration:0.25,ease:'bounce.out'}]},6.6);
  tl.call(()=>show(e,EAR['stand-cry']),null,7.4); hide(her,7.5); pop(thx,7.8); sweat(e,7.8,1.8); hide([thx,wal,coin],9.6);
  tl.call(()=>{cyc(e,EAR.walkA,EAR.walkB,0.3);gsap.set(e,{scaleX:-1})},null,9.8).to(e,{x:-200,duration:2.2,ease:'none'},9.8).to(j,{opacity:0,duration:0.5},10.4);},
 // 10 ขอซื้อกล้องใหม่
 ()=>{const e=sprite(EAR.walkA,-150), j=sprite(JIT.standE,W*0.62), card=el('card','<div style="font-size:70px;line-height:1">📸</div><b>กล้องรุ่นใหม่</b><span>89,900.-</span>'), note=el('note20','20'), ask=bubble('ขอตัวนี้นะครับ 🙏'), her=bubble('ซื้อถ่านพอนะคะ 🔋','sm'), sad=bubble('…ครับ 🥹','sm');
- gsap.set(j,{opacity:0,scaleX:-1}); follow(card,e,40,-SH*0.78); follow(ask,e,-140,-SH-130); follow(her,j,-80,-SH-110); follow(sad,e,-60,-SH-100);
+ gsap.set(j,{opacity:0,scaleX:-1}); follow(card,e,105,-SH*0.62); follow(ask,e,-140,-SH-130); follow(her,j,-80,-SH-110); follow(sad,e,-60,-SH-100);
  tl.to(j,{opacity:1,duration:0.4},0.3);
  tl.call(()=>cyc(e,EAR.walkA,EAR.walkB,0.26),null,0).to(e,{x:W*0.40,duration:2.0,ease:'power1.out'},0);
  tl.call(()=>{stopCyc();show(e,EAR.wave)},null,2.0).fromTo(card,{opacity:0,scale:0.3},{opacity:1,scale:1,duration:0.35,ease:'back.out(2)'},2.0); pop(ask,2.2);
  tl.to(card,{rotation:-4,duration:0.2,yoyo:true,repeat:7},2.4); hide(ask,4.3);
- tl.call(()=>gsap.set(note,{x:W*0.62-60,y:FLOOR-SH*0.6,opacity:1}),null,4.5).to(note,{keyframes:[{x:W*0.51,y:FLOOR-SH-120,rotation:180,duration:0.5,ease:'power1.out'},{x:W*0.40+10,y:FLOOR-SH*0.7,rotation:360,duration:0.5,ease:'power1.in'}]},4.5); pop(her,4.6);
+ tl.call(()=>gsap.set(note,{x:W*0.62-60,y:FLOOR-SH*0.6,opacity:1}),null,4.5).to(note,{keyframes:[{x:W*0.51,y:FLOOR-SH-120,rotation:180,duration:0.5,ease:'power1.out'},{x:W*0.40+70,y:FLOOR-SH*0.36,rotation:360,duration:0.5,ease:'power1.in'}]},4.5); pop(her,4.6);
  tl.call(()=>show(e,EAR['stand-sad']),null,5.6).to(card,{y:'+=260',rotation:40,opacity:0,duration:0.9,ease:'power2.in'},5.7); sweat(e,5.7,2.4); hide(her,7.0); pop(sad,7.1);
  tl.to(e,{rotation:-6,duration:0.4,transformOrigin:'50% 100%'},7.2); hide([sad,note],9.0); hearts(j,8.0,4);
  tl.call(()=>{cyc(e,EAR.walkA,EAR.walkB,0.34);gsap.set(e,{scaleX:-1,rotation:0})},null,9.2).to(e,{x:-220,duration:2.4,ease:'none'},9.2).to(j,{opacity:0,duration:0.5},10.2);},

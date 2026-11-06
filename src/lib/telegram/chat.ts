@@ -25,12 +25,27 @@ export function titleFor(personId: string, displayName: string): string {
   return TITLES[personId] ?? NICK[personId] ?? `คุณ${shortName(displayName)}`;
 }
 
+// ---- โหมดแม่ (owner, 5–6 Nov 2026: "บอทคุณแม่" — the affectionate แม่/ลูก talk of
+// Thai LGBTQ+ slang). Medium level, chat replies only: job cards, the 07:00
+// summary and every date/time/place stay plain. On for everyone except พี่ไป๋
+// (senior — always polite); anyone can say "ปิดโหมดแม่" (people.metadata.mom = "off").
+export const PAI_ID = "00000000-0000-0000-0000-000000000501";
+export function momOn(personId: string, metadata: Record<string, unknown> | null | undefined): boolean {
+  if (personId === PAI_ID) return false;
+  return metadata?.mom !== "off";
+}
+/** How แม่ calls you: ลูก + nickname (no "พี่" — ลูกพี่ means boss). */
+export function momAddr(personId: string, displayName: string): string {
+  if (personId === PANG_ID) return "พรินเซสแป้งของแม่";
+  return `ลูก${(NICK[personId] ?? shortName(displayName)).replace(/^พี่/, "")}`;
+}
+
 // ---- intents -----------------------------------------------------------------------
 export type Intent =
   | "my_today" | "my_tomorrow" | "my_week" | "my_next" | "who_with"
   | "tip"
   | "how_attach" | "how_avatar" | "how_unavailable" | "how_joke" | "how_add" | "what_can"
-  | "look" | "idea"
+  | "look" | "idea" | "mom_on" | "mom_off"
   | "hello" | "thanks" | "tired" | "hungry" | "bored" | "praise" | "love";
 
 const norm = (s: string) => s.replace(/\s+/g, "").replace(/[?？!！.。~ๆ]+/g, "").toLowerCase();
@@ -39,6 +54,8 @@ const norm = (s: string) => s.replace(/\s+/g, "").replace(/[?？!！.。~ๆ]+/g
 export function matchIntent(raw: string): Intent | null {
   const t = norm(raw);
   if (!t) return null;
+  if (/^(ปิด|หยุด|เลิก)โหมดแม่/.test(t)) return "mom_off";
+  if (/^(เปิด|ขอ)โหมดแม่/.test(t)) return "mom_on";
   if (/^(ขอลุค|ขอฉายา|อยากได้ลุค|เปลี่ยนลุค)/.test(t)) return "look";
   if (/^(ไอเดีย|เสนอแก็ก|ไอเดียแก็ก|อยากให้มีแก็ก|ขอแก็ก)/.test(t)) return "idea";
   if (/(เปลี่ยนรูป|รูปการ์ตูน|เปลี่ยนการ์ตูน|รูปบนจอ|รูปไม่สวย|ทำรูปใหม่)/.test(t)) return "how_avatar";
@@ -177,20 +194,23 @@ const line = (t: TaskItem, withDay = false) =>
   `• ${withDay ? `${formatThaiDate(t.event.eventDate)} · ` : ""}${timeRange(t)} <b>${esc(t.event.title)}</b>` +
   `\n   📍 ${esc(t.event.locationName)} · ${esc(t.roleName)}${t.acknowledged ? "" : " · ⏳ ยังไม่กดรับทราบ"}`;
 
-export function myDayText(title: string, label: "วันนี้" | "พรุ่งนี้", tasks: TaskItem[]): string {
+export function myDayText(title: string, label: "วันนี้" | "พรุ่งนี้", tasks: TaskItem[], mom = false): string {
   const who = esc(title);
-  if (!tasks.length) return label === "วันนี้" ? `🌤 ${who} วันนี้ไม่มีงานนะ พักผ่อนบ้างน้า` : `🌙 ${who} พรุ่งนี้ว่างจ้า ไม่มีงานในระบบ`;
+  if (!tasks.length) {
+    if (mom) return label === "วันนี้" ? `🌤 วันนี้${who}ไม่มีงานค่ะ พักผ่อนให้สวย ๆ นะคะ 💅` : `🌙 พรุ่งนี้${who}ว่างจ้า นอนเอาแรงให้เต็มที่นะคะ ✨`;
+    return label === "วันนี้" ? `🌤 ${who} วันนี้ไม่มีงานนะ พักผ่อนบ้างน้า` : `🌙 ${who} พรุ่งนี้ว่างจ้า ไม่มีงานในระบบ`;
+  }
   const tip = roleKey(tasks[0].roleName);
   return [
-    `📋 ${who} ${label}มี ${tasks.length} งาน`,
+    mom ? `📋 ${label}${who}มี ${tasks.length} งานนะคะ แม่จดไว้ให้แล้ว 💅` : `📋 ${who} ${label}มี ${tasks.length} งาน`,
     ...tasks.map((t) => line(t)),
-    tip ? `\n💡 ${esc(dailyTip(tip, tasks[0].event.eventDate))}` : "",
+    tip ? `\n💡 ${mom ? "แม่ฝากทิป: " : ""}${esc(dailyTip(tip, tasks[0].event.eventDate))}` : "",
   ].filter(Boolean).join("\n");
 }
 
-export function myWeekText(title: string, from: string, tasks: TaskItem[]): string {
+export function myWeekText(title: string, from: string, tasks: TaskItem[], mom = false): string {
   const who = esc(title);
-  if (!tasks.length) return `🏖 ${who} 7 วันข้างหน้ายังว่างทั้งหมด`;
+  if (!tasks.length) return mom ? `🏖 7 วันนี้${who}ว่างทั้งหมดเลยค่ะ ปังมาก ✨` : `🏖 ${who} 7 วันข้างหน้ายังว่างทั้งหมด`;
   const busy = new Set(tasks.map((t) => t.event.eventDate));
   const free: string[] = [];
   for (let i = 0; i < 7; i++) {
@@ -200,30 +220,32 @@ export function myWeekText(title: string, from: string, tasks: TaskItem[]): stri
     if (!busy.has(iso)) free.push(dayName(iso));
   }
   return [
-    `🗓 ${who} 7 วันข้างหน้ามี ${tasks.length} งาน`,
+    mom ? `🗓 7 วันนี้${who}มี ${tasks.length} งานค่ะ` : `🗓 ${who} 7 วันข้างหน้ามี ${tasks.length} งาน`,
     ...tasks.slice(0, 10).map((t) => line(t, true)),
-    free.length ? `\n✅ วันว่าง: ${free.join(" · ")}` : "\n🔥 ไม่มีวันว่างเลย สู้ ๆ นะ",
+    free.length ? `\n✅ วันว่าง: ${free.join(" · ")}` : mom ? "\n🔥 ไม่มีวันว่างเลยลูก แม่ส่งกำลังใจ ✊💜" : "\n🔥 ไม่มีวันว่างเลย สู้ ๆ นะ",
   ].join("\n");
 }
 
-export function nextJobText(title: string, next: TaskItem | null): string {
+export function nextJobText(title: string, next: TaskItem | null, mom = false): string {
   const who = esc(title);
-  if (!next) return `🎉 ${who} ยังไม่มีงานถัดไปใน 30 วันนี้`;
+  if (!next) return mom ? `🎉 ${who}ยังไม่มีงานถัดไปเลยค่ะ เริ่ดดด ✨` : `🎉 ${who} ยังไม่มีงานถัดไปใน 30 วันนี้`;
   const tip = roleKey(next.roleName);
   return [
-    `⏭ งานถัดไปของ${who}`,
+    mom ? `⏭ งานถัดไปของ${who}นะคะ อย่าตื่นสายน้า 💅` : `⏭ งานถัดไปของ${who}`,
     line(next, true),
-    tip ? `\n💡 ${esc(dailyTip(tip, next.event.eventDate))}` : "",
+    tip ? `\n💡 ${mom ? "แม่ฝากทิป: " : ""}${esc(dailyTip(tip, next.event.eventDate))}` : "",
   ].filter(Boolean).join("\n");
 }
 
-export function whoWithText(title: string, next: TaskItem | null, team: TaskItem[]): string {
+export function whoWithText(title: string, next: TaskItem | null, team: TaskItem[], mom = false): string {
   const who = esc(title);
-  if (!next) return `🙂 ${who} ยังไม่มีงานถัดไปให้ดูว่าใครไปด้วย`;
+  if (!next) return mom ? `🙂 ${who}ยังไม่มีงานถัดไปเลยค่ะ` : `🙂 ${who} ยังไม่มีงานถัดไปให้ดูว่าใครไปด้วย`;
   const others = team.filter((t) => t.event.id === next.event.id && t.personId !== next.personId);
   return [
     `👥 <b>${esc(next.event.title)}</b> · ${formatThaiDate(next.event.eventDate)} ${timeRange(next)}`,
-    others.length ? others.map((t) => `• ${esc(titleFor(t.personId, t.personName))} — ${esc(t.roleName)}`).join("\n") : "• ไปคนเดียวงานนี้ สู้ ๆ 💪",
+    others.length
+      ? others.map((t) => `• ${esc(titleFor(t.personId, t.personName))} — ${esc(t.roleName)}`).join("\n")
+      : mom ? "• งานนี้ไปเดี่ยวค่ะลูก ชีเสิร์ฟคนเดียวก็ปังได้ 💪✨" : "• ไปคนเดียวงานนี้ สู้ ๆ 💪",
   ].join("\n");
 }
 
@@ -262,9 +284,9 @@ export const HOW: Record<"how_attach" | "how_avatar" | "how_unavailable" | "how_
   ].join("\n"),
 };
 
-export function whatCanText(title: string): string {
+export function whatCanText(title: string, mom = false): string {
   return [
-    `🤖 บอททำได้เยอะเลย ${esc(title)} ลองพิมพ์แบบพูดธรรมดาได้`,
+    mom ? `🤖💅 แม่ทำได้เยอะเลยค่ะ${esc(title)} ลองพิมพ์แบบพูดธรรมดาได้เลย` : `🤖 บอททำได้เยอะเลย ${esc(title)} ลองพิมพ์แบบพูดธรรมดาได้`,
     "",
     "🗓 <b>งานของเรา</b>: วันนี้มีงานไหม · พรุ่งนี้มีไร · งานถัดไปกี่โมง · ใครไปด้วย · สัปดาห์นี้ว่างวันไหน",
     "💡 <b>ทิป</b>: ทิปถ่ายรูป · ทิปวิดีโอ · ทิปพิธีกร · ทิปไลฟ์",
@@ -274,13 +296,26 @@ export function whatCanText(title: string): string {
     "😂 <b>มุก</b> คำถาม | คำตอบ → ตัวการ์ตูนเล่าบนจอ",
     "🎬 <b>ไอเดีย</b> เรื่องแก็กที่อยากเห็น → แอดมินทำเป็นฉากการ์ตูน (ใส่ชื่อคนคิดด้วย)",
     "📢 <b>ประกาศ</b> ข้อความ → ตัววิ่งบนจอ",
-  ].join("\n");
+    mom ? "💅 ไม่ชอบให้แม่พูดแบบนี้ พิมพ์ <b>ปิดโหมดแม่</b> ได้ค่ะ" : "",
+  ].filter(Boolean).join("\n");
 }
 
 const pick = <T,>(list: T[], seed = Date.now()) => list[Math.floor(seed / 1000) % list.length];
 
-export function smallTalk(intent: "hello" | "thanks" | "tired" | "hungry" | "bored" | "praise" | "love", title: string, seed = Date.now()): string {
+export function smallTalk(intent: "hello" | "thanks" | "tired" | "hungry" | "bored" | "praise" | "love", title: string, seed = Date.now(), mom = false): string {
   const w = esc(title);
+  if (mom) {
+    const M: Record<typeof intent, string[]> = {
+      hello: [`ว้ายยย ${w} มาแล้ว! 👋 วันนี้มีอะไรให้แม่ช่วยคะ`, `สวัสดีค่ะ${w} สวยปังตั้งแต่เช้าเลย ✨ พิมพ์ "งานถัดไป" ให้แม่ดูให้ได้นะคะ`],
+      thanks: [`ด้วยความยินดีค่ะลูก 💜`, `ไม่ต้องขอบคุณแม่หรอกค่ะ ลูกเก่งเองล้วน ๆ 💅`],
+      tired: [`เหนื่อยเหรอลูก มาให้แม่กอด 🫂 พักดื่มน้ำก่อนนะคะ`, `พักก่อนค่ะลูก นางฟ้าก็ต้องชาร์จแบต 🧚 เดี๋ยวค่อยลุยต่อ`],
+      hungry: [`หิวแล้วต้องกินค่ะลูก 🍜 สวยแค่ไหนก็ต้องกินข้าว`, `ไปหาอะไรอร่อย ๆ กินเลยค่ะ แม่อนุญาต 🍱✨`],
+      bored: [`เบื่อเหรอลูก? ส่งมุกให้ตัวการ์ตูนเล่าบนทีวีเลยค่ะ พิมพ์ "มุก" 😂`, `มาค่ะ พิมพ์ "ขอลุค" ให้แม่แต่งตัวการ์ตูนให้ปังกว่าเดิม 💅`, `เล่าเรื่องฮา ๆ ในออฟฟิศให้แม่ฟังหน่อย พิมพ์ "ไอเดีย" แล้วเล่ามาเลยค่ะ 🎬`],
+      praise: [`ตายแล้ว ชมแม่เหรอคะ เขินนน 🙈 ลูกก็ปังไม่แพ้กัน!`, `มงลงค่ะลูก 👑 ทีมเราเริ่ดที่สุด`],
+      love: [`แม่ก็รักลูกนะคะ 💜`, `รักเหมือนกันค่ะลูก 🥰`],
+    };
+    return pick(M[intent], seed);
+  }
   const L: Record<typeof intent, string[]> = {
     hello: [`สวัสดีจ้า ${w} 👋 วันนี้มีอะไรให้ช่วย พิมพ์ "วันนี้มีงานไหม" ได้เลย`, `หวัดดี ${w} ✨ พร้อมลุยแล้ว! อยากรู้งานถัดไปพิมพ์ "งานถัดไป"`],
     thanks: [`ยินดีเสมอ ${w} 🙏`, `ด้วยความยินดี ${w} 😊 มีอะไรทักมาได้ตลอด`],
@@ -293,9 +328,9 @@ export function smallTalk(intent: "hello" | "thanks" | "tired" | "hungry" | "bor
   return pick(L[intent], seed);
 }
 
-export function didNotGetText(title: string): string {
+export function didNotGetText(title: string, mom = false): string {
   return [
-    `🤔 ยังไม่เข้าใจนิดนึง ${esc(title)}`,
+    mom ? `🫠 แม่งงนิดนึงค่ะ ${esc(title)}` : `🤔 ยังไม่เข้าใจนิดนึง ${esc(title)}`,
     'ลองพิมพ์แบบนี้: "พรุ่งนี้มีงานไหม" · "งานถัดไป" · "ใครไปด้วย" · "ทิปพิธีกร" · "เปลี่ยนรูป"',
     'ดูทั้งหมด พิมพ์ "ทำอะไรได้บ้าง"',
   ].join("\n");

@@ -48,6 +48,8 @@ import {
   LOOK_PROMPT,
   didNotGetText,
   matchIntent,
+  momAddr,
+  momOn,
   myDayText,
   myWeekText,
   nextJobText,
@@ -221,32 +223,34 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
   const faq = matchFaq(text);
   if (faq === "start" || faq === "telegram") return [tgHelp()];
   if (faq) return [{ text: esc(faqText(faq, false).replace("ที่เมนูด้านล่าง", "ในแชท LINE หรือที่เว็บ")) }];
-  return [{ text: didNotGetText(titleFor(person.id, person.displayName)), keyboard: KEYBOARD }];
+  const v = await voiceOf(ctx, person);
+  return [{ text: didNotGetText(v.title, v.mom), keyboard: KEYBOARD }];
 }
 
 /** คุยแบบพูดธรรมดา (5 Nov 2026) — keyword answers from lib/telegram/chat.ts. */
 async function chatReply(ctx: Ctx, person: LinePerson, chatId: number, text: string): Promise<TgMessage[] | null> {
   const intent = matchIntent(text);
   if (!intent) return null;
-  const title = titleFor(person.id, person.displayName);
+  if (intent === "mom_on" || intent === "mom_off") return [await setMom(ctx, person, intent === "mom_on")];
+  const { title, mom } = await voiceOf(ctx, person);
   const today = todayInBangkok();
   const mine = (from: string, to: string) => loadTasks(ctx.admin, { from, to, personId: person.id });
   const nextOf = (tasks: TaskItem[]) => tasks.find((t) => t.event.eventDate > today || (t.event.eventDate === today && (t.event.endTime ?? t.event.startTime) >= bangkokHhmmNow())) ?? null;
   switch (intent) {
     case "my_today":
-      return [{ text: myDayText(title, "วันนี้", await mine(today, today)) }];
+      return [{ text: myDayText(title, "วันนี้", await mine(today, today), mom) }];
     case "my_tomorrow": {
       const d = addDays(today, 1);
-      return [{ text: myDayText(title, "พรุ่งนี้", await mine(d, d)) }];
+      return [{ text: myDayText(title, "พรุ่งนี้", await mine(d, d), mom) }];
     }
     case "my_week":
-      return [{ text: myWeekText(title, today, await mine(today, addDays(today, 6))) }];
+      return [{ text: myWeekText(title, today, await mine(today, addDays(today, 6)), mom) }];
     case "my_next":
-      return [{ text: nextJobText(title, nextOf(await mine(today, addDays(today, 30)))) }];
+      return [{ text: nextJobText(title, nextOf(await mine(today, addDays(today, 30))), mom) }];
     case "who_with": {
       const next = nextOf(await mine(today, addDays(today, 30)));
       const team = next ? await loadTasks(ctx.admin, { from: next.event.eventDate, to: next.event.eventDate }) : [];
-      return [{ text: whoWithText(title, next, team) }];
+      return [{ text: whoWithText(title, next, team, mom) }];
     }
     case "tip": {
       let keys = rolesIn(text);
@@ -265,7 +269,7 @@ async function chatReply(ctx: Ctx, person: LinePerson, chatId: number, text: str
     case "how_add":
       return [{ text: HOW[intent], keyboard: KEYBOARD }];
     case "what_can":
-      return [{ text: whatCanText(title), keyboard: KEYBOARD }];
+      return [{ text: whatCanText(title, mom), keyboard: KEYBOARD }];
     case "look":
     case "idea": {
       const kind = intent === "look" ? "look_request" : "gag_idea";
@@ -275,8 +279,28 @@ async function chatReply(ctx: Ctx, person: LinePerson, chatId: number, text: str
       return [{ text: intent === "look" ? LOOK_PROMPT : IDEA_PROMPT }];
     }
     default:
-      return [{ text: smallTalk(intent, title) }];
+      return [{ text: smallTalk(intent, title, Date.now(), mom) }];
   }
+}
+
+/** โหมดแม่ or plain, and what to call the person in it. */
+async function voiceOf(ctx: Ctx, person: LinePerson): Promise<{ mom: boolean; title: string }> {
+  const { data } = await ctx.admin.from("people").select("metadata").eq("id", person.id).maybeSingle();
+  const mom = momOn(person.id, (data?.metadata as Record<string, unknown> | null) ?? null);
+  return { mom, title: mom ? momAddr(person.id, person.displayName) : titleFor(person.id, person.displayName) };
+}
+
+async function setMom(ctx: Ctx, person: LinePerson, on: boolean): Promise<TgMessage> {
+  const { data } = await ctx.admin.from("people").select("metadata").eq("id", person.id).maybeSingle();
+  const metadata = { ...((data?.metadata as Record<string, unknown>) ?? {}), mom: on ? "on" : "off" };
+  await ctx.admin.from("people").update({ metadata }).eq("id", person.id);
+  if (on && !momOn(person.id, metadata)) return { text: "🙏 บัญชีนี้บอทใช้ภาษาสุภาพเสมอครับ", keyboard: KEYBOARD };
+  return {
+    text: on
+      ? `💅 เปิดโหมดแม่แล้วค่ะ${esc(momAddr(person.id, person.displayName))} มีอะไรทักแม่ได้ตลอดนะคะ ✨`
+      : '🙂 ปิดโหมดแม่แล้วครับ บอทจะพูดแบบปกติ · เปิดใหม่พิมพ์ "เปิดโหมดแม่"',
+    keyboard: KEYBOARD,
+  };
 }
 
 function bangkokHhmmNow(): string {
@@ -287,7 +311,7 @@ function bangkokHhmmNow(): string {
 async function forwardWish(ctx: Ctx, person: LinePerson, kind: "look_request" | "gag_idea", raw: string): Promise<TgMessage> {
   const textIn = raw.trim().slice(0, 500);
   if (textIn.length < 4) return { text: "สั้นไปนิด เล่าเพิ่มอีกหน่อยได้ไหม 🙂" };
-  const title = titleFor(person.id, person.displayName);
+  const { title, mom } = await voiceOf(ctx, person);
   await ctx.admin.from("audit_logs").insert({
     entity_type: "person",
     entity_id: person.id,
@@ -298,13 +322,17 @@ async function forwardWish(ctx: Ctx, person: LinePerson, kind: "look_request" | 
   });
   await tellAdminsByTelegram(
     ctx.admin,
-    `${kind === "look_request" ? "✨ <b>ขอลุคพิเศษ</b>" : "🎬 <b>ไอเดียแก็ก</b>"} จาก ${esc(title)}\n\n${esc(textIn)}`,
+    `${kind === "look_request" ? "✨ <b>ขอลุคพิเศษ</b>" : "🎬 <b>ไอเดียแก็ก</b>"} จาก ${esc(titleFor(person.id, person.displayName))}\n\n${esc(textIn)}`,
   );
   return {
     text:
       kind === "look_request"
-        ? `💌 ส่งคำขอลุคถึงแอดมินแล้ว ${esc(title)} · จะได้ตัวอย่างให้เลือกก่อนขึ้นจอนะ`
-        : `🎬 ได้ไอเดียแล้ว ขอบคุณ ${esc(title)}! ถ้าได้ทำเป็นฉาก จะขึ้นชื่อคนคิดบนจอด้วย`,
+        ? mom
+          ? `💌 ส่งคำขอลุคถึงแอดมินแล้วค่ะ${esc(title)} เดี๋ยวได้ตัวอย่างให้เลือกก่อนขึ้นจอนะคะ 💅`
+          : `💌 ส่งคำขอลุคถึงแอดมินแล้ว ${esc(title)} · จะได้ตัวอย่างให้เลือกก่อนขึ้นจอนะ`
+        : mom
+          ? `🎬 ปังมากลูก! ได้ไอเดียแล้วค่ะ ถ้าได้ทำเป็นฉาก จะขึ้นชื่อ${esc(title)}บนจอด้วย ✨`
+          : `🎬 ได้ไอเดียแล้ว ขอบคุณ ${esc(title)}! ถ้าได้ทำเป็นฉาก จะขึ้นชื่อคนคิดบนจอด้วย`,
     keyboard: KEYBOARD,
   };
 }

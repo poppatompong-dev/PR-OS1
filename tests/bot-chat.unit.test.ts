@@ -113,7 +113,7 @@ test("ไอเดีย inline goes straight to the admin with the author", asy
 test("how-to and the don't-understand reply", async () => {
   assert.match(textTo(await say(seed(), 506, "แนบไฟล์ยังไง"), 506), /แนบไฟล์/);
   assert.match(textTo(await say(seed(), 506, "บอททำอะไรได้บ้าง"), 506), /ไอเดีย/);
-  assert.match(textTo(await say(seed(), 506, "qwerty zz"), 506), /ยังไม่เข้าใจ/);
+  assert.match(textTo(await say(seed(), 506, "qwerty zz"), 506), /แม่งงนิดนึง/);
 });
 
 test("the old commands still work as before", async () => {
@@ -131,4 +131,43 @@ test("07:00 summary: greets by title and carries one tip line for the first job'
   const m = tgDailySummary(t.personName, [t], []);
   assert.match(m.text, /อรุณสวัสดิ์ครับ พรินเซสแป้ง/);
   assert.equal((m.text.match(/💡/g) ?? []).length, 1);
+});
+
+// ---- โหมดแม่ ------------------------------------------------------------------------
+const PAI = "00000000-0000-0000-0000-000000000501";
+const withPai = () => {
+  const db = seed();
+  db.tables.people.push({ id: PAI, display_name: "นางสาวภนิตา ชะรัดรัมย์", line_user_id: null, telegram_chat_id: 501, is_active: true });
+  return db;
+};
+
+test("โหมดแม่: on by default — แม่ calls you ลูก, work facts unchanged", async () => {
+  const out = textTo(await say(seed(), 505, "พรุ่งนี้มีงานไหม"), 505);
+  assert.match(out, /พรินเซสแป้งของแม่/);
+  assert.match(out, /แม่จดไว้ให้แล้ว/);
+  assert.match(out, /ถ่ายภาพพิธีเปิดงานกาชาด[\s\S]*อุทยานสวรรค์/);
+  assert.match(textTo(await say(seed(), 506, "เหนื่อยจัง"), 506), /แม่|ลูก/);
+});
+
+test("โหมดแม่: พี่ไป๋ always gets the polite voice, even if asked", async () => {
+  const db = withPai();
+  const hi = textTo(await say(db, 501, "สวัสดีค่ะ"), 501);
+  assert.doesNotMatch(hi, /แม่|ลูก/);
+  assert.match(textTo(await say(db, 501, "เปิดโหมดแม่"), 501), /ภาษาสุภาพ/);
+  assert.doesNotMatch(textTo(await say(db, 501, "สวัสดีค่ะ"), 501), /แม่|ลูก/);
+});
+
+test("โหมดแม่: \"ปิดโหมดแม่\" sticks (saved on the person), \"เปิดโหมดแม่\" brings it back", async () => {
+  const db = seed();
+  assert.match(textTo(await say(db, 506, "ปิดโหมดแม่"), 506), /ปิดโหมดแม่แล้ว/);
+  assert.equal(db.tables.people.find((p: any) => p.id === KAE).metadata.mom, "off");
+  assert.doesNotMatch(textTo(await say(db, 506, "เหนื่อยจัง"), 506), /แม่|ลูก/);
+  assert.match(textTo(await say(db, 506, "เปิดโหมดแม่"), 506), /เปิดโหมดแม่แล้วค่ะลูกแข/);
+  assert.match(textTo(await say(db, 506, "ขอบคุณค่ะ"), 506), /ลูก/);
+});
+
+test("โหมดแม่ never touches the 07:00 summary", async () => {
+  const { tgDailySummary } = await import("@/lib/telegram/messages");
+  const t: any = { personId: KAE, personName: "x", roleName: "ภาพนิ่ง", acknowledged: true, unavailable: false, event: { title: "ง", icon: null, eventDate: today, startTime: "09:00", endTime: null, locationName: "ห้อง", status: "published" } };
+  assert.doesNotMatch(tgDailySummary("x", [t], []).text, /แม่/);
 });

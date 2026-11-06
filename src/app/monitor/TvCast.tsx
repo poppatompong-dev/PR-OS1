@@ -216,7 +216,9 @@ export function TvCast({ still, people, off, events = [], festival = null }: { s
     const ACTS = [walkTicker, runAcross, peekCard, climbCard, hang, pair];
     const q = new URLSearchParams(window.location.search);
     // /tv?jit=fast — preview: a gag every time, any hour.
-    const jitFast = q.get("jit") === "fast";
+    // /tv?jit=3 — that gag (1–11) over and over.
+    const jitOnly = /^\d+$/.test(q.get("jit") ?? "") ? Number(q.get("jit")) - 1 : -1;
+    const jitFast = q.get("jit") === "fast" || jitOnly >= 0;
     // /tv?scene=fast — every anime scene in turn · /tv?scene=B3 — that one, over and over.
     const sceneQ = q.get("scene");
     const sceneOnly = sceneQ && sceneQ !== "fast" ? SCENES.findIndex((s) => s.key === sceneQ.toUpperCase()) : -1;
@@ -355,6 +357,7 @@ export function TvCast({ still, people, off, events = [], festival = null }: { s
       return castScene(idx("J"));
     };
     const nextGag = (): number | null => {
+      if (jitOnly >= 0 && jitOnly < GAG_COUNT) return jitOnly;
       const late = bangkokHour() >= 16;
       const team = TEAM_FOR_GAG.every((id) => cast.includes(id));
       const ok = (g: number) => (g !== GAG_HOME_TIME || late || preview) && (g !== GAG_WITH_TEAM || team);
