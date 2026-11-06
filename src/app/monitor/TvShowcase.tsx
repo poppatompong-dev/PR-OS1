@@ -18,7 +18,7 @@ const thaiDay = (iso: string) => {
   const [, m, d] = iso.split("-").map(Number);
   return m && d ? `${d} ${MONTHS[m - 1]}` : "";
 };
-const srcLabel = (s: ShowcaseItem["source"]) => (s === "facebook" ? "เพจเทศบาลนครนครสวรรค์" : "ข่าวประชาสัมพันธ์ nsm.go.th");
+const srcLabel = (s: ShowcaseItem["source"]) => (s === "facebook" ? "เพจเทศบาล" : "ข่าว ปชส. nsm.go.th");
 
 export function TvShowcase({ items, look, still, fallback }: { items: ShowcaseItem[]; look: ShowcaseLook; still: boolean; fallback: string }) {
   const [i, setI] = useState(0);
