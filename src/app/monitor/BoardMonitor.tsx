@@ -129,7 +129,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
       root.querySelectorAll<HTMLElement>(".bm-cell-body").forEach((body) => {
         const roll = body.firstElementChild as HTMLElement | null;
         if (!roll) return;
-        const over = roll.scrollHeight - body.clientHeight;
+        const over = roll.offsetHeight - body.clientHeight; // offsetHeight: the icon tile pokes out a few px
         roll.classList.toggle("is-roll", over > 2 && !staticMode);
         roll.style.setProperty("--roll", `${-Math.max(0, over)}px`);
         roll.style.animationDuration = `${Math.max(8, over / 6 + 6)}s`;
