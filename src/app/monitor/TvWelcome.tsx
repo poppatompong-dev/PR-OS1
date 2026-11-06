@@ -171,9 +171,10 @@ export function WelcomeShow({ welcome, still, off, team }: { welcome: Welcome; s
         return { d, id, y };
       });
       gsap.set([dim, back, carpet, words, big, role, warm], { opacity: 0 });
-      gsap.set(curL, { xPercent: -100 });
-      gsap.set(curR, { xPercent: 100 });
-      gsap.set(top, { yPercent: -100 });
+      // every show starts from scratch: the last one faded these out
+      gsap.set(curL, { xPercent: -100, opacity: 1 });
+      gsap.set(curR, { xPercent: 100, opacity: 1 });
+      gsap.set(top, { yPercent: -100, opacity: 1 });
       gsap.set(carpet, { scaleY: 0 });
 
       const tl = gsap.timeline({ onComplete: stop })

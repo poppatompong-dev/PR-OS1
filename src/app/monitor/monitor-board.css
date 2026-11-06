@@ -444,4 +444,4 @@
 .tv-wel-crew, .tv-wel canvas, .tv-wel-words { z-index: 1; }
 .tv-wel-cur { z-index: 2; }
 .tv-wel-top { z-index: 3; }
-.tv-wel-label { z-index: 4; left: calc(30 * var(--u)); bottom: calc(30 * var(--u)); padding: calc(14 * var(--u)) calc(30 * var(--u)); border-radius: calc(20 * var(--u)); background: rgba(0, 0, 0, .78); color: #ffd36b; font-size: calc(54 * var(--u)); font-weight: 900; border: calc(4 * var(--u)) solid #ffd36b; }
+.tv-wel-label { z-index: 4; left: 50%; translate: -50% 0; white-space: nowrap; bottom: calc(30 * var(--u)); padding: calc(14 * var(--u)) calc(30 * var(--u)); border-radius: calc(20 * var(--u)); background: rgba(0, 0, 0, .78); color: #ffd36b; font-size: calc(54 * var(--u)); font-weight: 900; border: calc(4 * var(--u)) solid #ffd36b; }
