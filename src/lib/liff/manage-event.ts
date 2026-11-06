@@ -286,6 +286,8 @@ export type JobDetail = {
   shortNote: string;
   screenTitle: string;
   icon: string;
+  /** หน่วยงานเจ้าของงาน ("" = ไม่ระบุ). */
+  departmentId: string;
   /** พิกัด (metadata.map_points, or the older single map_url). */
   mapPoints: MapPoint[];
   assignees: AssigneeRow[];
@@ -295,7 +297,7 @@ export type JobDetail = {
 async function loadManageable(admin: Admin, caller: LiffCaller, eventId: string) {
   const { data: ev } = await admin
     .from("events")
-    .select("id, title, event_date, start_time, end_time, location_id, status, short_note, screen_title, icon, created_by, metadata, deleted_at, location:locations(name)")
+    .select("id, title, event_date, start_time, end_time, location_id, owner_department_id, status, short_note, screen_title, icon, created_by, metadata, deleted_at, location:locations(name)")
     .eq("id", eventId)
     .maybeSingle();
   if (!ev || ev.deleted_at) return { ok: false as const, status: 404, error: "ไม่พบงานนี้ (อาจถูกลบไปแล้ว)" };
@@ -343,6 +345,7 @@ export async function getJob(admin: Admin, caller: LiffCaller, eventId: string):
       shortNote: ev.short_note ?? "",
       screenTitle: ev.screen_title ?? "",
       icon: ev.icon ?? "",
+      departmentId: ev.owner_department_id ?? "",
       mapPoints: pointsFromMetadata(ev.metadata),
       assignees: (asgs ?? []).map((a) => ({ personId: a.person_id, roleIds: normalizeRoleIds([a.role_id, ...(a.extra_role_ids ?? [])]) })),
       attachmentCount: await countEventAttachments(admin, eventId),
@@ -404,6 +407,7 @@ export async function editJob(admin: Admin, caller: LiffCaller, eventId: string,
       short_note: input.shortNote,
       screen_title: input.screenTitle,
       icon: input.icon,
+      ...(input.departmentId !== undefined ? { owner_department_id: input.departmentId } : {}),
       metadata: { ...((ev.metadata as Record<string, unknown> | null) ?? {}), ...mapMetadata(input.mapPoints) },
       updated_by: caller.userId,
       ...(significant ? { has_changes: true } : {}),

@@ -18,12 +18,14 @@ export async function GET(request: Request) {
   const auth = await authenticateLiff(request, admin);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const [people, roles, locations, displayProfiles] = await Promise.all([
+  const [people, roles, locations, displayProfiles, departments] = await Promise.all([
     admin.from("people").select("id, display_name, position, telegram_chat_id, line_user_id").eq("is_active", true).order("display_name"),
     admin.from("roles").select("id, name").eq("is_active", true).order("name"),
     placeSuggestions(admin).catch(() => [] as string[]),
     // A TV-screen account is not someone who goes out on a job (found in the 21 Oct test).
     admin.from("profiles").select("person_id").eq("role", "display").not("person_id", "is", null),
+    // หน่วยงานเจ้าของงาน (6 Nov 2026): optional, guessed from the title in the form.
+    admin.from("departments").select("id, name, short_name").eq("is_active", true).order("name"),
   ]);
   const notAssignable = new Set((displayProfiles.data ?? []).map((p) => p.person_id as string));
 
@@ -33,5 +35,6 @@ export async function GET(request: Request) {
     roles: (roles.data ?? []).map((r) => ({ id: r.id, name: r.name })),
     // Typed place box (0016): master list + places typed before.
     places: locations,
+    departments: (departments.data ?? []).map((d) => ({ id: d.id, name: d.name, short: d.short_name ?? "" })),
   });
 }

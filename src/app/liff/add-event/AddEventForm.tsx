@@ -16,10 +16,12 @@ import type { MapPoint } from "@/lib/maps";
 import { RoleChips } from "@/components/RoleChips";
 import type { StagedAttachment } from "@/lib/attachments/rules";
 import { useMiniApp, type Host } from "./host";
+import { guessDepartment } from "@/lib/events/department-guess";
 
 type Option = { id: string; name: string };
 type Person = Option & { position: string | null; avatar: string; reachable?: boolean };
-type Lists = { me: Option; people: Person[]; roles: Option[]; places: string[] };
+type Dept = { id: string; name: string; short: string };
+type Lists = { me: Option; people: Person[]; roles: Option[]; places: string[]; departments?: Dept[] };
 type Row = { personId: string; roleIds: string[] };
 type Job = {
   id: string;
@@ -34,6 +36,7 @@ type Job = {
   shortNote: string;
   screenTitle: string;
   icon: string;
+  departmentId?: string;
   assignees: Row[];
   attachmentCount: number;
 };
@@ -80,6 +83,9 @@ export function AddEventForm({
   const [saving, setSaving] = useState<"draft" | "publish" | null>(null);
 
   const [title, setTitle] = useState("");
+  // หน่วยงานเจ้าของงาน (6 Nov 2026): optional; follows the title until someone picks one.
+  const [departmentId, setDepartmentId] = useState("");
+  const [deptTouched, setDeptTouched] = useState(false);
   const [eventDate, setEventDate] = useState(bangkokDate(1));
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("");
@@ -127,6 +133,8 @@ export function AddEventForm({
           setShortNote(jj.shortNote);
           setScreenTitle(jj.screenTitle);
           setIcon(jj.icon);
+          setDepartmentId(jj.departmentId ?? "");
+          setDeptTouched(Boolean(jj.departmentId));
           setRows(jj.assignees.length ? jj.assignees : [{ personId: "", roleIds: [] }]);
         }
         if (cancelled) return;
@@ -141,6 +149,13 @@ export function AddEventForm({
     };
   }, [host, editId]);
 
+  useEffect(() => {
+    if (deptTouched || !lists?.departments?.length) return;
+    const short = guessDepartment(title);
+    const hit = short ? lists.departments.find((d) => d.short === short) : undefined;
+    setDepartmentId(hit?.id ?? "");
+  }, [title, lists, deptTouched]);
+
   const filled = useMemo(() => rows.filter((r) => r.personId && r.roleIds.length > 0), [rows]);
   const halfRow = rows.some((r) => (r.personId && r.roleIds.length === 0) || (!r.personId && r.roleIds.length > 0));
 
@@ -150,6 +165,8 @@ export function AddEventForm({
 
   function reset() {
     setTitle("");
+    setDepartmentId("");
+    setDeptTouched(false);
     setEndTime("");
     setShortNote("");
     setScreenTitle("");
@@ -173,7 +190,7 @@ export function AddEventForm({
       const res = await fetch(editId ? `/api/liff/events/${editId}` : "/api/liff/events", {
         method: editId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json", Authorization: auth() },
-        body: JSON.stringify({ title, eventDate, startTime, endTime: endTime || null, locationText: place.trim() || null, mapPoints, shortNote, screenTitle, icon, announce, assignees: filled, attachments: files.staged, publish, reason }),
+        body: JSON.stringify({ title, eventDate, startTime, endTime: endTime || null, locationText: place.trim() || null, mapPoints, shortNote, screenTitle, icon, departmentId, announce, assignees: filled, attachments: files.staged, publish, reason }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "บันทึกไม่สำเร็จ");
@@ -328,6 +345,28 @@ export function AddEventForm({
           <span>สถานที่</span>
           <PlaceInput value={place} onChange={setPlace} suggestions={L.places ?? []} inputClassName="" />
         </div>
+
+        {L.departments?.length ? (
+          <label className={styles.field}>
+            <span>🏛 หน่วยงานเจ้าของงาน (ไม่บังคับ)</span>
+            <select
+              value={departmentId}
+              onChange={(e) => {
+                setDepartmentId(e.target.value);
+                setDeptTouched(true);
+              }}
+              aria-label="หน่วยงานเจ้าของงาน"
+            >
+              <option value="">— ไม่ระบุ —</option>
+              {L.departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.short ? `${d.short} · ${d.name}` : d.name}
+                </option>
+              ))}
+            </select>
+            {!deptTouched && departmentId ? <small className={styles.hint}>เดาจากชื่องาน · แตะเปลี่ยนได้</small> : null}
+          </label>
+        ) : null}
 
         <div className={styles.field}>
           <span>📍 พิกัด — แตะแผนที่ปักหมุด ลากย้ายได้ (สูงสุด 5 จุด)</span>

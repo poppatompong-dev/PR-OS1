@@ -34,6 +34,8 @@ export type LiffEventInput = {
   screenTitle: string | null;
   /** Job icon picked in the form (0019); null = guessed from the title. */
   icon: string | null;
+  /** หน่วยงานเจ้าของงาน (6 Nov 2026, optional). undefined = an older form that did not send it. */
+  departmentId?: string | null;
   /** "ประกาศบนจอ": a ticker line until midnight. */
   announce: string | null;
   /** พิกัด (3 Nov 2026): up to 5 pins / maps links, kept in events.metadata.map_points (+ map_url = the first). */
@@ -66,6 +68,8 @@ export function parseLiffEventInput(body: unknown): { ok: true; input: LiffEvent
 
   const locationId = optional(b.locationId, 36);
   if (locationId && !UUID.test(locationId)) return { ok: false, error: "สถานที่ไม่ถูกต้อง" };
+  const departmentId = "departmentId" in b ? optional(b.departmentId, 36) : undefined;
+  if (departmentId && !UUID.test(departmentId)) return { ok: false, error: "หน่วยงานไม่ถูกต้อง" };
 
   const raw = Array.isArray(b.assignees) ? b.assignees.slice(0, 20) : [];
   const rows: LiffEventInput["assignees"] = [];
@@ -94,6 +98,7 @@ export function parseLiffEventInput(body: unknown): { ok: true; input: LiffEvent
       shortNote: optional(b.shortNote, 500),
       screenTitle: cleanScreenTitle(typeof b.screenTitle === "string" ? b.screenTitle : null),
       icon: cleanIcon(b.icon, title),
+      departmentId,
       announce: optional(b.announce, 140),
       mapPoints: map.points,
       assignees,
@@ -152,6 +157,7 @@ export async function createEventFromLiff(
       short_note: input.shortNote,
       screen_title: input.screenTitle,
       icon: input.icon,
+      owner_department_id: input.departmentId ?? null,
       status: input.publish ? "published" : "draft",
       published_at: input.publish ? nowIso : null,
       created_by: caller.userId,
