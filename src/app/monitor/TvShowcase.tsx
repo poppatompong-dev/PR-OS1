@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import type { ShowcaseItem } from "@/lib/monitor/showcase";
 
 export type ShowcaseLook = 1 | 2 | 3;
-export const SHOWCASE_DEFAULT_LOOK: ShowcaseLook = 1;
+export const SHOWCASE_DEFAULT_LOOK: ShowcaseLook = 3; // owner + team picked ฟิล์มสตริป (6 Nov 2026)
 const EVERY_MS = 12_000;
 const MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
