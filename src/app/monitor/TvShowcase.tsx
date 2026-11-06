@@ -18,6 +18,8 @@ const thaiDay = (iso: string) => {
   const [, m, d] = iso.split("-").map(Number);
   return m && d ? `${d} ${MONTHS[m - 1]}` : "";
 };
+/** Thai tone marks of a hidden 3rd line still peek into a 2-line clamp, so cut the words first. */
+const short = (t: string, max: number) => (t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t);
 const srcLabel = (s: ShowcaseItem["source"]) => (s === "facebook" ? "เพจเทศบาล" : "ข่าว ปชส. nsm.go.th");
 
 export function TvShowcase({ items, look, still, fallback }: { items: ShowcaseItem[]; look: ShowcaseLook; still: boolean; fallback: string }) {
@@ -45,7 +47,7 @@ export function TvShowcase({ items, look, still, fallback }: { items: ShowcaseIt
         </div>
         <div className="bm-sc-cap" key={i}>
           <small>📘 {srcLabel(it.source)} · {thaiDay(it.date)}</small>
-          <b>{it.title}</b>
+          <b>{short(it.title, 44)}</b>
         </div>
       </div>
     );
