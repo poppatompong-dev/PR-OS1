@@ -238,3 +238,41 @@ test("questions: laughs still get the gentle reply, admins' own odd texts are no
   const fake = await replyTo(db, 505, textTo(ask, 999), "ไม่รู้เหมือนกัน");
   assert.equal(textTo(fake, 506), "");
 });
+
+// ---- คำตอบสำเร็จรูป (owner, 9 Nov 2026) ---------------------------------------------
+import { isAnnounceQuestion } from "@/lib/telegram/chat";
+
+test("ready answers: everyday questions land on the right one, old intents unchanged", () => {
+  const cases: Array<[string, string | null]> = [
+    ["จะแก้เวลางานยังไงคะ", "faq_edit"],
+    ["อยากเลื่อนงานวันศุกร์", "faq_edit"],
+    ["กดรับทราบตรงไหน", "faq_ack"],
+    ["ทำไมไม่มีแจ้งเตือนเลย", "faq_notify"],
+    ["ปิดเสียงยังไง", "faq_mute"],
+    ["ไปงานนี้ไปยังไง", "faq_nav"],
+    ["ขอแผนที่หน่อย", "faq_nav"],
+    ["ลิงก์ทีวีคืออะไร", "faq_tv"],
+    ["ยังต้องใช้ไลน์ไหม", "faq_line"],
+    ["ประชุมออนไลน์กี่โมง", "my_next"],
+    ["วันนี้ใครไปงานบ้าง", "team_day"],
+    ["ใครไปด้วย", "who_with"],
+    ["ต้องไปที่ไหน", "my_next"],
+    ["แนบไฟล์ยังไง", "how_attach"],
+  ];
+  for (const [said, want] of cases) assert.equal(matchIntent(said), want, said);
+  assert.equal(isAnnounceQuestion("ประกาศยังไงคะ"), true);
+  assert.equal(isAnnounceQuestion("ประกาศ ได้ไหม?"), true);
+  assert.equal(isAnnounceQuestion("ประกาศ บ่ายนี้ประชุม 14.00"), false);
+});
+
+test("ready answers end to end: no admin is bothered, the announce question posts nothing", async () => {
+  const db = seedQ();
+  const edit = await say(db, 506, "จะแก้เวลางานยังไงคะ");
+  assert.match(textTo(edit, 506), /รายการงาน/);
+  assert.equal(textTo(edit, 999), "");
+  const ann = await say(db, 506, "ประกาศยังไงคะ");
+  assert.match(textTo(ann, 506), /ประกาศ ข้อความ/);
+  assert.equal((db.tables.announcements ?? []).length, 0);
+  const team = await say(db, 506, "พรุ่งนี้ใครไปงานบ้าง");
+  assert.match(textTo(team, 506), /ถ่ายภาพพิธีเปิดงานกาชาด/);
+});

@@ -44,8 +44,10 @@ import { Q_TAG, answerQuestion, forwardQuestion, looksLikeQuestion } from "@/lib
 import { TRIAL_STEPS, markTrial, trialDone } from "@/lib/trial";
 import { JOKE_PROMPT, decideJoke, parseJokeCommand, submitJoke } from "@/lib/tv-jokes";
 import {
+  FAQ,
   HOW,
   IDEA_PROMPT,
+  isAnnounceQuestion,
   LOOK_PROMPT,
   didNotGetText,
   questionSentText,
@@ -185,6 +187,7 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
   if (pendingAssignment && !raw.startsWith("/")) return finishUnavailable(ctx, person, pendingAssignment, raw);
 
   const text = raw.replace(/^\/(help|menu)$/, "วิธีใช้").replace(/^\/my$/, "งานของฉัน").replace(/^\/today$/, "งานวันนี้");
+  if (isAnnounceQuestion(text)) return [{ text: FAQ.faq_announce, keyboard: KEYBOARD }];
   const announce = parseAnnounceCommand(text);
   if (announce !== null) {
     const res = await createAnnouncement(ctx.admin, { text: announce, personId: person.id, authorName: person.displayName, source: "telegram" });
@@ -285,6 +288,18 @@ async function chatReply(ctx: Ctx, person: LinePerson, chatId: number, text: str
       return [{ text: HOW[intent], keyboard: KEYBOARD }];
     case "what_can":
       return [{ text: whatCanText(title, mom), keyboard: KEYBOARD }];
+    case "faq_edit":
+    case "faq_ack":
+    case "faq_notify":
+    case "faq_nav":
+    case "faq_tv":
+    case "faq_line":
+    case "faq_mute":
+      return [{ text: FAQ[intent], keyboard: KEYBOARD }];
+    case "team_day": {
+      const d = /พรุ่งนี้/.test(text) ? addDays(today, 1) : today;
+      return [tgTeamDay(d === today ? "งานวันนี้" : "งานพรุ่งนี้", d, await loadTasks(ctx.admin, { from: d, to: d }))];
+    }
     case "look":
     case "idea": {
       const kind = intent === "look" ? "look_request" : "gag_idea";
