@@ -17,7 +17,18 @@ export function looksLikeQuestion(text: string): boolean {
   const t = text.replace(/[\s\p{Extended_Pictographic}️!.,~]/gu, "");
   if (t.length < 4 || LAUGH.test(t)) return false;
   const thai = (t.match(/[ก-ฮะ-ฺเ-ๅ]/g) ?? []).length;
-  return thai >= 4 || /[?？]$/.test(text.trim());
+  if (/[?？]/.test(text)) return true;
+  // 9 Nov 2026: chatter ("อากาศร้อน", "ยินดีกับ…") reached the admins — a question needs a question word.
+  return thai >= 4 && QUESTION_CUE.test(t);
+}
+
+/** Thai question words / asking for help / reporting a problem. */
+export const QUESTION_CUE =
+  /(ไหม|มั้ย|มั๊ย|ป่าว|เปล่า|ยังไง|ยังงัย|อย่างไร|ทำไง|ไง|ทำไม|เมื่อไร|เมื่อไหร่|ตอนไหน|ที่ไหน|ตรงไหน|ใคร|อะไร|กี่|หรือยัง|รึยัง|ช่วย|สอบถาม|ถามหน่อย|สงสัย|ไม่ได้|ไม่ขึ้น|ไม่เห็น|ไม่มา|ไม่ทำงาน|เสีย|ค้าง|error|ผิด|ปัญหา)/;
+
+export function isChatter(text: string): boolean {
+  const t = text.replace(/[\s\p{Extended_Pictographic}\uFE0F!.,~]/gu, "");
+  return (t.match(/[ก-ฮะ-ฺเ-ๅ]/g) ?? []).length >= 4 && !looksLikeQuestion(text);
 }
 
 const newCode = () => Array.from({ length: 5 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");

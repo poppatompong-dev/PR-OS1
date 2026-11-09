@@ -55,7 +55,7 @@ export type Intent =
   | "how_attach" | "how_avatar" | "how_unavailable" | "how_joke" | "how_add" | "what_can"
   | "look" | "idea" | "mom_on" | "mom_off"
   | "faq_edit" | "faq_ack" | "faq_notify" | "faq_nav" | "faq_tv" | "faq_line" | "faq_mute" | "team_day"
-  | "hello" | "thanks" | "tired" | "hungry" | "bored" | "praise" | "love";
+  | "hello" | "thanks" | "tired" | "hungry" | "bored" | "praise" | "love" | "weather" | "cheer";
 
 const norm = (s: string) => s.replace(/\s+/g, "").replace(/[?？!！.。~ๆ]+/g, "").toLowerCase();
 
@@ -65,7 +65,7 @@ export function matchIntent(raw: string): Intent | null {
   if (!t) return null;
   if (/^(ปิด|หยุด|เลิก)โหมดแม่/.test(t)) return "mom_off";
   if (/^(เปิด|ขอ)โหมดแม่/.test(t)) return "mom_on";
-  if (/^(ขอลุค|ขอฉายา|อยากได้ลุค|เปลี่ยนลุค)/.test(t)) return "look";
+  if (/^(ขอลุค|ขอฉายา|อยากได้ลุค|เปลี่ยนลุค)/.test(t) || /(เปลี่ยนฉายา|อยากได้ฉายา|ขอฉายา|อยากเปลี่ยนลุค|อยากได้ลุค|ขอลุค)/.test(t)) return "look";
   if (/^(ไอเดีย|เสนอแก็ก|ไอเดียแก็ก|อยากให้มีแก็ก|ขอแก็ก)/.test(t)) return "idea";
   if (/(เปลี่ยนรูป|รูปการ์ตูน|เปลี่ยนการ์ตูน|รูปบนจอ|รูปไม่สวย|ทำรูปใหม่)/.test(t)) return "how_avatar";
   if (/(แนบ(ไฟล์|รูป|เอกสาร|pdf)|ไฟล์แนบ|ส่งไฟล์|อัปโหลด|อัพโหลด)/.test(t)) return "how_attach";
@@ -93,6 +93,8 @@ export function matchIntent(raw: string): Intent | null {
   if (/(เหนื่อย|ง่วง|เพลีย|ล้า|หมดแรง|เครียด)/.test(t)) return "tired";
   if (/(หิว|กินอะไรดี|ข้าว)/.test(t)) return "hungry";
   if (/(เบื่อ|เซ็ง|ไม่มีอะไรทำ)/.test(t)) return "bored";
+  if (/(ยินดีด้วย|ยินดีกับ|ดีใจด้วย|congrat|ขอแสดงความยินดี)/.test(t)) return "cheer";
+  if (/(อากาศร้อน|ร้อนมาก|ร้อนจัง|ร้อนจุง|ฝนตก|ฝนจะตก|หนาวจัง|หนาวมาก|แดดแรง)/.test(t)) return "weather";
   if (/(เก่งมาก|เก่งจัง|น่ารัก|เจ๋ง|สุดยอด)/.test(t)) return "praise";
   if (/(รักบอท|ชอบบอท|รักนะ|คิดถึง)/.test(t)) return "love";
   if (/^(สวัสดี|หวัดดี|ดีจ้า|ดีค่ะ|ดีครับ|hello|hi|ฮัลโหล|อรุณสวัสดิ์|ทัก)/.test(t)) return "hello";
@@ -321,7 +323,7 @@ export function whatCanText(title: string, mom = false): string {
 
 const pick = <T,>(list: T[], seed = Date.now()) => list[Math.floor(seed / 1000) % list.length];
 
-export function smallTalk(intent: "hello" | "thanks" | "tired" | "hungry" | "bored" | "praise" | "love", title: string, seed = Date.now(), mom = false): string {
+export function smallTalk(intent: "hello" | "thanks" | "tired" | "hungry" | "bored" | "praise" | "love" | "weather" | "cheer", title: string, seed = Date.now(), mom = false): string {
   const w = esc(title);
   if (mom) {
     const M: Record<typeof intent, string[]> = {
@@ -332,6 +334,8 @@ export function smallTalk(intent: "hello" | "thanks" | "tired" | "hungry" | "bor
       bored: [`เบื่อเหรอลูก? ส่งมุกให้ตัวการ์ตูนเล่าบนทีวีเลยค่ะ พิมพ์ "มุก" 😂`, `มาค่ะ พิมพ์ "ขอลุค" ให้แม่แต่งตัวการ์ตูนให้ปังกว่าเดิม 💅`, `เล่าเรื่องฮา ๆ ในออฟฟิศให้แม่ฟังหน่อย พิมพ์ "ไอเดีย" แล้วเล่ามาเลยค่ะ 🎬`],
       praise: [`ตายแล้ว ชมแม่เหรอคะ เขินนน 🙈 ลูกก็ปังไม่แพ้กัน!`, `มงลงค่ะลูก 👑 ทีมเราเริ่ดที่สุด`],
       love: [`แม่ก็รักลูกนะคะ 💜`, `รักเหมือนกันค่ะลูก 🥰`],
+      weather: [`ดูแลตัวเองด้วยนะคะลูก ☀️ พกน้ำ พกร่ม ออกงานข้างนอกอย่าลืมทาครีมกันแดด`, `อากาศแบบนี้ต้องดื่มน้ำเยอะ ๆ ค่ะลูก 💧 สวยต้องไม่เป็นลม`],
+      cheer: [`ปังมากค่ะ 👏 อยากให้ทั้งทีมเห็นบนทีวี พิมพ์ <b>ประกาศ</b> นำหน้าข้อความเลยลูก`],
     };
     return pick(M[intent], seed);
   }
@@ -343,8 +347,17 @@ export function smallTalk(intent: "hello" | "thanks" | "tired" | "hungry" | "bor
     bored: [`เบื่อเหรอ ${w}? ลองส่งมุกให้ตัวการ์ตูนเล่าบนทีวีดูสิ 😂 พิมพ์ "มุก"`, `มาเล่นกัน! พิมพ์ "ขอลุค" ขอลุคพิเศษให้ตัวการ์ตูนของ${w}ได้นะ ✨`, `มีเรื่องขำในออฟฟิศอยากเห็นเป็นการ์ตูนมั้ย ${w}? พิมพ์ "ไอเดีย" แล้วเล่ามาเลย 🎬`],
     praise: [`เขินเลย 🙈 ${w} ก็เก่งไม่แพ้กัน!`, `ขอบคุณจ้า ${w} 😆 ทีมเราเก่งที่สุดอยู่แล้ว`],
     love: [`บอทก็ชอบ ${w} นะ 💜`, `รู้สึกเหมือนกันเลย ${w} 🥰`],
+    weather: [`ดูแลตัวเองด้วยนะ ${w} ☀️ ออกงานข้างนอกพกน้ำ พกร่ม กันแดดด้วย`, `ดื่มน้ำเยอะ ๆ นะ ${w} 💧 ถ่ายงานกลางแจ้งระวังกล้องร้อนด้วย`],
+    cheer: [`👏 ยินดีด้วย! อยากให้ทั้งทีมเห็นบนทีวี พิมพ์ <b>ประกาศ</b> นำหน้าข้อความได้เลย`],
   };
   return pick(L[intent], seed);
+}
+
+/** A Thai sentence that is not a question (owner, 9 Nov 2026: real chatter was going to the admins). */
+export function chatterText(title: string, mom = false): string {
+  return mom
+    ? `💜 แม่ฟังอยู่นะคะ${esc(title)} มีอะไรสงสัยพิมพ์ถามแม่ได้เลย · อยากให้ทั้งทีมเห็นบนทีวี พิมพ์ <b>ประกาศ</b> นำหน้าข้อความค่ะ`
+    : `😊 รับรู้แล้ว ${esc(title)} · มีคำถามพิมพ์ถามได้เลย · อยากให้ทั้งทีมเห็นบนทีวี พิมพ์ <b>ประกาศ</b> นำหน้าข้อความ`;
 }
 
 export function didNotGetText(title: string, mom = false): string {

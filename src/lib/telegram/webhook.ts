@@ -40,7 +40,7 @@ import {
   pulseNoteAdminText,
   pulseReply,
 } from "@/lib/telegram/pulse";
-import { Q_TAG, answerQuestion, forwardQuestion, looksLikeQuestion } from "@/lib/telegram/questions";
+import { Q_TAG, answerQuestion, forwardQuestion, isChatter, looksLikeQuestion } from "@/lib/telegram/questions";
 import { TRIAL_STEPS, markTrial, trialDone } from "@/lib/trial";
 import { JOKE_PROMPT, decideJoke, parseJokeCommand, submitJoke } from "@/lib/tv-jokes";
 import {
@@ -49,6 +49,7 @@ import {
   IDEA_PROMPT,
   isAnnounceQuestion,
   LOOK_PROMPT,
+  chatterText,
   didNotGetText,
   questionSentText,
   matchIntent,
@@ -242,6 +243,7 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
   const v = await voiceOf(ctx, person);
   // Not something the bot knows: a real question goes to the admins (6 Nov 2026).
   if (looksLikeQuestion(text) && (await forwardQuestion(ctx.admin, person, text)) > 0) return [{ text: questionSentText(v.title, v.mom), keyboard: KEYBOARD }];
+  if (isChatter(text)) return [{ text: chatterText(v.title, v.mom), keyboard: KEYBOARD }];
   return [{ text: didNotGetText(v.title, v.mom), keyboard: KEYBOARD }];
 }
 
@@ -303,7 +305,10 @@ async function chatReply(ctx: Ctx, person: LinePerson, chatId: number, text: str
     case "look":
     case "idea": {
       const kind = intent === "look" ? "look_request" : "gag_idea";
-      const rest = text.replace(/^\s*(ขอลุค|ขอฉายา|อยากได้ลุค|เปลี่ยนลุค|ไอเดียแก็ก|ไอเดีย|เสนอแก็ก|อยากให้มีแก็ก|ขอแก็ก)\s*[:：]?\s*/, "").trim();
+      const rest = text
+        .replace(/^\s*(ขอลุค|ขอฉายา|อยากได้ลุค|เปลี่ยนลุค|ไอเดียแก็ก|ไอเดีย|เสนอแก็ก|อยากให้มีแก็ก|ขอแก็ก)\s*[:：]?\s*/, "")
+        .replace(/^\s*(อยาก)?\s*(ขอ|เปลี่ยน|ได้|มี)?\s*(ลุค|ฉายา)(ใหม่)?\s*(ค่ะ|คะ|ครับ|คับ|จ้า|หน่อย|นะ)*\s*[:：]?\s*/, "")
+        .trim();
       if (rest.length >= 4) return [await forwardWish(ctx, person, kind, rest)];
       await setPendingAction(ctx.admin, stateKey(chatId), kind, 15);
       return [{ text: intent === "look" ? LOOK_PROMPT : IDEA_PROMPT }];

@@ -276,3 +276,19 @@ test("ready answers end to end: no admin is bothered, the announce question post
   const team = await say(db, 506, "พรุ่งนี้ใครไปงานบ้าง");
   assert.match(textTo(team, 506), /ถ่ายภาพพิธีเปิดงานกาชาด/);
 });
+
+// ---- 9 Nov 2026: real chatter reached the admins ------------------------------------
+test("real messages from 9 Nov: chatter gets a friendly reply, only questions go to the admins", async () => {
+  const db = seedQ();
+  for (const said of ["ขอเตือนให้พกสติดีกว่านะคะ เพราะกำหนดการหน้างานเปลี่ยนแปลงเสมอ5555", "อากาศร้อน", "ยินดีกับนักวิ่งอีลีทพี่แขที่ได้รับถ้วยรางวัลค่า"]) {
+    const sent = await say(db, 505, said);
+    assert.equal(textTo(sent, 999), "", said);
+    assert.equal(textTo(sent, 502), "", said);
+    assert.match(textTo(sent, 505), /ประกาศ|ดูแลตัวเอง|ดื่มน้ำ/, said);
+  }
+  const look = await say(db, 505, "อยากเปลี่ยนฉายา");
+  assert.match(textTo(look, 505), /ขอลุคพิเศษ/); // the prompt, waiting for details
+  assert.equal(textTo(look, 999), "");
+  const q = await say(db, 506, "งานกาชาดต้องแต่งชุดอะไรคะ");
+  assert.match(textTo(q, 999), /คำถามจาก แข/);
+});
