@@ -3,7 +3,9 @@
 #   python3 scripts/looks/mermaid.py <outdir>   → lookA/B/C.png (stand pose)
 import sys, math, colorsys
 from PIL import Image, ImageDraw, ImageFilter, ImageChops
-SRC='public/cast/00000000-0000-0000-0000-000000000504/'
+import numpy as np
+from scipy import ndimage
+SRC='scripts/looks/src/00000000-0000-0000-0000-000000000504/'
 LOOKS={
  'A':dict(name='ทะเลคราม', tail=((40,190,200),(20,90,160)), fin=(120,230,235), shirt=0.50),
  'B':dict(name='ปะการังชมพู', tail=((255,140,170),(200,60,120)), fin=(255,200,215), shirt=0.95),
@@ -12,8 +14,9 @@ LOOKS={
 WAIST=292
 def tint_shirt(im, hue):
     px=im.load(); w,h=im.size
-    for y in range(195, WAIST+4):
+    for y in range(90, WAIST+4):   # from 90: a raised sleeve (up / wave) sits above the shoulders
         for x in range(w):
+            if y<195 and 70<=x<=145: continue   # the face column stays as is
             r,g,b,a=px[x,y]
             if a<40: continue
             hh,l,s=colorsys.rgb_to_hls(r/255,g/255,b/255)
@@ -30,6 +33,8 @@ def tail_shape(pose_dx=0):
         half=42*(1-t)**0.8+7
         cx=115+math.sin(t*math.pi*0.9)*14+pose_dx*t
         L.append((cx-half,y)); R.append((cx+half,y))
+    # tuck the top under the shirt so no gap shows at the waist
+    top=WAIST-12; L.insert(0,(L[0][0],top)); R.insert(0,(R[0][0],top))
     return L,R
 def draw_look(key, pose='stand'):
     lk=LOOKS[key]
@@ -37,6 +42,13 @@ def draw_look(key, pose='stand'):
     top=base.crop((0,0,230,WAIST+6))
     hue=colorsys.rgb_to_hls(*[c/255 for c in lk['tail'][0]])[0]
     top=tint_shirt(top.copy(), hue)
+    # The old sticker outline ran on down the legs; cut at the waist it leaves a straight
+    # white strip. Clear pure white (not the cream gloves) in that band; a fresh ring follows.
+    tp=top.load()
+    for y in range(WAIST-16, WAIST+6):
+        for x in range(top.size[0]):
+            r,g,b,a=tp[x,y]
+            if a and (a<200 or (min(r,g,b)>215 and max(r,g,b)-min(r,g,b)<18)): tp[x,y]=(0,0,0,0)
     W,H=230,410
     layer=Image.new('RGBA',(W,H),(0,0,0,0))
     L,R=tail_shape()
@@ -80,8 +92,15 @@ def draw_look(key, pose='stand'):
     layer.alpha_composite(fin)
     out=Image.new('RGBA',(W,H),(0,0,0,0))
     out.alpha_composite(layer); out.alpha_composite(top,(0,0))
-    # sticker outline like the other sprites
+    # drop loose crumbs (bits of the old outline) before outlining again
     a=out.split()[3].point(lambda v:255 if v>60 else 0)
+    lab,n=ndimage.label(np.array(a)>0)
+    if n>1:
+        sizes=ndimage.sum(np.ones_like(lab),lab,range(1,n+1))
+        keep=np.isin(lab,[i+1 for i,z in enumerate(sizes) if z>=150])
+        arr=np.array(out); arr[~keep]=0; out=Image.fromarray(arr,'RGBA')
+        a=out.split()[3].point(lambda v:255 if v>60 else 0)
+    # sticker outline like the other sprites
     ring=a.filter(ImageFilter.MaxFilter(7))
     border=Image.new('RGBA',(W,H),(255,255,255,255)); border.putalpha(ring)
     final=Image.new('RGBA',(W,H),(0,0,0,0)); final.alpha_composite(border); final.alpha_composite(out)

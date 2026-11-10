@@ -4,7 +4,7 @@
 import sys, colorsys
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-SRC = 'public/cast/00000000-0000-0000-0000-000000000506/'
+SRC = 'scripts/looks/src/00000000-0000-0000-0000-000000000506/'
 FONT = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
 LOOKS = {
     'A': dict(name='มาราธอน', shirt=(0.07, 0.95), pants=(0.0, 0.0, 0.18), shoes=(0.25, 0.95)),
@@ -14,17 +14,17 @@ LOOKS = {
 
 def recolor(im, look):
     px = im.load(); w, h = im.size
-    for y in range(195, h):
+    for y in range(90, h):   # 90: a raised sleeve (up / wave) sits above the shoulders
         for x in range(w):
             r, g, b, a = px[x, y]
             if a < 40: continue
             hh, l, s = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
             new = None
-            if y < 300 and 0.66 < hh < 0.86 and s > 0.2:            # lavender shirt + sleeves
+            if y < 300 and 0.66 < hh < 0.86 and s > 0.2 and (y >= 195 or s > 0.25):            # lavender shirt + sleeves
                 H, S = look['shirt']; new = colorsys.hls_to_rgb(H, min(0.85, l * 0.95), S)
             elif 288 <= y < 356 and s < 0.15 and 0.2 < l < 0.8:      # grey pants
                 H, S, L = look['pants']; new = colorsys.hls_to_rgb(H, max(0.05, min(0.95, L + (l - 0.5) * 0.5)), S)
-            elif y >= 350 and 0.02 < hh < 0.14 and l < 0.6:           # brown shoes
+            elif y >= 318 and 0.02 < hh < 0.14 and l < 0.6:           # brown shoes (a lifted back foot sits higher)
                 H, S = look['shoes']; new = colorsys.hls_to_rgb(H, 0.5 + (l - 0.35) * 0.6 if S else min(0.97, l + 0.45), S)
             if new: px[x, y] = (int(new[0] * 255), int(new[1] * 255), int(new[2] * 255), a)
     return im
