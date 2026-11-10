@@ -97,7 +97,7 @@ export async function decideJoke(admin: SupabaseClient, jokeId: string, ok: bool
   return { toast: ok ? "✅ ขึ้นจอแล้ว" : "❌ ไม่ใช้มุกนี้", done: `${ok ? "✅ ขึ้นจอแล้ว" : "❌ ไม่ใช้"} · ${esc(text)}` };
 }
 
-export type TvJoke = { id: string; personId: string; name: string; setup: string; punch: string };
+export type TvJoke = { id: string; personId: string; name: string; setup: string; punch: string; at?: string };
 
 /** Approved jokes of the last JOKE_DAYS days, newest first (public TV feed). */
 export async function loadApprovedJokes(admin: SupabaseClient, now = new Date()): Promise<TvJoke[]> {
@@ -108,8 +108,8 @@ export async function loadApprovedJokes(admin: SupabaseClient, now = new Date())
   const { data: rows } = await admin.from("audit_logs").select("id, entity_id, new_values, changed_at").in("id", ids).eq("action", "tv_joke").order("changed_at", { ascending: false });
   const people = await getPeopleByIds(admin, [...new Set((rows ?? []).map((r: { entity_id: string }) => r.entity_id))]);
   const nameOf = new Map(people.map((p) => [p.id, nickname(p.id, p.displayName)]));
-  return (rows ?? []).map((r: { id: string; entity_id: string; new_values: { text?: string } }) => {
+  return (rows ?? []).map((r: { id: string; entity_id: string; new_values: { text?: string }; changed_at?: string }) => {
     const { setup, punch } = splitJoke(String(r.new_values?.text ?? ""));
-    return { id: r.id, personId: r.entity_id, name: nameOf.get(r.entity_id) ?? "ทีม ปชส.", setup, punch };
+    return { id: r.id, personId: r.entity_id, name: nameOf.get(r.entity_id) ?? "ทีม ปชส.", setup, punch, at: r.changed_at };
   }).filter((j) => j.punch);
 }

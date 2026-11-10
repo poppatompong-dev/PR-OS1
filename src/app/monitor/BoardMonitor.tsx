@@ -25,7 +25,7 @@ import { birthdayToday } from "@/lib/monitor/birthday";
 import { WelcomeBanner, WelcomeShow } from "./TvWelcome";
 import { WELCOME_CYCLE_MS, WELCOME_DEFAULT_VARIANT, WELCOME_LABELS, WELCOME_ROLE, WELCOME_WARM, asWelcomeVariant, welcomeToday, type WelcomeVariant } from "@/lib/monitor/welcome";
 import { nickname } from "@/lib/monitor/nicknames";
-import { contestChip, type ContestState } from "@/lib/monitor/contest";
+import { contestChip, contestTickerLines, type ContestState } from "@/lib/monitor/contest";
 import { SHOWCASE_DEFAULT_LOOK, TvShowcase, type ShowcaseLook } from "./TvShowcase";
 import type { ShowcaseItem } from "@/lib/monitor/showcase";
 import { FestivalLayer, FestivalStage } from "./FestivalLayer";
@@ -106,11 +106,15 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
 
   // ประกวดมุก chip (owner, 10 Nov 2026): days left + jokes in, from /api/monitor/jokes.
   const [contest, setContest] = useState<ContestState>(null);
+  const [contestJokes, setContestJokes] = useState<string[]>([]);
   useEffect(() => {
     const load = () =>
       fetch("/api/monitor/jokes")
         .then((r) => (r.ok ? r.json() : null))
-        .then((j: { contest?: ContestState } | null) => setContest(j?.contest ?? null))
+        .then((j: { contest?: ContestState; jokes?: Array<{ name: string; setup: string; punch: string; at?: string }> } | null) => {
+          setContest(j?.contest ?? null);
+          setContestJokes(contestTickerLines(j?.jokes ?? []));
+        })
         .catch(() => undefined);
     load();
     const id = window.setInterval(load, 10 * 60_000);
@@ -178,8 +182,8 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
     const changed = events
       .filter((e) => e.status !== "canceled" && e.hasChanges)
       .map((e) => `🔄 เปลี่ยนแปลง ${whenLabel(e.eventDate, e.startTime, today)} ${screenTitle(e)} — ตรวจสอบก่อนออกงาน`);
-    return [...said, ...canceled, ...changed, ...world];
-  }, [events, notes, today, world]);
+    return [...said, ...canceled, ...changed, ...contestJokes, ...world];
+  }, [events, notes, today, world, contestJokes]);
 
   const link = (e: MonitorEvent) => (linkable ? openProps(e.id, e.title) : {});
   const personIdOf = (p: MonitorAssignee) => p.personId ?? team.ids[p.name];

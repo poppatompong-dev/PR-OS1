@@ -30,3 +30,11 @@ export function contestChip(s: ContestState): string | null {
   const left = s.daysLeft === 0 ? "วันสุดท้าย! ถึง 16.00 น." : `เหลือ ${s.daysLeft} วัน`;
   return `🎤 ประกวดมุก ${left} · ส่งแล้ว ${s.submitted} มุก`;
 }
+
+/** Approved contest jokes as ticker lines (owner, 10 Nov 2026: text first, the gag scene later). */
+export function contestTickerLines(jokes: Array<{ name: string; setup: string; punch: string; at?: string }>): string[] {
+  const from = Date.parse(CONTEST.start), to = Date.parse(CONTEST.end);
+  return jokes
+    .filter((j) => j.at && Date.parse(j.at) >= from && Date.parse(j.at) <= to)
+    .map((j) => `😂 มุกประกวดจาก ${j.name}: ${j.setup ? `${j.setup} → ` : ""}${j.punch}`);
+}
