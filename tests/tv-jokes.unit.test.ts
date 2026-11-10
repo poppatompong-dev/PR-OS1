@@ -19,4 +19,8 @@ test("joke: tidy, length cap, no links, setup | punchline", () => {
   assert.ok(c.ok);
   assert.deepEqual(splitJoke(c.ok ? c.text : ""), { setup: "ทำไม Wi-Fi เร็ว", punch: "เร็วที่จะหลุด" });
   assert.deepEqual(splitJoke("มุกเดียวจบ"), { setup: "", punch: "มุกเดียวจบ" });
+  assert.deepEqual(
+    splitJoke("ตัวละครยืนคุยกัน คำถาม : จุดแข็งของคุณคืออะไร คำตอบ : คอ บ่า ไหล่ คำถาม : แล้วจุดอ่อน คำตอบ : ปัญญา.. อิอิ"),
+    { setup: "จุดแข็งของคุณคืออะไร → คอ บ่า ไหล่ แล้วจุดอ่อน", punch: "ปัญญา.. อิอิ" },
+  );
 });

@@ -30,6 +30,14 @@ export function cleanJoke(raw: string): { ok: true; text: string } | { ok: false
 }
 
 export function splitJoke(text: string): { setup: string; punch: string } {
+  // "คำถาม : … คำตอบ : …" (นัท, 10 Nov 2026): the last answer is the punch line,
+  // the turns before it the setup; a stage note before the first คำถาม is dropped.
+  const turns = [...text.matchAll(/(คำถาม|คำตอบ|ถาม|ตอบ)\s*[:：]\s*([\s\S]*?)(?=\s*(?:คำถาม|คำตอบ|ถาม|ตอบ)\s*[:：]|$)/g)].map((m) => ({ q: !m[1].endsWith("ตอบ"), t: m[2].trim() })).filter((x) => x.t);
+  if (turns.length >= 2 && !turns[turns.length - 1].q) {
+    const punch = turns[turns.length - 1].t;
+    const setup = turns.slice(0, -1).map((x) => (x.q ? x.t : `→ ${x.t}`)).join(" ");
+    return { setup, punch };
+  }
   const parts = text.split(/\s*[|\n]\s*/).filter(Boolean);
   if (parts.length >= 2) return { setup: parts[0], punch: parts.slice(1).join(" ") };
   return { setup: "", punch: text };
