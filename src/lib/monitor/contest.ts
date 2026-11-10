@@ -28,5 +28,5 @@ export function contestChip(s: ContestState): string | null {
   if (!s) return null;
   if (s.phase === "judging") return `🎤 ปิดรับมุกแล้ว ${s.submitted} มุก · รอพี่เอิร์ธประกาศผล 🏆`;
   const left = s.daysLeft === 0 ? "วันสุดท้าย! ถึง 16.00 น." : `เหลือ ${s.daysLeft} วัน`;
-  return `🎤 ประกวดมุก ${left} · ส่งแล้ว ${s.submitted} มุก · พิมพ์ "มุก" ในบอท`;
+  return `🎤 ประกวดมุก ${left} · ส่งแล้ว ${s.submitted} มุก`;
 }

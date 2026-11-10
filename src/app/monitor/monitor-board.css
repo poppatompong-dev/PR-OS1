@@ -489,4 +489,4 @@
 .bm-sc--3 .bm-sc-track img.is-on { opacity: 1; box-shadow: inset 0 0 0 calc(3 * var(--u)) var(--hm-accent); }
 .bm-sc--3 .bm-sc-cap { animation: bm-sc-in .7s ease both; }
 /* ประกวดมุก chip (10 Nov 2026) */
-.bm-contest-chip { display: table; margin-top: calc(6 * var(--u)); background: linear-gradient(90deg, rgba(255, 111, 181, .25), rgba(255, 211, 107, .25)); border-color: #ffd36b; white-space: nowrap; }
+.bm-contest-chip { display: table; margin-top: calc(6 * var(--u)); background: linear-gradient(90deg, rgba(255, 111, 181, .25), rgba(255, 211, 107, .25)); border-color: #ffd36b; max-width: calc(460 * var(--u)); }
