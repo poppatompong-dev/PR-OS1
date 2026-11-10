@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 import type { ShowcaseItem } from "@/lib/monitor/showcase";
 
 export type BoardRequest = { id: string; name: string; kind: "look_request" | "gag_idea"; topic: string; status: "received" | "doing" | "choose" | "done"; image: string | null; avatar: string };
-const REQ_LABEL: Record<BoardRequest["status"], string> = { received: "📥 รับแล้ว", doing: "🛠 กำลังทำ", choose: "🎨 รอเลือก", done: "✅ เสร็จแล้ว" };
+const REQ_LABEL: Record<BoardRequest["status"], string> = { received: "📥 รับแล้ว", doing: "🛠 กำลังทำ", choose: "🎨 รอเลือก", done: "✅ เสร็จ" };
 
 type Slide = { t: "news" | "req"; k: number };
 /** News with a request after every second post; leftover requests at the end. */
@@ -72,10 +72,9 @@ export function TvShowcase({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className={`bm-rq-img${r.image ? " is-pic" : ""}`} src={r.image ?? r.avatar} alt="" />
         <div className="bm-sc-cap">
-          <small>🛠 คำขอจากทีม · {r.kind === "look_request" ? "ลุคพิเศษ" : "ไอเดียแก็ก"}</small>
-          <b>
-            {r.name} · {short(r.topic, 30)}
-          </b>
+          <small>🛠 คำขอจากทีม</small>
+          <b>{r.name}</b>
+          <em>{short(r.topic, 30)}</em>
           <span className={`bm-rq-pill is-${r.status}`}>{REQ_LABEL[r.status]}</span>
         </div>
       </div>

@@ -488,13 +488,15 @@
 .bm-sc--3 .bm-sc-track img { flex: none; width: calc(128 * var(--u)); height: 100%; object-fit: cover; border-radius: calc(10 * var(--u)); opacity: .5; transition: opacity .6s; }
 .bm-sc--3 .bm-sc-track img.is-on { opacity: 1; box-shadow: inset 0 0 0 calc(3 * var(--u)) var(--hm-accent); }
 .bm-sc--3 .bm-sc-cap { animation: bm-sc-in .7s ease both; }
-/* คำขอจากทีม card in the showcase box (10 Nov 2026) */
+/* คำขอจากทีม card in the showcase box (10 Nov 2026); must fit a one-cell box too */
 .bm-sc--rq { flex-direction: row; align-items: center; }
 .bm-rq-img { flex: none; height: calc(100% - 16 * var(--u)); aspect-ratio: 1; margin-left: calc(8 * var(--u)); object-fit: contain; border-radius: calc(12 * var(--u)); background: rgba(127, 127, 127, .12); }
-.bm-rq-img.is-pic { aspect-ratio: 4 / 3; object-fit: cover; }
-.bm-sc--rq .bm-sc-cap { gap: calc(3 * var(--u)); padding-top: calc(4 * var(--u)); padding-bottom: calc(4 * var(--u)); }
-.bm-sc--rq .bm-sc-cap b { -webkit-line-clamp: 1; max-height: 1.35em; white-space: nowrap; text-overflow: ellipsis; display: block; }
-.bm-rq-pill { align-self: flex-start; font-size: calc(18 * var(--u)); font-weight: 700; padding: calc(2 * var(--u)) calc(12 * var(--u)); border-radius: 999px; background: rgba(127, 127, 127, .2); color: var(--hm-text); }
+.bm-rq-img.is-pic { aspect-ratio: 3 / 4; object-fit: cover; object-position: 3% 50%; }
+.bm-sc--rq .bm-sc-cap { gap: calc(2 * var(--u)); padding: calc(4 * var(--u)) calc(12 * var(--u)); }
+.bm-sc--rq .bm-sc-cap small { font-size: calc(15 * var(--u)); }
+.bm-sc--rq .bm-sc-cap b { display: block; -webkit-line-clamp: unset; max-height: none; font-size: calc(24 * var(--u)); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bm-sc--rq .bm-sc-cap em { font-style: normal; font-size: calc(17 * var(--u)); line-height: 1.3; color: var(--hm-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bm-rq-pill { align-self: flex-start; white-space: nowrap; font-size: calc(16 * var(--u)); font-weight: 700; padding: calc(1 * var(--u)) calc(10 * var(--u)); border-radius: 999px; background: rgba(127, 127, 127, .2); color: var(--hm-text); }
 .bm-rq-pill.is-doing { background: #ffb74d; color: #3a2200; }
 .bm-rq-pill.is-choose { background: #f48fb1; color: #3d0a1e; animation: bm-rq-pulse 1.6s ease-in-out infinite; }
 .bm-rq-pill.is-done { background: #66bb6a; color: #08260b; }
