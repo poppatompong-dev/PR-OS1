@@ -43,6 +43,7 @@ import {
 import { Q_TAG, answerQuestion, forwardQuestion, isChatter, looksLikeQuestion } from "@/lib/telegram/questions";
 import { TRIAL_STEPS, markTrial, trialDone } from "@/lib/trial";
 import { JOKE_PROMPT, decideJoke, parseJokeCommand, submitJoke } from "@/lib/tv-jokes";
+import { REQ_STATUSES, REQ_STATUS_ICON, REQ_STATUS_TH, isAdminOf, setRequestStatus, tellAdminsRequest } from "@/lib/team-requests";
 import {
   FAQ,
   HOW,
@@ -348,24 +349,30 @@ async function forwardWish(ctx: Ctx, person: LinePerson, kind: "look_request" | 
   const textIn = raw.trim().slice(0, 500);
   if (textIn.length < 4) return { text: "สั้นไปนิด เล่าเพิ่มอีกหน่อยได้ไหม 🙂" };
   const { title, mom } = await voiceOf(ctx, person);
-  await ctx.admin.from("audit_logs").insert({
-    entity_type: "person",
-    entity_id: person.id,
-    action: kind,
-    changed_by: null,
-    summary: kind === "look_request" ? "ขอลุคพิเศษตัวการ์ตูน (Telegram)" : "เสนอไอเดียแก็กการ์ตูน (Telegram)",
-    new_values: { text: textIn, via: "telegram" },
-  });
-  await tellAdminsByTelegram(
+  const { data: row } = await ctx.admin
+    .from("audit_logs")
+    .insert({
+      entity_type: "person",
+      entity_id: person.id,
+      action: kind,
+      changed_by: null,
+      summary: kind === "look_request" ? "ขอลุคพิเศษตัวการ์ตูน (Telegram)" : "เสนอไอเดียแก็กการ์ตูน (Telegram)",
+      new_values: { text: textIn, via: "telegram" },
+    })
+    .select("id")
+    .single();
+  // คำขอจากทีม: admins move it along with the buttons; the TV board follows.
+  await tellAdminsRequest(
     ctx.admin,
-    `${kind === "look_request" ? "✨ <b>ขอลุคพิเศษ</b>" : "🎬 <b>ไอเดียแก็ก</b>"} จาก ${esc(titleFor(person.id, person.displayName))}\n\n${esc(textIn)}`,
+    `${kind === "look_request" ? "✨ <b>ขอลุคพิเศษ</b>" : "🎬 <b>ไอเดียแก็ก</b>"} จาก ${esc(titleFor(person.id, person.displayName))}\n\n${esc(textIn)}\n\n<i>📺 ขึ้นกระดาน "คำขอจากทีม" บนทีวีแล้ว · กดปุ่มเปลี่ยนสถานะ (รอเลือก/เสร็จ แจ้งน้องส่วนตัวให้)</i>`,
+    (row as { id: string } | null)?.id ?? null,
   );
   return {
     text:
       kind === "look_request"
         ? mom
-          ? `💌 ส่งคำขอลุคถึงแอดมินแล้วค่ะ${esc(title)} เดี๋ยวได้ตัวอย่างให้เลือกก่อนขึ้นจอนะคะ 💅`
-          : `💌 ส่งคำขอลุคถึงแอดมินแล้ว ${esc(title)} · จะได้ตัวอย่างให้เลือกก่อนขึ้นจอนะ`
+          ? `💌 ส่งคำขอลุคถึงแอดมินแล้วค่ะ${esc(title)} เดี๋ยวได้ตัวอย่างให้เลือกก่อนขึ้นจอนะคะ 💅\n📺 ติดตามสถานะได้บนทีวี "คำขอจากทีม"`
+          : `💌 ส่งคำขอลุคถึงแอดมินแล้ว ${esc(title)} · จะได้ตัวอย่างให้เลือกก่อนขึ้นจอนะ\n📺 ติดตามสถานะได้บนทีวี "คำขอจากทีม"`
         : mom
           ? `🎬 ปังมากลูก! ได้ไอเดียแล้วค่ะ ถ้าได้ทำเป็นฉาก จะขึ้นชื่อ${esc(title)}บนจอด้วย ✨`
           : `🎬 ได้ไอเดียแล้ว ขอบคุณ ${esc(title)}! ถ้าได้ทำเป็นฉาก จะขึ้นชื่อคนคิดบนจอด้วย`,
@@ -533,6 +540,15 @@ async function handleCallback(ctx: Ctx, q: NonNullable<TgUpdate["callback_query"
     const r = await decideJoke(ctx.admin, p.id, p.v === "1", person);
     await answerCallback(q.id, r.toast);
     if (r.done && messageId) await editTelegram(chatId, messageId, { text: r.done });
+    return;
+  }
+
+  if (p.a === "rq" && p.id) {
+    const status = REQ_STATUSES[Number(p.v)];
+    if (!status || !(await isAdminOf(ctx.admin, person.id))) return void (await answerCallback(q.id, "เฉพาะแอดมินครับ"));
+    const r = await setRequestStatus(ctx.admin, { requestId: p.id, status, by: person.id, base: appUrl("/") });
+    await answerCallback(q.id, r.ok ? `${REQ_STATUS_ICON[status]} ${REQ_STATUS_TH[status]}${r.notified ? " · แจ้งน้องแล้ว" : ""}` : (r.error ?? "ทำไม่สำเร็จ"));
+    if (r.ok) await tellAdminsByTelegram(ctx.admin, `${REQ_STATUS_ICON[status]} ${esc(titleFor(person.id, person.displayName))} ตั้งคำขอเป็น "${REQ_STATUS_TH[status]}"${r.notified ? " · แจ้งเจ้าของคำขอแล้ว" : ""}`);
     return;
   }
 

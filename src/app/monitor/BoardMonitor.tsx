@@ -26,7 +26,7 @@ import { WelcomeBanner, WelcomeShow } from "./TvWelcome";
 import { WELCOME_CYCLE_MS, WELCOME_DEFAULT_VARIANT, WELCOME_LABELS, WELCOME_ROLE, WELCOME_WARM, asWelcomeVariant, welcomeToday, type WelcomeVariant } from "@/lib/monitor/welcome";
 import { nickname } from "@/lib/monitor/nicknames";
 import { contestChip, contestTickerLines, type ContestState } from "@/lib/monitor/contest";
-import { SHOWCASE_DEFAULT_LOOK, TvShowcase, type ShowcaseLook } from "./TvShowcase";
+import { SHOWCASE_DEFAULT_LOOK, TvShowcase, type BoardRequest, type ShowcaseLook } from "./TvShowcase";
 import type { ShowcaseItem } from "@/lib/monitor/showcase";
 import { FestivalLayer, FestivalStage } from "./FestivalLayer";
 import { festivalFor, isFestivalKey, previewFestival } from "@/lib/monitor/festivals";
@@ -135,6 +135,18 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
         .catch(() => undefined);
     loadShowcase();
     const id = window.setInterval(loadShowcase, 15 * 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  // คำขอจากทีม (10 Nov 2026): take turns with the news in the same box.
+  const [teamRequests, setTeamRequests] = useState<BoardRequest[]>([]);
+  useEffect(() => {
+    const loadRequests = () =>
+      fetch("/api/monitor/requests")
+        .then((r) => (r.ok ? r.json() : { items: [] }))
+        .then((j: { items?: BoardRequest[] }) => setTeamRequests(Array.isArray(j.items) ? j.items : []))
+        .catch(() => undefined);
+    loadRequests();
+    const id = window.setInterval(loadRequests, 5 * 60_000);
     return () => window.clearInterval(id);
   }, []);
 
@@ -400,9 +412,10 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
           );
         })}
         {board && board.cells.length < 6 ? (
-          <div className={`bm-cell bm-cell-rest${showcaseItems.length ? " has-sc" : ""}`} style={{ gridColumn: `span ${6 - board.cells.length}` }}>
+          <div className={`bm-cell bm-cell-rest${showcaseItems.length || teamRequests.length ? " has-sc" : ""}`} style={{ gridColumn: `span ${6 - board.cells.length}` }}>
             <TvShowcase
               items={showcaseItems}
+              requests={teamRequests}
               look={scLook}
               still={staticMode}
               fallback={`✨ ${board.cells.length || board.dayRows.length ? "หลังจากนี้ยังว่าง" : "ยังไม่มีงานข้างหน้า"} · งานใหม่ขึ้นทันทีที่เผยแพร่`}

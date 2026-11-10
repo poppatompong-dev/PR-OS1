@@ -814,3 +814,52 @@ export async function reloadTv() {
     .upsert({ key: "tv_reload_at", value: new Date().toISOString(), description: "ปุ่มสั่งรีเฟรชทีวี (หน้าตั้งค่า)", updated_at: new Date().toISOString(), updated_by: user.id });
   done(error ? `สั่งรีเฟรชไม่สำเร็จ: ${error.message}` : undefined, error ? undefined : "สั่งรีเฟรชทีวีแล้ว — ทีวีจะโหลดใหม่ภายใน 1 นาที");
 }
+
+/** คำขอจากทีม: move a request along (รอเลือก / เสร็จ tell the person privately, 07–21 น. only). */
+export async function setTeamRequestStatus(formData: FormData) {
+  await blockWritesInDemoMode();
+  const { user } = await requireAdmin();
+  const { asReqStatus, setRequestStatus, REQ_STATUS_TH } = await import("@/lib/team-requests");
+  const status = asReqStatus(formData.get("status"));
+  const requestId = String(formData.get("requestId") ?? "");
+  if (!status || !requestId) done("เลือกสถานะก่อน");
+  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
+  const quiet = hour >= 21 || hour < 7;
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const r = await setRequestStatus(createAdminClient(), {
+    requestId,
+    status,
+    by: user.id,
+    topic: String(formData.get("topic") ?? ""),
+    image: String(formData.get("image") ?? ""),
+    note: String(formData.get("note") ?? ""),
+    notify: formData.get("notify") === "on" && !quiet,
+    base: env.appBaseUrl,
+  });
+  if (!r.ok) done(r.error ?? "บันทึกไม่สำเร็จ");
+  revalidatePath("/settings");
+  done(undefined, `คำขอ → ${REQ_STATUS_TH[status]}${r.notified ? " · แจ้งเจ้าของคำขอทาง Telegram แล้ว" : quiet && formData.get("notify") === "on" ? " · ไม่แจ้งช่วง 21:00–07:00" : ""}`);
+}
+
+/** คำขอจากทีม that came in person: logged for that person so it shows on the TV board. */
+export async function addTeamRequest(formData: FormData) {
+  await blockWritesInDemoMode();
+  const { user } = await requireAdmin();
+  const { addRequestFor, asReqStatus, setRequestStatus } = await import("@/lib/team-requests");
+  const personId = String(formData.get("personId") ?? "");
+  const kind = formData.get("kind") === "gag_idea" ? "gag_idea" : "look_request";
+  const text = String(formData.get("text") ?? "");
+  if (!personId || text.trim().length < 2) done("เลือกคนและพิมพ์เรื่องที่ขอ");
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const admin = createAdminClient();
+  const id = await addRequestFor(admin, personId, kind, text, user.id);
+  if (!id) done("บันทึกไม่สำเร็จ");
+  const status = asReqStatus(formData.get("status"));
+  const topic = String(formData.get("topic") ?? "");
+  const image = String(formData.get("image") ?? "");
+  if ((status && status !== "received") || topic.trim() || image.trim()) {
+    await setRequestStatus(admin, { requestId: id, status: status ?? "received", by: user.id, topic, image, notify: false, base: env.appBaseUrl });
+  }
+  revalidatePath("/settings");
+  done(undefined, "เพิ่มคำขอแล้ว · ขึ้นกระดานบนทีวีภายใน 5 นาที");
+}

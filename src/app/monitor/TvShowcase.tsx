@@ -5,9 +5,27 @@
 // time (~12 s each). Data: /api/monitor/showcase (Facebook, website as fallback).
 // Three looks while the owner picks (?sc=1|2|3): 1 รูป+หัวข้อ · 2 รูปเต็มกล่อง ·
 // 3 ฟิล์มสตริป. No posts → the plain "ยังว่าง" line.
+// คำขอจากทีม (owner, 10 Nov 2026) take turns with the news: one card per request
+// (picture · ชื่อเล่น · เรื่อง · สถานะ), data from /api/monitor/requests.
 
 import { useEffect, useState } from "react";
 import type { ShowcaseItem } from "@/lib/monitor/showcase";
+
+export type BoardRequest = { id: string; name: string; kind: "look_request" | "gag_idea"; topic: string; status: "received" | "doing" | "choose" | "done"; image: string | null; avatar: string };
+const REQ_LABEL: Record<BoardRequest["status"], string> = { received: "📥 รับแล้ว", doing: "🛠 กำลังทำ", choose: "🎨 รอเลือก", done: "✅ เสร็จแล้ว" };
+
+type Slide = { t: "news" | "req"; k: number };
+/** News with a request after every second post; leftover requests at the end. */
+export function buildSlides(news: number, reqs: number): Slide[] {
+  const out: Slide[] = [];
+  let j = 0;
+  for (let k = 0; k < news; k++) {
+    out.push({ t: "news", k });
+    if (k % 2 === 1 && j < reqs) out.push({ t: "req", k: j++ });
+  }
+  while (j < reqs) out.push({ t: "req", k: j++ });
+  return out;
+}
 
 export type ShowcaseLook = 1 | 2 | 3;
 export const SHOWCASE_DEFAULT_LOOK: ShowcaseLook = 3; // owner + team picked ฟิล์มสตริป (6 Nov 2026)
@@ -22,17 +40,49 @@ const thaiDay = (iso: string) => {
 const short = (t: string, max: number) => (t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t);
 const srcLabel = (s: ShowcaseItem["source"]) => (s === "facebook" ? "เพจเทศบาล" : "ข่าว ปชส. nsm.go.th");
 
-export function TvShowcase({ items, look, still, fallback }: { items: ShowcaseItem[]; look: ShowcaseLook; still: boolean; fallback: string }) {
-  const [i, setI] = useState(0);
+export function TvShowcase({
+  items,
+  requests = [],
+  look,
+  still,
+  fallback,
+}: {
+  items: ShowcaseItem[];
+  requests?: BoardRequest[];
+  look: ShowcaseLook;
+  still: boolean;
+  fallback: string;
+}) {
+  const [n, setN] = useState(0);
+  const slides = buildSlides(items.length, requests.length);
+  const count = slides.length;
   useEffect(() => {
-    setI(0);
-    if (still || items.length < 2) return;
-    const t = setInterval(() => setI((n) => (n + 1) % items.length), EVERY_MS);
+    setN(0);
+    if (still || count < 2) return;
+    const t = setInterval(() => setN((x) => (x + 1) % count), EVERY_MS);
     return () => clearInterval(t);
-  }, [items, still]);
+  }, [items, requests, still, count]);
 
-  if (!items.length) return <span className="bm-sc-none">{fallback}</span>;
-  const it = items[i % items.length];
+  if (!count) return <span className="bm-sc-none">{fallback}</span>;
+  const slide = slides[n % count];
+  if (slide.t === "req") {
+    const r = requests[slide.k];
+    return (
+      <div className="bm-sc bm-sc--rq" key={`rq-${r.id}-${n}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className={`bm-rq-img${r.image ? " is-pic" : ""}`} src={r.image ?? r.avatar} alt="" />
+        <div className="bm-sc-cap">
+          <small>🛠 คำขอจากทีม · {r.kind === "look_request" ? "ลุคพิเศษ" : "ไอเดียแก็ก"}</small>
+          <b>
+            {r.name} · {short(r.topic, 30)}
+          </b>
+          <span className={`bm-rq-pill is-${r.status}`}>{REQ_LABEL[r.status]}</span>
+        </div>
+      </div>
+    );
+  }
+  const i = slide.k;
+  const it = items[i];
 
   if (look === 3) {
     return (

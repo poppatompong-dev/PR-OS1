@@ -1,10 +1,12 @@
 import { AppShell } from "@/components/AppShell";
 import { QuotaBar } from "@/components/QuotaBar";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { getAvatarOffIds } from "@/lib/avatar-choice";
 import { getSessionUser } from "@/lib/auth/roles";
 import { buildTeam } from "@/lib/settings/team";
 import { TeamPanel } from "./TeamPanel";
+import { TeamRequestsPanel } from "./TeamRequestsPanel";
+import { loadTeamRequests } from "@/lib/team-requests";
 import { env, isLineLoginConfigured, isLineMessagingConfigured, isLineWebhookConfigured, isSupabaseConfigured } from "@/lib/env";
 import {
   getAccounts,
@@ -153,6 +155,11 @@ export default async function SettingsPage({
       ) : null}
 
       <TeamPanel team={team} currentUserId={user?.id ?? null} added={added ?? null} pending={pendingLine} avatarOff={supabase ? await getAvatarOffIds(supabase) : new Set()} />
+
+      <TeamRequestsPanel
+        requests={live ? await loadTeamRequests(createAdminClient()).catch(() => []) : []}
+        people={activePeople.map((p) => ({ id: p.id, displayName: p.displayName }))}
+      />
 
       {/* ---- TV short link ---- */}
       <section className="panel tv-link-panel">
