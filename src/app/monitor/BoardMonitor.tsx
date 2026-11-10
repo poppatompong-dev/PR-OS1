@@ -25,6 +25,7 @@ import { birthdayToday } from "@/lib/monitor/birthday";
 import { WelcomeBanner, WelcomeShow } from "./TvWelcome";
 import { WELCOME_CYCLE_MS, WELCOME_DEFAULT_VARIANT, WELCOME_LABELS, WELCOME_ROLE, WELCOME_WARM, asWelcomeVariant, welcomeToday, type WelcomeVariant } from "@/lib/monitor/welcome";
 import { nickname } from "@/lib/monitor/nicknames";
+import { contestChip, type ContestState } from "@/lib/monitor/contest";
 import { SHOWCASE_DEFAULT_LOOK, TvShowcase, type ShowcaseLook } from "./TvShowcase";
 import type { ShowcaseItem } from "@/lib/monitor/showcase";
 import { FestivalLayer, FestivalStage } from "./FestivalLayer";
@@ -102,6 +103,20 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
     const id = window.setInterval(loadWorld, 20 * 60_000);
     return () => window.clearInterval(id);
   }, []);
+
+  // ประกวดมุก chip (owner, 10 Nov 2026): days left + jokes in, from /api/monitor/jokes.
+  const [contest, setContest] = useState<ContestState>(null);
+  useEffect(() => {
+    const load = () =>
+      fetch("/api/monitor/jokes")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j: { contest?: ContestState } | null) => setContest(j?.contest ?? null))
+        .catch(() => undefined);
+    load();
+    const id = window.setInterval(load, 10 * 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const contestText = contestChip(contest);
 
   // โชว์ผลงาน in the leftover bottom space (owner, 6 Nov 2026). ?sc=1|2|3 previews a look.
   const [showcaseItems, setShowcaseItems] = useState<ShowcaseItem[]>([]);
@@ -231,6 +246,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
           <h1>เทศบาลนครนครสวรรค์</h1>
           <p>ตารางงานฝ่ายบริการและเผยแพร่วิชาการ</p>
           {festival?.chip ? <span className="bm-fest-chip">{festival.chip}</span> : null}
+          {contestText ? <span className="bm-fest-chip bm-contest-chip">{contestText}</span> : null}
         </div>
         {welcome ? (
           <WelcomeBanner welcome={welcome} still={staticMode} />
