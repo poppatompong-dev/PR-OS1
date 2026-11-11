@@ -1,6 +1,7 @@
 # ลุคนักวิ่งของแข (10 Nov 2026): recolours her own sprite (shirt / pants / shoes,
 # keeping the 3D shading) and draws race bits on top. Run from the repo root:
 #   python3 scripts/looks/runner.py <outdir>   → lookA/B/C.png (stand pose)
+# Served set (public/cast/<id>/) = look D (แข picked 3, then asked for a เก๊กฮวย glass, 11 Nov 2026).
 import sys, colorsys
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
@@ -47,9 +48,37 @@ def extras(im, key):
         d.rectangle([57, 266, 63, 276], fill=(220, 160, 30, 255)); d.rounded_rectangle([48, 276, 72, 284], 2, fill=(120, 80, 40, 255))
     return im
 
+# แข 11 Nov 2026: "แบบ 3 แต่เพิ่มถือแก้วน้ำเก๊กฮวยสีเหลือง" → look D = C + a glass in the right hand.
+LOOKS['D'] = dict(LOOKS['C'], name='สปอร์ตชมพู + เก๊กฮวย')
+HAND = {'stand': (169, 276), 'wave': (192, 166), 'up': (181, 161), 'walkA': (171, 268), 'walkB': (176, 274),
+        'runA': (173, 262), 'runB': (185, 259), 'sit': (185, 271)}
+
+def glass(im, cx, cy):
+    """A tumbler of golden chrysanthemum tea with a straw and a little flower, held at (cx, cy)."""
+    g = Image.new('RGBA', im.size, (0, 0, 0, 0)); d = ImageDraw.Draw(g)
+    top, bot = cy - 34, cy + 4
+    body = [(cx - 11, top), (cx + 11, top), (cx + 8, bot), (cx - 8, bot)]
+    d.polygon(body, fill=(230, 245, 255, 150), outline=(255, 255, 255, 255))
+    lvl = top + 8
+    d.polygon([(cx - 10, lvl), (cx + 10, lvl), (cx + 8, bot - 2), (cx - 8, bot - 2)], fill=(246, 196, 40, 255))
+    d.line([(cx - 9, lvl + 1), (cx + 9, lvl + 1)], fill=(255, 228, 120, 255), width=2)
+    d.line([(cx - 6, lvl + 4), (cx - 5, bot - 5)], fill=(255, 245, 200, 200), width=2)          # shine
+    d.line([(cx + 3, top + 12), (cx + 9, top - 12)], fill=(60, 170, 90, 255), width=3)         # straw
+    for k in range(8):                                                                       # flower on the rim
+        a = k * 3.14159 / 4; x, y = cx - 9 + 5 * __import__('math').cos(a), top + 1 + 5 * __import__('math').sin(a)
+        d.ellipse([x - 3, y - 3, x + 3, y + 3], fill=(255, 220, 60, 255))
+    d.ellipse([cx - 12, top - 2, cx - 6, top + 4], fill=(230, 140, 20, 255))
+    halo = g.split()[3].point(lambda v: 255 if v > 40 else 0).filter(ImageFilter.MaxFilter(5))
+    ring = Image.new('RGBA', im.size, (255, 255, 255, 255)); ring.putalpha(halo)
+    im.alpha_composite(ring); im.alpha_composite(g)
+    return im
+
 def draw_look(key, pose='stand'):
     im = Image.open(SRC + pose + '.webp').convert('RGBA')
-    return extras(recolor(im, LOOKS[key]), key)
+    im = extras(recolor(im, LOOKS[key]), 'C' if key == 'D' else key)
+    if key == 'D':
+        im = glass(im, *HAND[pose.split('-')[0]])
+    return im
 
 if __name__ == '__main__':
     for k in LOOKS: draw_look(k).save(f'{sys.argv[1]}/runner{k}.png')
