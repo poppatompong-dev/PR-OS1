@@ -25,8 +25,9 @@ import { birthdayToday } from "@/lib/monitor/birthday";
 import { WelcomeBanner, WelcomeShow } from "./TvWelcome";
 import { WELCOME_CYCLE_MS, WELCOME_DEFAULT_VARIANT, WELCOME_LABELS, WELCOME_ROLE, WELCOME_WARM, asWelcomeVariant, welcomeToday, type WelcomeVariant } from "@/lib/monitor/welcome";
 import { nickname } from "@/lib/monitor/nicknames";
-import { contestChip, contestTickerLines, type ContestState } from "@/lib/monitor/contest";
+import { CONTEST, contestChip, contestTickerLines, type ContestState } from "@/lib/monitor/contest";
 import { SHOWCASE_DEFAULT_LOOK, TvShowcase, type BoardRequest, type ShowcaseLook } from "./TvShowcase";
+import { IDLE_DEFAULT_LOOK, IDLE_LABELS, TvIdle, untilText, type IdleJoke, type IdleLook, type IdleStats } from "./TvIdle";
 import type { ShowcaseItem } from "@/lib/monitor/showcase";
 import { FestivalLayer, FestivalStage } from "./FestivalLayer";
 import { festivalFor, isFestivalKey, previewFestival } from "@/lib/monitor/festivals";
@@ -107,6 +108,29 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
   // ประกวดมุก chip (owner, 10 Nov 2026): days left + jokes in, from /api/monitor/jokes.
   const [contest, setContest] = useState<ContestState>(null);
   const [contestJokes, setContestJokes] = useState<string[]>([]);
+  // กล่อง "วันนี้" ตอนไม่มีงาน (owner, 12 Nov 2026): ?idle=1|2|3 previews a look, ?idle=all cycles them.
+  const [idleJokes, setIdleJokes] = useState<IdleJoke[]>([]);
+  const [idleStats, setIdleStats] = useState<IdleStats>(null);
+  const [idlePrev, setIdlePrev] = useState<{ look: IdleLook | null; all: boolean }>({ look: null, all: false });
+  const [idleCycle, setIdleCycle] = useState<IdleLook>(1);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("idle");
+    const n = Number(q);
+    setIdlePrev({ look: n === 1 || n === 2 || n === 3 ? (n as IdleLook) : null, all: q === "all" });
+    const load = () =>
+      fetch("/api/monitor/stats")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j: IdleStats) => setIdleStats(j))
+        .catch(() => undefined);
+    load();
+    const id = window.setInterval(load, 15 * 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  useEffect(() => {
+    if (!idlePrev.all) return;
+    const t = window.setInterval(() => setIdleCycle((v) => ((v % 3) + 1) as IdleLook), 25_000);
+    return () => window.clearInterval(t);
+  }, [idlePrev.all]);
   useEffect(() => {
     const load = () =>
       fetch("/api/monitor/jokes")
@@ -114,6 +138,12 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
         .then((j: { contest?: ContestState; jokes?: Array<{ name: string; setup: string; punch: string; at?: string }> } | null) => {
           setContest(j?.contest ?? null);
           setContestJokes(contestTickerLines(j?.jokes ?? []));
+          const a = Date.parse(CONTEST.start), z = Date.parse(CONTEST.end);
+          setIdleJokes(
+            (j?.jokes ?? [])
+              .filter((x) => x.at && Date.parse(x.at) >= a && Date.parse(x.at) <= z)
+              .map((x) => ({ personId: (x as { personId?: string }).personId ?? "", name: x.name, setup: x.setup, punch: x.punch })),
+          );
         })
         .catch(() => undefined);
     load();
@@ -293,8 +323,43 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
               <b>{board?.stats.today ?? 0}</b> งานวันนี้ · <b className={(board?.stats.pending ?? 0) > 0 ? "is-warn" : ""}>{board?.stats.pending ?? 0}</b> ยังไม่รับงาน · <b>{board?.stats.week ?? 0}</b> 7 วันข้างหน้า
             </span>
           </div>
-          {todayCount === 0 ? (
-            <p className="bm-empty">{(board?.stats.today ?? 0) > 0 ? "งานวันนี้เสร็จครบแล้ว 👍" : "วันนี้ไม่มีงานตามแผน"}</p>
+          {(todayCount === 0 && (board?.stats.today ?? 0) === 0) || idlePrev.look || idlePrev.all ? (
+            (() => {
+              const first = board?.dayRows[0];
+              const e = first?.events[0];
+              const p = first ? dayParts(first.iso) : null;
+              const people = e ? e.assigneeDetail : [];
+              const look: IdleLook = idlePrev.all ? idleCycle : idlePrev.look ?? IDLE_DEFAULT_LOOK;
+              const dates = [
+                ...(festival?.chip ? [festival.chip] : []),
+                ...(contest ? [`🏆 ประกาศผลประกวดมุก จ. ${Number(CONTEST.results.slice(8))} พ.ย. บนจอนี้`] : []),
+              ];
+              return (
+                <TvIdle
+                  look={look}
+                  label={idlePrev.all ? IDLE_LABELS[look] : undefined}
+                  next={
+                    e && p && first
+                      ? {
+                          when: `${p.wd}. ${p.d} ${p.mon} ${thaiTime(e.startTime)}`,
+                          title: screenTitle(e),
+                          place: e.locationName ?? "",
+                          inText: untilText(first.iso, e.startTime, Date.now()),
+                          faces: people.slice(0, 5).map((x, k) => face(x, k, 64)),
+                        }
+                      : null
+                  }
+                  news={showcaseItems}
+                  jokes={idleJokes}
+                  stats={idleStats}
+                  requests={teamRequests}
+                  dates={dates}
+                  still={staticMode}
+                />
+              );
+            })()
+          ) : todayCount === 0 ? (
+            <p className="bm-empty">งานวันนี้เสร็จครบแล้ว 👍</p>
           ) : (
             <div className="bm-today-list" ref={fit.ref}>
               {fit.shown.map((e) => {
