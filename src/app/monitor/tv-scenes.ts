@@ -50,6 +50,7 @@ export const SCENES = [
   { key: "K6", kind: "skit", n: 2 }, // แบตกล้องหมด — R = [ตากล้อง, ฮีโร่]
   { key: "K7", kind: "skit", n: 3, nat: true }, // ฝนตก — R = [นัท (นางเงือก), เพื่อน…]
   { key: "K8", kind: "skit", earth: true }, // ถุงของเข้าบ้าน — พี่เอิร์ธ + ป้าจิตร + รถแดง
+  { key: "K9", kind: "skit", n: 3, dir: true }, // หัวหน้าแกล้งอำ — R = [หัวหน้าฝ่าย, ทีม…] (owner: "มาดเข้ม ๆ แต่เฉลยทีหลังว่าแกล้งอำ")
 ];
 
 /** มุกสำรอง when nobody has sent one yet (office life, nobody is the butt of it). */
@@ -491,17 +492,34 @@ const SC=[
 ()=>{const car=el('car is-stop',CAR_SVG),j=sprite('jit','walkA',430),e=sprite(R[0],'walkA',250),bags=[0,1,2,3,4].map(()=>emo('🛍️',78)),spark=emo('✨',80);
  gsap.set(car,{x:-40,y:FLOOR-256,opacity:0});gsap.set([j,e],{opacity:0});
  tl.to(car,{opacity:1,duration:.4},0).to(j,{opacity:1,duration:.3},.5).to(e,{opacity:1,duration:.3},.9);
- bags.forEach((b,i)=>{follow(b,e,-40+(i%2?10:-10),-SH*.55-i*66);tl.to(b,{opacity:1,duration:.15},1.0+i*.12)});
+ bags.forEach((b,i)=>{follow(b,e,62+(i%2?8:-8),-SH*.34-i*60);tl.to(b,{opacity:1,duration:.15},1.0+i*.12)});
  walk(j,W*.62,.9,3.6,'standE');say(j,'ถือดี ๆ นะคะ 😊',1.4,1.8,'sm',-90,-SH-100);
  tl.call(()=>cyc1(e,'walkA-sad','walkB-sad',.34),null,1.8).to(e,{x:W*.42,duration:3.6,ease:'none'},1.8).to(e,{rotation:3,duration:.34,yoyo:true,repeat:9,ease:'sine.inOut'},1.8);
- const dr=drop(e,2.2,96,-SH*.5);say(e,'มะ…ไม่หนักเลยครับ 😅',3.0,1.8,'sm',40,-SH*.5);
+ const dr=drop(e,2.2,-96,-SH*.9);say(e,'มะ…ไม่หนักเลยครับ 😅',3.0,1.8,'sm',-330,-SH-60);
  const topb=bags[4];tl.to(topb,{rotation:18,duration:.2,yoyo:true,repeat:5},4.4).call(()=>{follows=follows.filter(f=>f[0]!==topb);stop1(e,'stand-shock')},null,5.4);
  sfx('หวืด!',W*.47,FLOOR-SH-260,5.4,-8,100);
  tl.to(topb,{keyframes:[{x:W*.52,y:FLOOR-SH-240,rotation:200,duration:.4,ease:'power1.out'},{x:W*.62-110,y:FLOOR-SH*.62,rotation:360,duration:.4,ease:'power1.in'}]},5.4);
  tl.call(()=>{gsap.set(spark,{x:W*.62-150,y:FLOOR-SH*.8})},null,6.2).fromTo(spark,{opacity:0,scale:.4},{opacity:1,scale:1.5,duration:.2,yoyo:true,repeat:1},6.2);sfx('หมับ!',W*.62-60,FLOOR-SH-230,6.2,6,110);
- say(j,'รับได้ค่ะ ✌️',6.4,1.6,'sm',-90,-SH-100);say(e,'…เก่งกว่าผมอีกครับ 🥲',7.2,1.8,'sm',40,-SH*.5);hearts(j,7.4,5);
+ say(j,'รับได้ค่ะ ✌️',6.4,1.6,'sm',-90,-SH-100);say(e,'…เก่งกว่าผมอีกครับ 🥲',7.2,1.8,'sm',-330,-SH-60);hearts(j,7.4,5);
  tl.call(()=>{follow(topb,j,-110,-SH*.62);cyc1(j,'walkA','walkB',.26);cyc1(e,'walkA','walkB',.3)},null,9.0).to(j,{x:W+220,duration:2.6,ease:'none'},9.0).to(e,{x:W+40,duration:2.6,ease:'none'},9.0);
  tl.to([car,e,j,dr,...bags],{opacity:0,duration:.4},11.4);},
+// ---------- K9 หัวหน้าแกล้งอำ (มาดเข้ม "อย่าเล่นกันมาก" … เฉลย: ล้อเล่นค่ะ เล่นด้วยคน) ----------
+()=>{const hd=sprite(R[0],'walkA',W+150),tm=R.slice(1).map((id,i)=>sprite(id,'up',W*(.22+i*.14))),party=emo('🎉',80),dim=el('reddim'),dots=el('sfx','. . .');
+ dim.style.background='linear-gradient(rgba(12,8,30,.5),rgba(12,8,30,.2))';dots.style.fontSize='110px';
+ gsap.set(tm,{opacity:0});tl.to(tm,{opacity:1,duration:.3,stagger:.06},0);gsap.set(party,{x:W*.36-40,y:FLOOR-SH-120});tl.to(party,{opacity:1,duration:.2},.2).to(party,{rotation:20,duration:.2,yoyo:true,repeat:9},.2);
+ tm.forEach((m,i)=>tl.to(m,{y:FLOOR-50,duration:.2,yoyo:true,repeat:11,ease:'power2.out'},.2+i*.07).to(m,{rotation:i%2?8:-8,duration:.2,yoyo:true,repeat:11},.2+i*.07));
+ say(tm[0],'555+ เล่นกันต่อ! 🤣',.4,1.6);sfx('เฮ ๆ ๆ!',W*.12,FLOOR-SH-200,.6,-6,90);
+ walk(hd,W*.72,1.2,1.5,'stand-angry');
+ tl.to(dim,{opacity:1,duration:.3},2.7).to(party,{opacity:0,y:'+=80',duration:.3},2.7);sfx('ตึง!',W*.72-240,FLOOR-SH-240,2.7,-8,130);shake(2.7,6,8);
+ tm.forEach((m,i)=>{tl.set(m,{y:FLOOR,rotation:0},2.75).call(()=>show(m,'stand-shock'),null,2.75);const d=drop(m,3.0+i*.1);hide(d,6.4)});
+ say(hd,'อย่าเล่นกันมากนักนะคะ… 😐',3.0,2.2,'',-330,-SH-130);
+ tl.set(dots,{x:W*.30,y:FLOOR-SH-170},5.2).fromTo(dots,{opacity:0},{opacity:1,duration:.3},5.2).to(dots,{opacity:0,duration:.2},6.3);
+ say(tm[tm.length-1],`ขะ…ขอโทษ${E(R[R.length-1])} 🙇`,5.3,1.1);tl.to(tm,{x:'+=5',duration:.05,yoyo:true,repeat:17},5.2);
+ tl.to(dim,{opacity:0,duration:.3},6.5).call(()=>show(hd,'up'),null,6.5);hop(hd,6.5,2,36);flash(6.5,'#ffd36b');
+ say(hd,'…ล้อเล่นค่ะ 😆 เล่นด้วยคนสิ!',6.6,2.4,'',-360,-SH-130);confetti(6.7,40,W*.5,FLOOR-SH);
+ tm.forEach((m,i)=>sit(m,7.0+i*.1));say(tm[1]||tm[0],'โธ่~ หัวใจจะวาย 😂',7.3,1.6);
+ tm.forEach((m,i)=>{rise(m,9.0+i*.06,'up');hop(m,9.0+i*.06,3,50)});tl.call(()=>show(hd,'wave'),null,9.0);hop(hd,9.05,3,36);hearts(hd,9.1,6);sfx('เย้!!',W*.40,FLOOR-SH-230,9.1,6,120);
+ tl.to([hd,...tm],{opacity:0,duration:.5},11.0);},
 ];
 
   tl = gsap.timeline({ onComplete: () => { finish(); onDone && onDone(); } });
