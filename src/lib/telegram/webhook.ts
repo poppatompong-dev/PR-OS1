@@ -41,6 +41,7 @@ import {
   pulseButtons,
   pulseReply,
 } from "@/lib/telegram/pulse";
+import { parseAdPick } from "@/lib/monitor/contest";
 import { Q_TAG, answerQuestion, forwardQuestion, isChatter, jokeHintText, looksLikeJoke, looksLikeQuestion } from "@/lib/telegram/questions";
 import { TRIAL_STEPS, markTrial, trialDone } from "@/lib/trial";
 import { JOKE_PROMPT, decideJoke, parseJokeCommand, submitJoke } from "@/lib/tv-jokes";
@@ -251,6 +252,12 @@ async function handleText(ctx: Ctx, chatId: number, raw: string, from?: { first_
   }
   if (/^(📋)?(รายการงาน|แก้งาน|แก้ไขงาน|จัดการงาน|ยกเลิกงาน|เลื่อนงาน|ลบงาน|\/jobs)$/.test(text.replace(/\s+/g, ""))) return [tgJobs()];
   if (/^(เพิ่มงาน|สร้างงาน|\/add)/.test(text.replace(/\s+/g, ""))) return [tgAddEvent()];
+  // เลือกแบบโฆษณามุก (12 Nov 2026): "แบบ 2" goes to the admins (and the ❓ panel), not "ไม่เข้าใจ".
+  const adPick = parseAdPick(text);
+  if (adPick) {
+    await forwardQuestion(ctx.admin, person, `🗳 เลือกแบบโฆษณามุกเต็มจอ: แบบ ${adPick}`);
+    return [{ text: `👍 รับทราบครับ แบบ ${adPick} · ส่งให้แอดมินแล้ว เดี๋ยวขึ้นจอทีวีให้ครับ`, keyboard: KEYBOARD }];
+  }
   const said = await chatReply(ctx, person, chatId, text);
   if (said) return said;
   const faq = matchFaq(text);

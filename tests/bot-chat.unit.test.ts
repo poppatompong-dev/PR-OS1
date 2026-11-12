@@ -319,3 +319,11 @@ test("what the bot didn't understand is kept for the help panel (12 Nov 2026)", 
   await say(db, 506, "asdf ghjk");
   assert.ok(db.tables.audit_logs.some((r: any) => r.action === "bot_unknown" && r.entity_id === KAE && r.new_values?.text === "asdf ghjk"));
 });
+
+test("พี่เอิร์ธ types แบบ 2 → thanked and passed to the admins, not 'ไม่เข้าใจ' (12 Nov 2026)", async () => {
+  const db = seedQ();
+  const pick = await say(db, 502, "แบบ 2");
+  assert.match(textTo(pick, 502), /รับทราบครับ แบบ 2/);
+  assert.match(textTo(pick, 999), /เลือกแบบโฆษณามุกเต็มจอ: แบบ 2/);
+  assert.ok(!db.tables.audit_logs.some((r: any) => r.action === "bot_unknown"));
+});

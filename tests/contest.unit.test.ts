@@ -38,3 +38,12 @@ test("มุกที่ N: order sent, rejected skipped, outside the window ski
   assert.deepEqual([...nums.entries()], [["a", 1], ["b", 2], ["c", 3]]);
   assert.match(contestTickerLines([{ name: "แข", setup: "", punch: "ฮา", at: "2026-11-10T03:00:00Z", no: 2 }])[0], /^😂 มุกประกวดที่ 2 จาก แข: ฮา$/);
 });
+
+test("joke-ad pick: แบบ N in plain words", async () => {
+  const { parseAdPick } = await import("@/lib/monitor/contest");
+  assert.equal(parseAdPick("แบบ 2"), 2);
+  assert.equal(parseAdPick("เลือกแบบ 3 ครับ"), 3);
+  assert.equal(parseAdPick("ชอบแบบที่1ครับ"), 1);
+  assert.equal(parseAdPick("ขอลุค แบบ 2"), null);
+  assert.equal(parseAdPick("แบบ 4"), null);
+});

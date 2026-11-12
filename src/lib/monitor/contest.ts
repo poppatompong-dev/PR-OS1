@@ -55,3 +55,9 @@ export function contestNumbers(sent: Array<{ id: string; at: string }>, rejected
   }
   return out;
 }
+
+/** "แบบ 2" / "เลือกแบบ 3 ครับ" → 2/3: a pick for the TV joke-ad look (พี่เอิร์ธ, 12 Nov 2026). */
+export function parseAdPick(text: string): 1 | 2 | 3 | null {
+  const m = text.replace(/\s+/g, "").match(/^(?:เลือก|ชอบ|เอา)?(?:โฆษณามุก)?แบบ(?:ที่)?([123])(?:ครับ|ค่ะ|คะ|นะ|จ้า|จ้ะ|เลย)*[!.]*$/);
+  return m ? (Number(m[1]) as 1 | 2 | 3) : null;
+}

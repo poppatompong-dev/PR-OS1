@@ -658,6 +658,7 @@
 .tv-jad-fan.pose-sit .f-sit, .tv-jad-fan.pose-up .f-up, .tv-jad-fan.pose-shock .f-stand-shock, .tv-jad-fan.pose-run .f-runA, .tv-jad-fan.pose-run .f-runB { display: block; }
 .tv-jad-fan.pose-off .f-runA { display: block; }
 .tv-jad-fanbody img.f-sit { translate: -50% 21%; }
+.tv-jad--1 .tv-jad-fanbody img.f-sit { translate: -50% 10%; }
 .tv-jad-fan.pose-run .f-runA { animation: tvJadStepA .26s steps(1) infinite; }
 .tv-jad-fan.pose-run .f-runB { animation: tvJadStepB .26s steps(1) infinite; }
 .tv-jad-fan.pose-sit .tv-jad-fanbody { animation: tvJadSway 1.6s ease-in-out infinite alternate; animation-delay: calc(var(--k) * -.4s); transform-origin: 50% 100%; }
