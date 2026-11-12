@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { BellRing, UserPlus } from "lucide-react";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
+import { TelegramLinkMaker } from "./TelegramLinkMaker";
 import { StatusPill } from "@/components/StatusPill";
 import { TRIAL_STEPS } from "@/lib/trial";
 import { hasAvatar } from "@/lib/avatars";
@@ -29,6 +30,7 @@ import {
   setAdminWatcher,
   notifyAvatarReady,
   messagePersonTelegram,
+  unlinkPersonTelegram,
   setPersonActive,
   unlinkPersonLine,
   updatePerson,
@@ -125,6 +127,16 @@ function MemberMenu({ m, currentUserId }: { m: TeamMember; currentUserId: string
               </button>
               <small>ได้รายงาน 17:00 และแจ้งเมื่อมีคนกด ไม่สะดวก · พิมพ์ อนุญาตกลุ่มนี้ ในกลุ่มไลน์ได้</small>
             </form>
+
+            {!m.telegramLinked ? <TelegramLinkMaker personId={m.personId} name={m.displayName} /> : null}
+            {m.telegramLinked ? (
+              <form action={unlinkPersonTelegram} className="team-menu-form">
+                <input type="hidden" name="personId" value={m.personId} />
+                <ConfirmSubmit className="button secondary" message={`ยกเลิกผูก Telegram ของ ${m.displayName}? (แจ้งเตือนจะหยุดจนกว่าจะผูกใหม่)`}>
+                  ✂️ ยกเลิกผูก Telegram
+                </ConfirmSubmit>
+              </form>
+            ) : null}
 
             {m.telegramLinked && m.personId ? (
               <form action={messagePersonTelegram} className="team-menu-form">

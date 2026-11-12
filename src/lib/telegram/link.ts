@@ -8,6 +8,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export const LINK_TOKEN_MINUTES = 30;
 /** Links the bot pushes on its own (after the admin confirms a name) wait longer for the tap. */
 export const INVITE_TOKEN_MINUTES = 7 * 24 * 60;
+/** A link an admin hands over by hand (/settings ⋯ › ลิงก์ Telegram ส่วนตัว, 12 Nov 2026). */
+export const ADMIN_LINK_MINUTES = 24 * 60;
 
 /** Telegram /start payloads allow A–Z a–z 0–9 _ - up to 64 characters. */
 export function newLinkToken(): string {

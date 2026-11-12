@@ -3985,3 +3985,7 @@ textarea:focus-visible {
 .team-req { border: 1px solid var(--line, #ddd); border-radius: 10px; padding: 8px 12px; }
 .team-req summary { cursor: pointer; }
 .team-req summary small { opacity: .7; }
+/* ลิงก์ Telegram ส่วนตัว (12 Nov 2026) */
+.tg-link-box { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-top: 6px; }
+.tg-link-box small { grid-column: 1 / -1; }
+.tg-link-error { color: var(--coral, #c0392b); }

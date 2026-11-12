@@ -863,3 +863,55 @@ export async function addTeamRequest(formData: FormData) {
   revalidatePath("/settings");
   done(undefined, "เพิ่มคำขอแล้ว · ขึ้นกระดานบนทีวีภายใน 5 นาที");
 }
+
+export type TelegramLinkState = { url?: string; error?: string; expires?: string };
+
+/**
+ * ลิงก์ Telegram ส่วนตัว (owner, 12 Nov 2026): for someone whose LINE sign-up did
+ * not work — the admin copies this link and passes it on. One use, 24 hours.
+ * The bot tells the admins which Telegram account used it.
+ */
+export async function createTelegramLink(_prev: TelegramLinkState, formData: FormData): Promise<TelegramLinkState> {
+  await blockWritesInDemoMode();
+  await requireAdmin();
+  const personId = String(formData.get("personId") ?? "");
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const admin = createAdminClient();
+  const { data: p } = await admin.from("people").select("id, is_active, telegram_chat_id").eq("id", personId).maybeSingle();
+  if (!p) return { error: "ไม่พบคนนี้" };
+  if (!p.is_active) return { error: "บัญชีนี้ถูกระงับอยู่" };
+  if (p.telegram_chat_id) return { error: "ผูก Telegram แล้ว — ถ้าผิดคน กด ยกเลิกผูก Telegram ก่อน" };
+  const { getBotUsername } = await import("@/lib/telegram/api");
+  const { ADMIN_LINK_MINUTES, createLinkToken } = await import("@/lib/telegram/link");
+  const username = await getBotUsername();
+  if (!username) return { error: "ติดต่อบอท Telegram ไม่ได้ ลองใหม่อีกครั้ง" };
+  const now = new Date();
+  const token = await createLinkToken(admin, personId, now, ADMIN_LINK_MINUTES);
+  const expires = new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(
+    new Date(now.getTime() + ADMIN_LINK_MINUTES * 60_000),
+  );
+  return { url: `https://t.me/${username}?start=${token}`, expires };
+}
+
+/** Wrong person took a link, or a phone changed: clear this person's Telegram. */
+export async function unlinkPersonTelegram(formData: FormData) {
+  await blockWritesInDemoMode();
+  const { user } = await requireAdmin();
+  const personId = String(formData.get("personId") ?? "");
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const admin = createAdminClient();
+  const { data: p } = await admin.from("people").select("display_name, telegram_chat_id").eq("id", personId).maybeSingle();
+  if (!p?.telegram_chat_id) done("คนนี้ยังไม่ได้ผูก Telegram");
+  const { error } = await admin.from("people").update({ telegram_chat_id: null }).eq("id", personId);
+  if (error) done(error.message);
+  await admin.from("audit_logs").insert({
+    entity_type: "person",
+    entity_id: personId,
+    action: "telegram_unlink_admin",
+    changed_by: user.id,
+    summary: "แอดมินยกเลิกผูก Telegram",
+    new_values: {},
+  });
+  revalidatePath("/settings");
+  done(undefined, `ยกเลิกผูก Telegram ของ ${p!.display_name} แล้ว · ออกลิงก์ใหม่ได้จากเมนู ⋯`);
+}

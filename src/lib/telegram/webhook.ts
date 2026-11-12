@@ -92,7 +92,7 @@ export type TgUpdate = {
   message?: {
     message_id: number;
     chat: { id: number; type: string };
-    from?: { id: number; first_name?: string };
+    from?: { id: number; first_name?: string; last_name?: string; username?: string };
     text?: string;
     photo?: Array<{ file_id: string; file_size?: number; width: number; height: number }>;
     document?: { file_id: string; mime_type?: string; file_size?: number };
@@ -136,11 +136,11 @@ export async function handleTelegramUpdate(ctx: Ctx, u: TgUpdate): Promise<void>
       return;
     }
   }
-  const out = await handleText(ctx, chatId, m.text.trim());
+  const out = await handleText(ctx, chatId, m.text.trim(), m.from);
   for (const msg of out) await sendTelegram(chatId, msg);
 }
 
-async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMessage[]> {
+async function handleText(ctx: Ctx, chatId: number, raw: string, from?: { first_name?: string; last_name?: string; username?: string }): Promise<TgMessage[]> {
   const start = raw.match(/^\/start(?:\s+(\S+))?$/);
   if (start) {
     const token = start[1];
@@ -149,15 +149,24 @@ async function handleText(ctx: Ctx, chatId: number, raw: string): Promise<TgMess
       return [p ? tgHelp() : tgNotLinked()];
     }
     const res = await consumeLinkToken(ctx.admin, token, chatId);
-    if (res.ok) return [tgLinked(res.displayName), tgTour(0)];
+    if (res.ok) {
+      // A link can travel through a group chat (12 Nov 2026): tell the admins which
+      // Telegram account took it, so a wrong one is caught and unlinked at once.
+      const tgName = [from?.first_name, from?.last_name].filter(Boolean).join(" ") || "ไม่มีชื่อ";
+      await tellAdminsByTelegram(
+        ctx.admin,
+        `🔗 <b>${esc(res.displayName)}</b> ผูก Telegram แล้ว\nบัญชี Telegram: ${esc(tgName)}${from?.username ? ` (@${esc(from.username)})` : ""}\n<i>ไม่ใช่เจ้าตัว? /settings › ⋯ › ยกเลิกผูก Telegram แล้วออกลิงก์ใหม่</i>`,
+      ).catch(() => 0);
+      return [tgLinked(res.displayName), tgTour(0)];
+    }
     const why = {
       invalid: "ลิงก์นี้ใช้ไม่ได้",
-      expired: "ลิงก์หมดอายุแล้ว (30 นาที)",
+      expired: "ลิงก์หมดอายุแล้ว",
       used: "ลิงก์นี้ใช้ไปแล้ว",
       inactive: "บัญชีนี้ถูกระงับ · ติดต่อแอดมิน",
       taken: "ผูกไม่สำเร็จ ลองใหม่อีกครั้ง",
     }[res.reason];
-    return [{ text: `⚠️ <b>${why}</b>\n\n🔁 ขอลิงก์ใหม่: ใน LINE "ผู้ช่วยงาน ปชส." พิมพ์ <b>ผูก Telegram</b>` }];
+    return [{ text: `⚠️ <b>${why}</b>\n\n🔁 ขอลิงก์ใหม่จากแอดมิน หรือใน LINE "ผู้ช่วยงาน ปชส." พิมพ์ <b>ผูก Telegram</b>` }];
   }
   if (raw === "/stop") {
     const name = await unlinkTelegram(ctx.admin, chatId);
