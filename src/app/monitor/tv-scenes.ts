@@ -12,6 +12,7 @@
 import gsap from "gsap";
 import { MALE_IDS } from "@/lib/monitor/catchphrases";
 import { stepTime } from "@/lib/monitor/cast";
+import { CAR_SVG } from "./tv-gags";
 
 export const SCENE_EARTH = "00000000-0000-0000-0000-000000000502";
 /** earth: needs พี่เอิร์ธ (+ ป้าจิตร) · n: people (never พี่ไป๋) · all: whole cast · badge: a real badge holder */
@@ -39,6 +40,16 @@ export const SCENES = [
   { key: "W2", kind: "work" }, // รับทราบครบทีม
   { key: "W3", kind: "work" }, // วันนี้เคลียร์ครบ
   { key: "S", kind: "serial" }, // ละครตอนต่อ — R = [พี่เอิร์ธ, นักสืบ, ผู้ต้องสงสัย], data.ep 1–5
+  // 12 Nov 2026 (owner: "ฝึกทำแก็กตลกไว้ เดี๋ยวจะสร้างละครสั้นเป็นตอน ๆ" · แนวซิตคอมออฟฟิศ ปชส.):
+  // eight office skits, each a whole little story. TvCast casts them (kind "skit").
+  { key: "K1", kind: "skit", n: 3, dir: true }, // แอ็กชั่น! / คัต! — R = [ผู้กำกับ (คุณสมัชชา), นักแสดง…]
+  { key: "K2", kind: "skit", n: 4 }, // เที่ยงตรง
+  { key: "K3", kind: "skit", n: 4 }, // ถ่ายรูปหมู่ — R = [ตากล้อง, คนถูกถ่าย…]
+  { key: "K4", kind: "skit", n: 3 }, // ไฟล์ final จริง ๆ — R = [คนหา, เพื่อน, เพื่อน]
+  { key: "K5", kind: "skit", n: 4 }, // ประชุมแป๊บเดียว
+  { key: "K6", kind: "skit", n: 2 }, // แบตกล้องหมด — R = [ตากล้อง, ฮีโร่]
+  { key: "K7", kind: "skit", n: 3, nat: true }, // ฝนตก — R = [นัท (นางเงือก), เพื่อน…]
+  { key: "K8", kind: "skit", earth: true }, // ถุงของเข้าบ้าน — พี่เอิร์ธ + ป้าจิตร + รถแดง
 ];
 
 /** มุกสำรอง when nobody has sent one yet (office life, nobody is the butt of it). */
@@ -130,6 +141,18 @@ function gloom(who,t,dur){const g=el('gloom'),c=el('cloud',CLOUD);follow(g,who,-
 function tears(who,t,dur){const a=el('tear'),b=el('tear');follow(a,who,-36,-SH*.66);follow(b,who,14,-SH*.66);tl.to([a,b],{opacity:1,height:130,duration:.5},t).to([a,b],{height:150,duration:.25,yoyo:true,repeat:Math.round(dur/.25)},t+.5).to([a,b],{opacity:0,duration:.3},t+dur)}
 function hearts(who,t,n=8,emo='❤️'){tl.call(()=>{for(let i=0;i<n;i++){const h=el('emo',emo);const x=gsap.getProperty(who,'x'),y=gsap.getProperty(who,'y');gsap.fromTo(h,{x:x-28+(Math.random()-.5)*170,y:y-SH-40,opacity:1,scale:.6},{y:y-SH-170-Math.random()*80,x:`+=${(Math.random()-.5)*160}`,opacity:0,scale:1.2,duration:1.6,delay:i*.14,onComplete:()=>h.remove()})}},null,t)}
 function dustPuff(who,t,dur){tl.call(()=>{const iv=setInterval(()=>{const x=gsap.getProperty(who,'x'),y=gsap.getProperty(who,'y');const p=el('emo','💨');gsap.fromTo(p,{x:x-80,y:y-50,opacity:.9},{x:x-180,opacity:0,duration:.5,onComplete:()=>p.remove()})},180);ivs.push(iv);tos.push(setTimeout(()=>clearInterval(iv),dur*1000))},null,t)}
+
+// one cycle per sprite (stopCyc stops them all) + walk/run that end in a pose — for the skits
+const cyc1=(d,a,b,s)=>{clearInterval(d._iv);let k=0;show(d,a);d._iv=setInterval(()=>{k^=1;show(d,k?b:a)},stepTime(d.dataset.who,s)*1000);ivs.push(d._iv)};
+const stop1=(d,pose)=>{clearInterval(d._iv);if(pose)show(d,pose)};
+const walk=(d,x,t,dur,end='stand',a='walkA',b='walkB')=>{tl.call(()=>cyc1(d,a,b,.26),null,t).to(d,{x,duration:dur,ease:'none'},t).call(()=>stop1(d,end),null,t+dur)};
+const run=(d,x,t,dur,end,a='runA',b='runB')=>{tl.call(()=>cyc1(d,a,b,.09),null,t).to(d,{x,duration:dur,ease:'power1.in'},t).to(d,{y:FLOOR-12,duration:.09,yoyo:true,repeat:Math.max(1,Math.round(dur/.09/2)*2-1)},t).call(()=>stop1(d,end),null,t+dur)};
+const emo=(ch,size=56)=>{const d=el('emo',ch);d.style.fontSize=size+'px';return d};
+const say=(who,txt,t,dur=1.8,cls='sm',dx=-70,dy=-SH-100)=>{const b=bubble(txt,cls);follow(b,who,dx,dy);pop(b,t);hide(b,t+dur);return b};
+const hop=(d,t,n=3,h=46)=>tl.set(d,{y:FLOOR},t).to(d,{y:FLOOR-h,duration:.18,yoyo:true,repeat:n*2-1,ease:'power2.out'},t);
+const SIT=46; // the sit sprites float this far above the standing foot line
+const sit=(d,t)=>tl.call(()=>show(d,'sit'),null,t).fromTo(d,{y:FLOOR+SIT-30},{y:FLOOR+SIT,duration:.25,ease:'bounce.out',immediateRender:false},t);
+const rise=(d,t,pose)=>tl.call(()=>show(d,pose),null,t).set(d,{y:FLOOR},t);
 
 const SC=[
 // A1 ตัวใหญ่ตะโกน + ตัวหดจิบิ
@@ -370,6 +393,115 @@ const SC=[
   tl.to([cat,tf,j,e,d,s],{opacity:0,duration:.5},k+8);k+=8.5;end('🎬 จบบริบูรณ์ · สัปดาห์หน้าเรื่องใหม่!');}
  },
 
+// ---------- K1 แอ็กชั่น! / คัต! (ผู้กำกับคุมกอง ทุกคนเก๊ก แล้วทรุดพัก — ผู้กำกับชม) ----------
+()=>{const dir=sprite(R[0],'walkA',W+150),act=R.slice(1).map((id,i)=>sprite(id,'walkA',-150-i*200)),xs=[W*.22,W*.37,W*.52],POSE=['up','wave','stand-shout'],clap=emo('🎬',90);
+ walk(dir,W*.80,0,1.8,'stand');act.forEach((a,i)=>walk(a,xs[i],.1+i*.15,1.9,'stand'));
+ title('🎬 กองถ่าย ปชส. · เทคที่ 1',.4,1.8);
+ tl.call(()=>{gsap.set(clap,{x:W*.80-150,y:FLOOR-SH*.75})},null,2.3).fromTo(clap,{opacity:0,scale:.3,rotation:-30},{opacity:1,scale:1,rotation:0,duration:.25,ease:'back.out(3)'},2.3).to(clap,{rotation:-18,duration:.08,yoyo:true,repeat:3},2.6);
+ tl.call(()=>show(dir,'up'),null,2.5);say(dir,'แอ็กชั่น!! 🎬',2.6,1.7,'',-170,-SH-130);flash(2.7);
+ act.forEach((a,i)=>{tl.call(()=>show(a,POSE[i%3]),null,2.8+i*.12).fromTo(a,{scale:1},{scale:1.12,duration:.2,yoyo:true,repeat:1},2.8+i*.12);const sp=emo('✨',70);follow(sp,a,40,-SH-30);tl.to(sp,{opacity:1,scale:1.3,duration:.25,yoyo:true,repeat:5},2.9+i*.12).to(sp,{opacity:0,duration:.2},4.5)});
+ hide(clap,4.3);tl.call(()=>show(dir,'wave'),null,4.6);say(dir,'คัต!',4.7,1.2,'',-90,-SH-130);
+ act.forEach((a,i)=>{sit(a,5.0+i*.1);const d=drop(a,5.2+i*.1,70,-SH*.6);hide(d,6.6)});
+ say(act[1]||act[0],'เฮ้อ~ เก๊กจนเมื่อย 😮‍💨',5.4,1.3);
+ tl.call(()=>show(dir,'up'),null,6.9);say(dir,'ดีมากค่ะ 👏 ผ่าน!',7.0,2.0,'',-190,-SH-130);confetti(7.1,36,W*.45,FLOOR-SH);
+ act.forEach((a,i)=>{rise(a,7.3+i*.08,'up');hop(a,7.3+i*.08,2)});say(act[0],'เย้!! 🎉',7.5,1.5);
+ tl.to([dir,...act],{opacity:0,duration:.5},9.4);},
+// ---------- K2 เที่ยงตรง (11:59 ตั้งใจทำงาน → 12:00 หายเกลี้ยง) ----------
+()=>{const xs=R.map((_,i)=>W*(.18+i*.15)),ps=R.map((id,i)=>sprite(id,'sit',xs[i])),clock=el('card','<div style="font-size:70px;line-height:1">🕛</div><b class="k2t">11:59</b>'),sign=el('sign','🍜 พักเที่ยง · เดี๋ยวมา'),bag=emo('👛',70);
+ gsap.set(ps,{opacity:0,y:FLOOR+SIT});gsap.set(clock,{x:W*.5-95,y:Math.max(30,FLOOR-SH-260),opacity:0});
+ tl.to(ps,{opacity:1,duration:.4,stagger:.08},0).to(clock,{opacity:1,duration:.3},.2);
+ ps.forEach((p,i)=>{const k=emo('💻',52);follow(k,p,46,-SH*.42);tl.to(k,{opacity:1,duration:.2},.5).to(k,{y:'-=6',duration:.12,yoyo:true,repeat:13},.6+i*.07).to(k,{opacity:0,duration:.15},2.9)});
+ sfx('ต๊อก ต๊อก ต๊อก',W*.16,FLOOR-SH-210,.8,-4,80);say(ps[1],'ตั้งใจทำงานสุด ๆ 💪',1.0,1.5);
+ tl.to(clock,{scale:1.08,duration:.12,yoyo:true,repeat:5},2.3).call(()=>{clock.querySelector('.k2t').textContent='12:00'},null,3.0);sfx('ติ๊ง!',W*.5+120,FLOOR-SH-300,3.0,8,130);flash(3.0,'#ffd36b');
+ ps.forEach((p,i)=>{rise(p,3.05,'stand-shock');tl.to(p,{y:FLOOR-40,duration:.12,yoyo:true,repeat:1},3.06);run(p,W+260+i*40,3.4+(ps.length-1-i)*.1,1.5,null,'runA-shout','runB-shout');if(i%2===0)dustPuff(p,3.5,1.3)});
+ sfx('ฟิ้ววว!',W*.55,FLOOR-SH-120,3.6,-6,120);
+ tl.call(()=>gsap.set(sign,{x:W*.30,y:FLOOR-150}),null,5.0).fromTo(sign,{opacity:0,y:FLOOR-420},{opacity:1,y:FLOOR-150,duration:.5,ease:'bounce.out'},5.0);
+ tl.call(()=>gsap.set(bag,{x:xs[0]-20,y:FLOOR-70,opacity:1}),null,5.2);
+ const back=sprite(R[0],'runA-shock',W+200);gsap.set(back,{opacity:0});
+ tl.set(back,{opacity:1},5.9);run(back,xs[0]+70,5.9,1.1,'stand-shock','runA-shock','runB-shock');say(back,`ลืมกระเป๋าตังค์${E(R[0])}! 😱`,7.0,1.3);
+ tl.to(bag,{x:xs[0]+40,y:FLOOR-SH*.5,duration:.25},7.3).call(()=>follow(bag,back,-30,-SH*.5),null,7.6);run(back,W+260,8.3,1.1,null,'runA-shout','runB-shout');
+ tl.to([clock,sign],{opacity:0,duration:.4},9.4);},
+// ---------- K3 ถ่ายรูปหมู่ (มีคนหลับตาทุกรอบ → ครบแล้ว แต่ลืมเปิดฝาเลนส์) ----------
+()=>{const ph=sprite(R[0],'walkA',W+150),sub=R.slice(1).map((id,i)=>sprite(id,'walkA',-150-i*190)),xs=[W*.20,W*.33,W*.46],cam=emo('📷',80);
+ sub.forEach((s,i)=>walk(s,xs[i],0+i*.12,1.6,'wave'));walk(ph,W*.74,0,1.6,'stand');follow(cam,ph,-95,-SH*.62);tl.to(cam,{opacity:1,duration:.2},1.6);
+ const shot=(t,blink)=>{say(ph,'1… 2… 3!',t,.9,'sm',-150,-SH-100);tl.call(()=>show(ph,'up'),null,t+.7);flash(t+.9);sfx('แชะ!',W*.60,FLOOR-SH-200,t+.9,-8,110);tl.call(()=>show(ph,'stand'),null,t+1.3);
+  if(blink>=0){const z=emo('😑',80);follow(z,sub[blink],-40,-SH-70);tl.fromTo(z,{opacity:0,scale:.3},{opacity:1,scale:1.2,duration:.2,ease:'back.out(3)'},t+.85).to(z,{opacity:0,duration:.2},t+2.2);}};
+ shot(1.9,1);say(ph,'มีคนหลับตา~ เอาใหม่!',3.1,1.2,'sm',-250,-SH-100);
+ shot(4.5,Math.min(2,sub.length-1));say(ph,'อีกแล้ว!! 😩 เอาใหม่!',5.7,1.2,'sm',-250,-SH-100);
+ sub.forEach((s,i)=>{tl.call(()=>show(s,'up'),null,7.0+i*.05);const sp=emo('✨',64);follow(sp,s,30,-SH-30);tl.to(sp,{opacity:1,duration:.2},7.9).to(sp,{opacity:0,duration:.2},8.9)});
+ say(ph,'1… 2… 3!',7.1,.9,'sm',-150,-SH-100);tl.call(()=>show(ph,'up'),null,7.8);sfx('…',W*.60,FLOOR-SH-200,8.0,0,110);
+ say(sub[0],'รอบนี้ลืมตาครบ! 😁',8.0,1.3);
+ const cap=emo('⚫',60);follow(cap,ph,-112,-SH*.60);tl.to(cap,{opacity:1,scale:1.4,duration:.2,yoyo:true,repeat:3},9.2).call(()=>show(ph,'stand-shock'),null,9.2);drop(ph,9.3);
+ say(ph,'…ลืมเปิดฝาเลนส์ 😱',9.4,2.0,'sm',-250,-SH-100);
+ sub.forEach((s,i)=>sit(s,10.0+i*.1));say(sub[1]||sub[0],'โธ่~ 🤣',10.2,1.4);
+ tl.to([ph,cam,cap,...sub],{opacity:0,duration:.5},11.8);},
+// ---------- K4 ไฟล์ final จริง ๆ (วิ่งหาทั่ว — อยู่ในมือตัวเอง) ----------
+()=>{const a=sprite(R[0],'runA-shock',-150),b=sprite(R[1],'stand',W*.50),c=sprite(R[2]||R[1],'stand',W*.80),file=emo('📄',64),q=emo('❓',70);
+ if(!R[2])gsap.set(c,{display:'none'});gsap.set([b,c],{opacity:0});tl.to([b,c],{opacity:1,duration:.4},0);follow(file,a,62,-SH*.50);follow(q,a,-20,-SH-60);tl.to(file,{opacity:1,duration:.2},.2);
+ run(a,W*.36,.1,1.4,'stand-shock','runA-shock','runB-shock');tl.to(q,{opacity:1,duration:.2},1.5).to(q,{rotation:14,duration:.15,yoyo:true,repeat:7},1.5);
+ say(a,'ไฟล์ final_v2_จริง_ล่าสุด.jpg อยู่ไหน!? 😵',1.6,1.9,'sm',-200,-SH-170);
+ tl.call(()=>show(b,'wave'),null,3.2);say(b,`ไม่เห็นนะ${E(R[1])} 🤷`,3.5,1.2);
+ run(a,W*.68,4.7,.9,'stand-shock','runA-cry','runB-cry');dustPuff(a,4.7,.8);
+ say(a,'ใครเห็นบ้างงง 😭',5.6,1.1,'sm',-200,-SH-170);
+ tl.call(()=>show(c,'wave'),null,6.5);say(c,'…ลองดูในมือสิ 👉',6.7,1.5,'sm',-230,-SH-100);
+ tl.to(q,{opacity:0,duration:.2},7.6).to(file,{scale:2,duration:.25,yoyo:true,repeat:3,ease:'power1.inOut'},7.8);sfx('วิ้ง~',W*.68+110,FLOOR-SH*.8,7.8,6,80);
+ tl.call(()=>show(a,'stand-sad'),null,8.2);const d=drop(a,8.2);say(a,'…อยู่ในมือนี่เอง 😅',8.4,2.0,'sm',-200,-SH-170);
+ [b,c].forEach((p,i)=>{tl.call(()=>show(p,'up'),null,8.8+i*.1);hop(p,8.8+i*.1,2,30)});say(b,'555+ 🤣',8.9,1.5);
+ tl.to([a,b,c,file,d],{opacity:0,duration:.5},10.6);},
+// ---------- K5 ประชุมแป๊บเดียว (5 นาที… จนพระจันทร์ขึ้น) ----------
+()=>{const xs=R.map((_,i)=>W*(.20+i*.16)),ps=R.map((id,i)=>sprite(id,'stand',xs[i])),sign=el('sign','📋 ประชุม 5 นาที'),clock=emo('🕐',90),sun=emo('☀️',100),moon=emo('🌙',100),night=el('reddim'),top=Math.max(30,FLOOR-SH-300);
+ night.style.background='linear-gradient(rgba(10,6,40,.55),rgba(10,6,40,.25))';
+ gsap.set(ps,{opacity:0});gsap.set(sign,{x:W*.5-170,y:top+40});gsap.set(clock,{x:W*.5+150,y:top+20});
+ tl.to(ps,{opacity:1,duration:.4,stagger:.08},0);pop(sign,.3);tl.to(clock,{opacity:1,duration:.2},.5);
+ say(ps[0],`แป๊บเดียวเอง${E(R[0])} 😄`,.8,1.4);
+ tl.to(clock,{rotation:360*6,duration:6.0,ease:'power1.in'},1.4);
+ tl.fromTo(sun,{x:W*.15,y:top+120,opacity:0},{opacity:1,duration:.3},1.6).to(sun,{x:W*.85,duration:3.2,ease:'none'},1.6).to(sun,{y:top-10,duration:1.6,ease:'sine.out',yoyo:true,repeat:1},1.6).to(sun,{opacity:0,duration:.3},4.6);
+ ps.forEach((p,i)=>{const t=2.6+i*.7;sit(p,t);const z=emo('💤',60);follow(z,p,30,-SH*.75);tl.to(z,{opacity:1,duration:.3},t+1.4).to(z,{y:'-=10',duration:.5,yoyo:true,repeat:5},t+1.4).to(z,{opacity:0,duration:.2},8.6)});
+ tl.call(()=>{sign.textContent='📋 อีกแป๊บเดียว…'},null,4.4).fromTo(sign,{scale:1.2},{scale:1,duration:.3},4.4);
+ tl.to(night,{opacity:1,duration:.8},4.6).fromTo(moon,{x:W*.2,y:top+120,opacity:0},{opacity:1,duration:.3},4.9).to(moon,{x:W*.6,y:top,duration:2.6,ease:'sine.out'},4.9);
+ sfx('ติ๊ก ต๊อก ติ๊ก ต๊อก',W*.12,FLOOR-SH-150,5.4,-4,70);
+ tl.call(()=>{sign.textContent='📋 สรุป: นัดประชุมต่อพรุ่งนี้ 😇'},null,7.6).fromTo(sign,{scale:1.25},{scale:1,duration:.3},7.6);
+ tl.to(night,{opacity:0,duration:.5},8.6).to(moon,{opacity:0,duration:.4},8.6);
+ ps.forEach((p,i)=>rise(p,8.7+i*.06,'stand-shock'));say(ps[ps.length-1],'หา!? 😳',8.8,1.3);
+ tl.to([sign,clock,...ps],{opacity:0,duration:.5},10.4);},
+// ---------- K6 แบตกล้องหมด (ฮีโร่ยื่นแบตสำรอง) ----------
+()=>{const a=sprite(R[0],'runA',-150),h=sprite(R[1],'runA',W+200),cam=emo('📷',80),low=emo('🪫',110),bat=emo('🔋',80);
+ follow(cam,a,70,-SH*.62);tl.to(cam,{opacity:1,duration:.2},.2);run(a,W*.42,.1,1.5,'up');dustPuff(a,.2,1.2);
+ say(a,'ทันพอดี! ถ่ายละนะ—',1.7,1.1,'sm',-120,-SH-110);
+ tl.call(()=>gsap.set(low,{x:W*.42+60,y:FLOOR-SH-190}),null,2.8).fromTo(low,{opacity:0,scale:.3},{opacity:1,scale:1,duration:.25,ease:'back.out(3)'},2.8).to(low,{opacity:.3,duration:.25,yoyo:true,repeat:5},3.1);
+ sfx('ปิ๊บ…',W*.42-260,FLOOR-SH-150,2.8,-8,100);tl.call(()=>show(a,'stand-shock'),null,2.9);gloom(a,3.1,2.3);say(a,'แบตหมด… 😨',3.3,1.6,'sm',-120,-SH-110);
+ follow(bat,h,-80,-SH*.62);tl.to(bat,{opacity:1,duration:.2},5.0);run(h,W*.62,5.0,1.1,'up');dustPuff(h,5.0,1.0);
+ flash(6.1,'#ffe066');sfx('ชิ้ง!!',W*.62-80,FLOOR-SH-260,6.1,6,130);say(h,`แบตสำรองมาแล้ว${E(R[1])}! 🦸`,6.2,1.8,'sm',-260,-SH-110);
+ tl.to(low,{opacity:0,duration:.2},6.1).call(()=>{follows=follows.filter(f=>f[0]!==bat)},null,6.9).to(bat,{keyframes:[{x:W*.52,y:FLOOR-SH-120,duration:.35,ease:'power1.out'},{x:W*.42+60,y:FLOOR-SH*.62,duration:.35,ease:'power1.in'}]},6.9);
+ tl.call(()=>show(a,'up'),null,7.7);hop(a,7.7,3);say(a,'รอดแล้ว!! 🙏✨',7.8,1.8,'sm',-120,-SH-110);hearts(a,7.9,6,'✨');flash(8.6);sfx('แชะ!',W*.3,FLOOR-SH-200,8.6,-8,110);
+ tl.to([a,h,cam,bat],{opacity:0,duration:.5},9.9);},
+// ---------- K7 ฝนตก (ทุกคนวิ่งหลบ — นางเงือกดีใจอยู่คนเดียว) ----------
+()=>{const nat=sprite(R[0],'stand',W*.50),fr=R.slice(1).map((id,i)=>sprite(id,'stand',W*(i%2?.66+.12*(i>>1):.34-.12*(i>>1)))),clouds=[.25,.5,.75].map(()=>emo('🌧️',130)),top=Math.max(20,FLOOR-SH-300),rainbow=emo('🌈',150);
+ gsap.set([nat,...fr],{opacity:0});tl.to([nat,...fr],{opacity:1,duration:.4},0);say(fr[0],'วันนี้อากาศดีจัง ☀️',.5,1.4);
+ clouds.forEach((c,i)=>{tl.fromTo(c,{x:-200,y:top,opacity:0},{x:W*(.2+i*.28),opacity:1,duration:1.2,ease:'power2.out'},1.6+i*.15)});
+ tl.call(()=>{const iv=setInterval(()=>{for(let k=0;k<5;k++){const d=el('emo','💧');d.style.fontSize='34px';const x=Math.random()*W;gsap.fromTo(d,{x,y:top+110,opacity:.9},{y:FLOOR-10,x:x-60,opacity:.2,duration:.7,ease:'none',onComplete:()=>d.remove()})}},110);ivs.push(iv);tos.push(setTimeout(()=>clearInterval(iv),5200))},null,2.6);
+ sfx('ซ่าาา!',W*.12,FLOOR-SH-120,2.7,-5,110);
+ fr.forEach((f,i)=>{tl.call(()=>show(f,'stand-shock'),null,2.8);const left=gsap.getProperty(f,'x')<W*.5;run(f,left?-260:W+260,3.2+i*.12,1.3,null,'runA-shout','runB-shout')});say(fr[0],'ฝนตก!! หลบเร็ว 😱',2.9,1.0);
+ tl.call(()=>show(nat,'up'),null,4.0);hop(nat,4.0,2,40);say(nat,'น้ำมาแล้ว~ 🧜‍♀️💕',4.2,2.4,'sm',-110,-SH-110);hearts(nat,4.4,7,'💦');
+ tl.to(nat,{x:'+=170',duration:.9,ease:'sine.inOut',yoyo:true,repeat:3},4.8).to(nat,{y:FLOOR-26,duration:.3,yoyo:true,repeat:11,ease:'sine.inOut'},4.8).to(nat,{rotation:8,duration:.45,yoyo:true,repeat:7,ease:'sine.inOut'},4.8);
+ tl.to(clouds,{opacity:0,x:'+=300',duration:.8},7.9).fromTo(rainbow,{x:W*.5-75,y:top+20,opacity:0,scale:.4},{opacity:1,scale:1,duration:.5,ease:'back.out(2)'},8.2);
+ const peek=fr[0]?sprite(R[1],'walkA',-150):null;if(peek){gsap.set(peek,{opacity:0});tl.set(peek,{opacity:1},8.4);walk(peek,W*.22,8.4,1.2,'stand');say(peek,'…มีคนเดียวที่ชอบ 😂',9.0,1.6);}
+ tl.to([nat,rainbow,peek].filter(Boolean),{opacity:0,duration:.5},10.9);},
+// ---------- K8 ถุงของเข้าบ้าน (ป้าจิตรตัวเปล่า พี่เอิร์ธแบกถุงท่วมหัว) ----------
+()=>{const car=el('car is-stop',CAR_SVG),j=sprite('jit','walkA',430),e=sprite(R[0],'walkA',250),bags=[0,1,2,3,4].map(()=>emo('🛍️',78)),spark=emo('✨',80);
+ gsap.set(car,{x:-40,y:FLOOR-256,opacity:0});gsap.set([j,e],{opacity:0});
+ tl.to(car,{opacity:1,duration:.4},0).to(j,{opacity:1,duration:.3},.5).to(e,{opacity:1,duration:.3},.9);
+ bags.forEach((b,i)=>{follow(b,e,-40+(i%2?10:-10),-SH*.55-i*66);tl.to(b,{opacity:1,duration:.15},1.0+i*.12)});
+ walk(j,W*.62,.9,3.6,'standE');say(j,'ถือดี ๆ นะคะ 😊',1.4,1.8,'sm',-90,-SH-100);
+ tl.call(()=>cyc1(e,'walkA-sad','walkB-sad',.34),null,1.8).to(e,{x:W*.42,duration:3.6,ease:'none'},1.8).to(e,{rotation:3,duration:.34,yoyo:true,repeat:9,ease:'sine.inOut'},1.8);
+ const dr=drop(e,2.2,96,-SH*.5);say(e,'มะ…ไม่หนักเลยครับ 😅',3.0,1.8,'sm',40,-SH*.5);
+ const topb=bags[4];tl.to(topb,{rotation:18,duration:.2,yoyo:true,repeat:5},4.4).call(()=>{follows=follows.filter(f=>f[0]!==topb);stop1(e,'stand-shock')},null,5.4);
+ sfx('หวืด!',W*.47,FLOOR-SH-260,5.4,-8,100);
+ tl.to(topb,{keyframes:[{x:W*.52,y:FLOOR-SH-240,rotation:200,duration:.4,ease:'power1.out'},{x:W*.62-110,y:FLOOR-SH*.62,rotation:360,duration:.4,ease:'power1.in'}]},5.4);
+ tl.call(()=>{gsap.set(spark,{x:W*.62-150,y:FLOOR-SH*.8})},null,6.2).fromTo(spark,{opacity:0,scale:.4},{opacity:1,scale:1.5,duration:.2,yoyo:true,repeat:1},6.2);sfx('หมับ!',W*.62-60,FLOOR-SH-230,6.2,6,110);
+ say(j,'รับได้ค่ะ ✌️',6.4,1.6,'sm',-90,-SH-100);say(e,'…เก่งกว่าผมอีกครับ 🥲',7.2,1.8,'sm',40,-SH*.5);hearts(j,7.4,5);
+ tl.call(()=>{follow(topb,j,-110,-SH*.62);cyc1(j,'walkA','walkB',.26);cyc1(e,'walkA','walkB',.3)},null,9.0).to(j,{x:W+220,duration:2.6,ease:'none'},9.0).to(e,{x:W+40,duration:2.6,ease:'none'},9.0);
+ tl.to([car,e,j,dr,...bags],{opacity:0,duration:.4},11.4);},
 ];
 
   tl = gsap.timeline({ onComplete: () => { finish(); onDone && onDone(); } });

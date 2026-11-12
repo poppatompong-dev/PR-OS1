@@ -31,7 +31,7 @@ import { startFacing } from "./face-motion";
 // Telegram joke box — and real-work moments (new job, all acknowledged, day
 // cleared) jump the queue.
 const ROTATION = ["act", "scene", "act", "gag", "act", "extra"] as const;
-type SceneMeta = { key: string; kind?: string; fest?: string[]; earth?: boolean; badge?: boolean; all?: boolean; n?: number; pai?: boolean };
+type SceneMeta = { key: string; kind?: string; fest?: string[]; earth?: boolean; badge?: boolean; all?: boolean; n?: number; pai?: boolean; dir?: boolean; nat?: boolean };
 type Job = { key: "W1" | "W2" | "W3"; roles: string[]; data: Record<string, unknown> };
 type Joke = { id: string; personId: string; name: string; setup: string; punch: string };
 const SERIAL_EVERY_MIN = 25;
@@ -49,6 +49,11 @@ const GAG_CAR = 11;
 const GAG_CAR_LIVE = true;
 const TEAM_FOR_GAG = ["00000000-0000-0000-0000-000000000503", "00000000-0000-0000-0000-000000000505", "00000000-0000-0000-0000-000000000504"];
 const PAI = "00000000-0000-0000-0000-000000000501";
+const HEAD = "774174ff-e0cc-4bc5-922e-13fd1b05750d"; // คุณสมัชชา — ผู้กำกับกองถ่าย
+const NAT = "00000000-0000-0000-0000-000000000504"; // นัท — ลุคนางเงือก
+/** ซิตคอมออฟฟิศ ปชส. skits K1–K8 (owner, 12 Nov 2026: "ฝึกทำแก็กตลกไว้"): previews only
+ *  (/tv?scene=skit cycles them, /tv?scene=K3 plays one) until the owner picks which go on air. */
+const SKITS_LIVE: string[] = [];
 // Seniors are never the butt of a gag (chased, crying…): พี่ไป๋ and the new head of section (12 Nov 2026).
 const SENIOR = new Set([PAI, "774174ff-e0cc-4bc5-922e-13fd1b05750d"]);
 
@@ -227,9 +232,10 @@ export function TvCast({ still, people, off, events = [], festival = null }: { s
     // /tv?jit=3 — that gag (1–12) over and over.
     const jitOnly = /^\d+$/.test(q.get("jit") ?? "") ? Number(q.get("jit")) - 1 : -1;
     const jitFast = q.get("jit") === "fast" || jitOnly >= 0;
-    // /tv?scene=fast — every anime scene in turn · /tv?scene=B3 — that one, over and over.
+    // /tv?scene=fast — every anime scene in turn · /tv?scene=B3 — that one, over and over · /tv?scene=skit — the skits in turn.
     const sceneQ = q.get("scene");
-    const sceneOnly = sceneQ && sceneQ !== "fast" ? SCENES.findIndex((s) => s.key === sceneQ.toUpperCase()) : -1;
+    const skitFast = sceneQ === "skit";
+    const sceneOnly = sceneQ && sceneQ !== "fast" && !skitFast ? SCENES.findIndex((s) => s.key === sceneQ.toUpperCase()) : -1;
     const sceneFast = !!sceneQ;
     const preview = fast || jitFast || sceneFast;
     const gagsOn = cast.includes(EARTH_ID); // พี่เอิร์ธ chose "no cartoon" → no gags
@@ -260,6 +266,13 @@ export function TvCast({ still, people, off, events = [], festival = null }: { s
     const canScene = (i: number) => {
       const s = META[i];
       if (s.kind === "work") return preview;
+      if (s.kind === "skit") {
+        if (!preview && !SKITS_LIVE.includes(s.key)) return false;
+        if (s.earth) return gagsOn;
+        if (s.dir && !cast.includes(HEAD)) return false;
+        if (s.nat && !cast.includes(NAT)) return false;
+        return cast.filter((id) => notPai(id) && id !== NAT).length >= 2;
+      }
       if (s.fest && !isFest(s)) return false;
       if (s.kind === "serial") return gagsOn && cast.filter((id) => id !== EARTH_ID && notPai(id)).length >= 2;
       if (s.earth) return gagsOn;
@@ -307,6 +320,16 @@ export function TvCast({ still, people, off, events = [], festival = null }: { s
         const sample = cast.filter(notPai).slice(0, 2);
         return { i, roles: s.key === "W3" ? shuffle(cast) : sample, data: { title: "ตัวอย่าง: ถ่ายภาพงานประชุม", count: 3 } };
       }
+      if (s.kind === "skit") {
+        if (s.earth) { bump([EARTH_ID]); return { i, roles: [EARTH_ID], data: {} }; }
+        // the lead is fixed for K1 (ผู้กำกับ) and K7 (นางเงือก); nobody senior plays the fool
+        const lead = s.dir ? HEAD : s.nat ? NAT : null;
+        const pool = cast.filter((id) => notPai(id) && id !== lead).length;
+        const r = pick(Math.min(s.n ?? 2, pool), (id) => notPai(id) && id !== lead);
+        if (!r || r.length < 2) return null;
+        if (lead) bump([lead]);
+        return { i, roles: lead ? [lead, ...r] : r, data: {} };
+      }
       if (s.kind === "serial") { const r = serialRoles(); bump(r); return { i, roles: r, data: { ep: serialEp() || 1 } }; }
       if (s.kind === "joke") {
         const j = nextJoke();
@@ -331,6 +354,11 @@ export function TvCast({ still, people, off, events = [], festival = null }: { s
     };
     const nextScene = () => {
       if (sceneOnly >= 0) return castScene(sceneOnly);
+      if (skitFast) {
+        const ks = META.map((_, k) => k).filter((k) => META[k].kind === "skit");
+        for (let n = 0; n < ks.length; n++) { const sc = castScene(ks[sceneCursor++ % ks.length]); if (sc) return sc; }
+        return null;
+      }
       if (sceneFast) {
         // preview: every scene in order
         const i = sceneCursor++ % META.length;
