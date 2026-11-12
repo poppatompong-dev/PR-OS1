@@ -300,3 +300,16 @@ test("a joke typed without มุก gets the how-to, not the admins (12 Nov 202
   assert.equal(looksLikeJoke("ทำไมงานพรุ่งนี้ไม่ขึ้น"), false);
   assert.match(jokeHintText("ทำไมลูกถึงปาบอลใส่แม่? .....เพราะแม่เป็นห่วง"), /มุก ทำไมลูกถึงปาบอลใส่แม่\? \| เพราะแม่เป็นห่วง/);
 });
+
+test("a non-owner admin's question reaches the other admins (12 Nov 2026)", async () => {
+  const db = seedQ();
+  const ask = await say(db, 502, "เบิกค่าเดินทางยังไงครับ");
+  assert.match(textTo(ask, 999), /คำถามจาก[\s\S]*เบิกค่าเดินทาง/);
+  assert.equal(textTo(ask, 502).includes("#Q"), false);
+});
+
+test("คู่มือ: admins get the head guide, others don't", async () => {
+  const db = seedQ();
+  assert.match(textTo(await say(db, 502, "คู่มือ"), 502), /คู่มือสั้น ๆ สำหรับ[\s\S]*รายงาน 17\.00[\s\S]*ตอบกลับ \(Reply\)/);
+  assert.doesNotMatch(textTo(await say(db, 506, "คู่มือ"), 506), /คู่มือสั้น ๆ สำหรับ/);
+});

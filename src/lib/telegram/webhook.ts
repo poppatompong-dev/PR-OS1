@@ -38,6 +38,7 @@ import {
   logPulse,
   pulseAdminText,
   pulseNoteAdminText,
+  pulseButtons,
   pulseReply,
 } from "@/lib/telegram/pulse";
 import { Q_TAG, answerQuestion, forwardQuestion, isChatter, jokeHintText, looksLikeJoke, looksLikeQuestion } from "@/lib/telegram/questions";
@@ -75,6 +76,7 @@ import {
   tgPendingTeam,
   tgTeamDay,
   tgHelp,
+  tgHeadGuide,
   tgLinked,
   tgTour,
   tgTourDone,
@@ -157,6 +159,9 @@ async function handleText(ctx: Ctx, chatId: number, raw: string, from?: { first_
         ctx.admin,
         `🔗 <b>${esc(res.displayName)}</b> ผูก Telegram แล้ว\nบัญชี Telegram: ${esc(tgName)}${from?.username ? ` (@${esc(from.username)})` : ""}\n<i>ไม่ใช่เจ้าตัว? /settings › ⋯ › ยกเลิกผูก Telegram แล้วออกลิงก์ใหม่</i>`,
       ).catch(() => 0);
+      // หัวหน้า / ผู้ติดตามงาน also get their own short guide (12 Nov 2026).
+      const linkedId = (await findPersonByTelegramChatId(ctx.admin, chatId))?.id;
+      if (linkedId && (await isAdminOf(ctx.admin, linkedId))) return [tgLinked(res.displayName), tgHeadGuide(res.displayName, pulseButtons()), tgTour(0)];
       return [tgLinked(res.displayName), tgTour(0)];
     }
     const why = {
@@ -221,6 +226,7 @@ async function handleText(ctx: Ctx, chatId: number, raw: string, from?: { first_
     return [tgTrial(trialDone(data?.metadata), TRIAL_STEPS)];
   }
   if (/^(ทัวร์|ทัวร|tour|\/tour)$/i.test(text.replace(/\s+/g, ""))) return [tgTour(0)];
+  if (/^(คู่มือ|คู่มือหัวหน้า|\/guide)$/i.test(text.replace(/\s+/g, "")) && (await isAdminOf(ctx.admin, person.id))) return [tgHeadGuide(person.displayName, pulseButtons())];
 
   const cmd = matchCommand(text);
   const today = todayInBangkok();

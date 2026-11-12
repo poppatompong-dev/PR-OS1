@@ -10,6 +10,7 @@ import { esc, sendTelegram, type TgMessage } from "@/lib/telegram/api";
 import { titleFor } from "@/lib/telegram/chat";
 
 export const Q_TAG = /#Q([A-Z0-9]{5})\b/;
+const OWNER_IDS = new Set(["c6f31b24-ea1e-4394-9b98-79f26c476ab9"]); // ป๊อปปี้ (system owner)
 const LAUGH = /^(5{2,}|ฮ่?า+|ha+|อิ+|อุ+|โอเค|ok|ค่ะ|คะ|ครับ|คับ|จ้า|จ้ะ|ได้|ๆ|\.)+$/i;
 
 /** Worth a human's time: real Thai words (or a ?), not a laugh, an emoji or a key-mash. */
@@ -35,8 +36,10 @@ const newCode = () => Array.from({ length: 5 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ2
 
 /** Forward to every admin recipient except the asker. Returns how many got it (0 = nobody, or the asker is an admin). */
 export async function forwardQuestion(admin: SupabaseClient, person: LinePerson, raw: string): Promise<number> {
-  const ids = await getAdminRecipientIds(admin);
-  if (ids.includes(person.id)) return 0;
+  // The system owner's own test questions stay put; any other admin (the new head of
+  // section, 12 Nov 2026) gets their question to the *other* admins.
+  if (OWNER_IDS.has(person.id)) return 0;
+  const ids = (await getAdminRecipientIds(admin)).filter((id) => id !== person.id);
   const admins = (await getPeopleByIds(admin, ids)).filter((a) => a.telegramChatId);
   if (!admins.length) return 0;
   const text = raw.trim().slice(0, 800);

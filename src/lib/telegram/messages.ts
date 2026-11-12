@@ -433,3 +433,30 @@ export function tgAvatarReady(name: string, photoUrl: string): TgMessage {
 export function tgTrialComplete(): TgMessage {
   return { text: "🎉 <b>ภารกิจทดสอบครบ 4/4</b>\nพร้อมรับงานจริงแล้ว ขอบคุณครับ 🙏" };
 }
+
+// ---- คู่มือหัวหน้า / ผู้ติดตามงาน (owner, 12 Nov 2026: "ควรมีน้องบอทคอยดูแลสื่อสาร
+// การใช้งานระบบเบื้องต้น" for the new head of section). Sent right after linking
+// when the person is an admin recipient; "คู่มือ" shows it again. Polite voice.
+export function tgHeadGuide(name: string, pulse: TgButton[][]): TgMessage {
+  return {
+    text: [
+      `🎬 <b>คู่มือสั้น ๆ สำหรับ${esc(callName(name))}</b>`,
+      "",
+      "<b>สิ่งที่จะได้รับในแชทนี้</b>",
+      "📋 การ์ดงานที่ได้รับมอบหมาย · กด ✅ รับทราบ หรือ ⛔ ไม่สะดวก",
+      "🕔 รายงาน 17.00 น. · ใครยังไม่รับทราบงานพรุ่งนี้",
+      "⛔ แจ้งทันทีเมื่อมีน้องกดไม่สะดวก · หาคนแทนได้เลย",
+      "❓ คำถามจากน้องที่บอทตอบไม่ได้ · กด <b>ตอบกลับ (Reply)</b> แล้วพิมพ์ บอทส่งให้น้องเอง",
+      "✨ คำขอลุค/แก็ก และ 😂 มุกจากทีม · กดปุ่มใต้ข้อความได้เลย",
+      "",
+      "<b>สั่งงานจากมือถือ</b>",
+      "➕ เพิ่มงาน · 📋 รายการงาน (แก้ไข เลื่อน ยกเลิก มอบหมาย)",
+      "พิมพ์ถามได้ เช่น <b>งานพรุ่งนี้</b> · <b>ยังไม่รับทราบ</b> · <b>งานของฉัน</b>",
+      "",
+      "📺 จอทีวีห้อง: pr-os1.vercel.app/tv",
+      "",
+      "ดูคู่มือนี้อีกครั้ง พิมพ์ <b>คู่มือ</b> · ติดตรงไหน กดด้านล่างได้เลยครับ 👇",
+    ].join("\n"),
+    buttons: [[addEventButton(), jobsButton()], [{ text: "▶ ทัวร์ 1 นาที", callback_data: "t|0" }], ...pulse],
+  };
+}
