@@ -697,7 +697,7 @@
 .tv-edge-body li { display: flex; gap: calc(24 * var(--u)); align-items: flex-start; font-size: calc(36 * var(--u)); line-height: 1.25; }
 .tv-edge-body li b { flex: none; width: calc(230 * var(--u)); color: #ffe9a8; font-weight: 800; white-space: nowrap; }
 .tv-edge-body li b i { display: block; font-style: normal; font-size: calc(26 * var(--u)); font-weight: 700; opacity: .85; }
-.tv-edge-body li span { display: grid; gap: calc(2 * var(--u)); min-width: 0; }
+.tv-edge-body li > span { display: grid; flex: 1; gap: calc(2 * var(--u)); min-width: 0; }
 .tv-edge-body li em { font-style: normal; font-weight: 800; display: block; max-height: 2.5em; overflow: hidden; }
 .tv-edge-body li small { font-size: calc(28 * var(--u)); opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tv-edge-more { margin: calc(14 * var(--u)) 0 0; font-size: calc(32 * var(--u)); opacity: .9; }
