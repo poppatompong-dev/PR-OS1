@@ -18,6 +18,7 @@ import { isDone, screenTitle } from "@/lib/monitor/board";
 import { bangkokNow } from "@/lib/monitor/thai-time";
 import type { MonitorEvent } from "@/lib/monitor/types";
 import type { Festival } from "@/lib/monitor/festivals";
+import { startFacing } from "./face-motion";
 
 // "สร้างความครื้นเครงแบบถี่ ๆ ไปก่อน แต่ไม่ให้กระทบคนดูคิวงานมากนัก · ทุกตัวละครควรมี
 // บทบาทพอ ๆ กัน" (owner, 4 Nov 2026): every slot is short (≤10 s) with 25–45 s of a
@@ -67,6 +68,8 @@ export function TvCast({ still, people, off, events = [], festival = null }: { s
   const seen = useRef<{ ids: Map<string, boolean>; day: string; cleared: boolean } | null>(null);
 
   // Real-work moments: compare each board load with the last one.
+  // Everyone faces the way they move (12 Nov 2026), whatever each gag set by hand.
+  useEffect(() => startFacing(), []);
   useEffect(() => {
     const now = bangkokNow();
     const live = events.filter((e) => e.status !== "canceled" && e.eventDate >= now.iso);

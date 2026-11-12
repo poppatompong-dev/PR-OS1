@@ -346,7 +346,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
                           title: screenTitle(e),
                           place: e.locationName ?? "",
                           inText: untilText(first.iso, e.startTime, Date.now()),
-                          faces: people.slice(0, 5).map((x, k) => face(x, k, 64)),
+                          faces: people.slice(0, 4).map((x, k) => face(x, k, 44)),
                         }
                       : null
                   }

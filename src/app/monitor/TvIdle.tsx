@@ -11,6 +11,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { ShowcaseItem } from "@/lib/monitor/showcase";
 import type { BoardRequest } from "./TvShowcase";
 import { CAST_IDS, castUrl } from "@/lib/monitor/cast";
+import { ThaiText } from "./ThaiText";
 
 export type IdleLook = 1 | 2 | 3;
 export const IDLE_DEFAULT_LOOK: IdleLook = 1;
@@ -40,20 +41,14 @@ function useTick(n: number, still: boolean, ms = EVERY) {
 }
 
 function NextStrip({ next }: { next: IdleNext }) {
-  if (!next) return <div className="bm-idle-next"><span>🌿 วันนี้ไม่มีงาน · ยังไม่มีงานข้างหน้า</span></div>;
+  if (!next) return <div className="bm-idle-next"><span className="bm-idle-next-t">🌿 วันนี้ไม่มีงาน · ยังไม่มีงานข้างหน้า</span></div>;
   return (
     <div className="bm-idle-next">
-      <small>🌿 วันนี้ไม่มีงาน · งานถัดไป</small>
-      <div className="bm-idle-next-row">
-        <b>
-          {next.when} <em>{next.title}</em>
-        </b>
-        <span className="bm-idle-in">⏳ {next.inText}</span>
-      </div>
-      <div className="bm-idle-next-row">
-        <span className="bm-idle-place">📍 {next.place || "ไม่ระบุสถานที่"}</span>
-        <span className="bm-idle-faces">{next.faces}</span>
-      </div>
+      <span className="bm-idle-next-t">
+        🌿 งานถัดไป <b>{next.when}</b> <em>{next.title}</em>
+      </span>
+      <span className="bm-idle-in">⏳ {next.inText}</span>
+      <span className="bm-idle-faces">{next.faces}</span>
     </div>
   );
 }
@@ -74,29 +69,30 @@ function MixLook({ news, jokes, stats, requests, dates, still }: { news: Showcas
   return (
     <div className="bm-idle-panel" key={`${s.k}-${slides.indexOf(s)}`}>
       {s.k === "news" ? (
-        <div className="bm-idle-news">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={s.item.image} alt="" className={still ? "" : "is-live"} />
-          <div className="bm-idle-cap">
+        <div className="bm-idle-news2">
+          <div className="bm-idle-photo">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={s.item.image} alt="" className={still ? "" : "is-live"} />
+          </div>
+          <div className="bm-idle-text">
             <small>📘 ผลงานล่าสุด · {thaiDay(s.item.date)}</small>
-            <b>{s.item.title}</b>
+            <b><ThaiText text={s.item.title} /></b>
           </div>
         </div>
       ) : s.k === "joke" ? (
-        <div className="bm-idle-joke">
+        <div className={`bm-idle-joke${(s.joke.setup + s.joke.punch).length > 70 ? " is-long" : ""}`}>
           <small>😂 มุกประกวดจาก {s.joke.name}</small>
-          <p className="bm-idle-q">{s.joke.setup || "…"}</p>
-          <p className="bm-idle-a">{clean(s.joke.punch)}</p>
+          <p className="bm-idle-q"><ThaiText text={s.joke.setup || "…"} /></p>
+          <p className="bm-idle-a"><ThaiText text={clean(s.joke.punch)} /></p>
         </div>
       ) : s.k === "stats" ? (
         <div className="bm-idle-stats">
-          <small>📊 ผลงานทีม {stats?.month?.label ?? "เดือนนี้"}</small>
+          <small>📊 ผลงานทีม {stats?.month?.label ?? "เดือนนี้"} · ขอบคุณทุกคนครับ 🙏</small>
           <div>
             <span><b>{stats?.month?.jobs ?? 0}</b> งาน</span>
             <span><b>{stats?.month?.slots ?? 0}</b> คน-ครั้ง</span>
             {stats?.ack?.rate != null ? <span><b>{stats.ack.rate}%</b> รับทราบ</span> : null}
           </div>
-          <p>ขอบคุณทุกคนที่ช่วยกันครับ 🙏</p>
         </div>
       ) : (
         <div className="bm-idle-dates">
