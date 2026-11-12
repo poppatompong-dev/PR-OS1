@@ -14,6 +14,7 @@ export const CAST_IDS: string[] = [
   "00000000-0000-0000-0000-000000000506", // แข
   "dd5a7eb4-d62a-45bc-b11b-33dae93d6b49", // ภัส
   "1b378ad3-73a3-461c-985e-b1d52189dbee", // พี่เอ๋
+  "774174ff-e0cc-4bc5-922e-13fd1b05750d", // คุณสมัชชา (หัวหน้าฝ่ายฯ) — ผู้กำกับกองถ่าย, 12 Nov 2026: team body + drawn head (scripts/looks/director.py)
 ];
 
 export const castUrl = (id: string, pose: CastPose) => `/cast/${id}/${pose}.webp`;

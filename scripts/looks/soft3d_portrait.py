@@ -119,5 +119,12 @@ d.arc([fx - 40, my - 30, fx + 40, my + 20], 18, 162, fill=(150, 54, 62), width=4
 put(img, SKIN_SH, mask(lambda dd: dd.arc([fx - 52, my - 34, fx + 52, my + 22], 5, 30, fill=255, width=5)), blur=3, k=0.6)
 put(img, SKIN_SH, mask(lambda dd: dd.arc([fx - 52, my - 34, fx + 52, my + 22], 150, 175, fill=255, width=5)), blur=3, k=0.6)
 
-out = img.resize((int(sys.argv[2]) if len(sys.argv) > 2 else 320,) * 2, Image.LANCZOS)
-out.save(sys.argv[1], quality=92)
+size = int(sys.argv[2]) if len(sys.argv) > 2 else 320
+if len(sys.argv) > 3 and sys.argv[3] == 'head':
+    # head only (hair + face + neck), transparent — for a full-body character
+    a = ImageChops.lighter(ImageChops.lighter(back, face), ImageChops.lighter(front, ImageChops.lighter(locks, neck)))
+    a = ImageChops.multiply(a, mask(lambda d: d.rounded_rectangle([0, -200, S, b + 150], radius=90, fill=255)).filter(ImageFilter.GaussianBlur(5)))
+    rgba = img.convert('RGBA'); rgba.putalpha(a)
+    rgba.crop(rgba.getbbox()).save(sys.argv[1])
+else:
+    img.resize((size, size), Image.LANCZOS).save(sys.argv[1], quality=92)

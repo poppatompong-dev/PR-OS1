@@ -45,6 +45,8 @@ const TIME_WINDOWS: Record<string, { from: number; to: number; every: number; fr
 const GAG_WITH_TEAM = 7; // น้องชวนไปต่อ — needs กุ๊ก แป้ง นัท on screen
 const TEAM_FOR_GAG = ["00000000-0000-0000-0000-000000000503", "00000000-0000-0000-0000-000000000505", "00000000-0000-0000-0000-000000000504"];
 const PAI = "00000000-0000-0000-0000-000000000501";
+// Seniors are never the butt of a gag (chased, crying…): พี่ไป๋ and the new head of section (12 Nov 2026).
+const SENIOR = new Set([PAI, "774174ff-e0cc-4bc5-922e-13fd1b05750d"]);
 
 const GAP_S: [number, number] = [25, 45];
 const shuffle = <T,>(a: T[]) => [...a].sort(() => Math.random() - 0.5);
@@ -247,7 +249,7 @@ export function TvCast({ still, people, off, events = [], festival = null }: { s
     timers.add(badgeTimer);
     const META = SCENES as SceneMeta[];
     const idx = (k: string) => META.findIndex((s) => s.key === k);
-    const notPai = (id: string) => id !== PAI;
+    const notPai = (id: string) => !SENIOR.has(id);
     const isFest = (s: SceneMeta) => !!s.fest && (preview || (!!festRef.current && s.fest.includes(festRef.current.key)));
     const canScene = (i: number) => {
       const s = META[i];
@@ -306,7 +308,7 @@ export function TvCast({ still, people, off, events = [], festival = null }: { s
         if (j.personId === teller) bump([teller]);
         const ears = pick(Math.min(2, cast.filter((id) => id !== teller && notPai(id)).length), (id) => id !== teller && notPai(id)) ?? [];
         // พี่ไป๋'s own joke always gets the laugh.
-        const react = teller === PAI || Math.random() < 0.65 ? "laugh" : "flat";
+        const react = SENIOR.has(teller) || Math.random() < 0.65 ? "laugh" : "flat";
         return { i, roles: [teller, ...ears], data: { setup: j.setup, punch: j.punch, name: j.name, react } };
       }
       if (s.fest && s.all) {
