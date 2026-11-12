@@ -12,6 +12,7 @@ import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { CAST_IDS, CAST_POSES, castUrl, stepTime, type CastPose } from "@/lib/monitor/cast";
 import { EARTH_ID, GAG_COUNT, GAG_HOME_TIME, playGag, preloadGags } from "./tv-gags";
+import { TV_OFF_MIN, TV_ON_MIN } from "@/lib/monitor/tv-hours";
 import { BADGE_TEXT, BUILTIN_JOKES, SCENES, playScene, preloadScene } from "./tv-scenes";
 import { catchphrase } from "@/lib/monitor/catchphrases";
 import { isDone, screenTitle } from "@/lib/monitor/board";
@@ -39,9 +40,10 @@ const SERIAL_FROM = "2026-11-09"; // first Monday after it shipped
 const FEST_EVERY_MIN = 8;
 /** Bangkok minutes-of-day windows for the time scenes (Fri only for T3). */
 const TIME_WINDOWS: Record<string, { from: number; to: number; every: number; fri?: boolean }> = {
-  T2: { from: 7 * 60 + 50, to: 8 * 60 + 40, every: 20 }, // เช้า สายแล้ว
+  // The TV is on 08:30–16:30 on working days (owner, 12 Nov 2026): timed scenes sit inside that.
+  T2: { from: TV_ON_MIN, to: TV_ON_MIN + 35, every: 15 }, // เช้า สายแล้ว
   T1: { from: 11 * 60 + 45, to: 12 * 60 + 15, every: 12 }, // พักเที่ยง
-  T3: { from: 13 * 60, to: 16 * 60 + 30, every: 40, fri: true }, // ศุกร์แล้ว
+  T3: { from: 13 * 60, to: TV_OFF_MIN, every: 40, fri: true }, // ศุกร์แล้ว
 };
 const GAG_WITH_TEAM = 7; // น้องชวนไปต่อ — needs กุ๊ก แป้ง นัท on screen
 /** ป้าจิตรขับรถตาม (12 Nov 2026): owner OK'd it the same day ("จัดเลย"); /tv?jit=12 previews it. */
@@ -396,7 +398,7 @@ export function TvCast({ still, people, off, events = [], festival = null }: { s
     };
     const nextGag = (): number | null => {
       if (jitOnly >= 0 && jitOnly < GAG_COUNT) return jitOnly;
-      const late = bangkokHour() >= 16;
+      const late = bangkokNow().minutes >= TV_OFF_MIN - 75; // จูงกลับบ้าน: the last hour or so before the TV goes off
       const team = TEAM_FOR_GAG.every((id) => cast.includes(id));
       const ok = (g: number) => (g !== GAG_HOME_TIME || late || preview) && (g !== GAG_WITH_TEAM || team) && (g !== GAG_CAR || GAG_CAR_LIVE || preview);
       if (!gagBag.some(ok)) gagBag = Array.from({ length: GAG_COUNT }, (_, i) => i).sort(() => Math.random() - 0.5);

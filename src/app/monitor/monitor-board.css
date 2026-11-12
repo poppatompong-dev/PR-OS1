@@ -680,3 +680,26 @@
 @keyframes tvJadSway { from { transform: rotate(-2deg); } to { transform: rotate(2deg); } }
 @keyframes tvJadJump { from { transform: translateY(0); } to { transform: translateY(calc(-34 * var(--u))); } }
 @keyframes tvJadShake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
+
+/* ── เปิดเช้า / ปิดท้ายวัน เต็มจอ (TvDayEdge, 12 Nov 2026) ───────────────── */
+.bm > .tv-edge, .tv-edge { position: fixed !important; inset: 0; width: 100vw; height: 100vh; z-index: 46 !important; margin: 0; pointer-events: none; overflow: hidden; opacity: 0; transition: opacity .8s ease; color: #fff; --u: min(calc(100vw / 1920), calc(100vh / 1080)); }
+.tv-edge.is-on { opacity: 1; }
+.tv-edge .th-nb { white-space: nowrap; }
+.tv-edge-sky { position: absolute; inset: 0; }
+.tv-edge--am .tv-edge-sky { background: radial-gradient(circle at 82% 22%, #fff3b0 0, #ffd36b calc(120 * var(--u)), transparent calc(420 * var(--u))), linear-gradient(#ff9e6b, #ffc98a 38%, #7a4fa8 100%); }
+.tv-edge--pm .tv-edge-sky { background: radial-gradient(circle at 80% 70%, #ffb36b 0, #ff7a59 calc(110 * var(--u)), transparent calc(460 * var(--u))), linear-gradient(#2b1b52, #6a3a86 55%, #e0734f 100%); }
+.tv-edge-head { position: absolute; left: calc(110 * var(--u)); top: calc(70 * var(--u)); }
+.tv-edge-head h2 { margin: 0; font-size: calc(110 * var(--u)); font-weight: 900; line-height: 1.1; text-shadow: 0 calc(5 * var(--u)) calc(18 * var(--u)) rgba(0,0,0,.3); }
+.tv-edge-head p { margin: calc(6 * var(--u)) 0 0; font-size: calc(44 * var(--u)); font-weight: 700; opacity: .95; }
+.tv-edge-body { position: absolute; left: calc(110 * var(--u)); top: calc(300 * var(--u)); width: calc(1180 * var(--u)); background: rgba(20, 12, 36, .62); border-radius: calc(34 * var(--u)); padding: calc(30 * var(--u)) calc(40 * var(--u)); box-shadow: 0 calc(14 * var(--u)) calc(40 * var(--u)) rgba(0,0,0,.3); }
+.tv-edge-body h3 { margin: 0 0 calc(14 * var(--u)); font-size: calc(50 * var(--u)); font-weight: 900; color: #ffd36b; }
+.tv-edge-body ul { list-style: none; margin: 0; padding: 0; display: grid; gap: calc(14 * var(--u)); }
+.tv-edge-body li { display: flex; gap: calc(24 * var(--u)); align-items: baseline; font-size: calc(40 * var(--u)); line-height: 1.25; }
+.tv-edge-body li b { flex: none; min-width: calc(190 * var(--u)); color: #ffe9a8; font-weight: 800; white-space: nowrap; }
+.tv-edge-body li span { display: grid; gap: calc(2 * var(--u)); min-width: 0; }
+.tv-edge-body li em { font-style: normal; font-weight: 800; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tv-edge-body li small { font-size: calc(28 * var(--u)); opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tv-edge-more { margin: calc(14 * var(--u)) 0 0; font-size: calc(32 * var(--u)); opacity: .9; }
+.tv-edge-crew { position: absolute; right: calc(60 * var(--u)); bottom: calc(96 * var(--u)); display: flex; align-items: flex-end; }
+.tv-edge-crew img { height: calc(470 * var(--u)); width: auto; margin-left: calc(-70 * var(--u)); filter: drop-shadow(0 calc(10 * var(--u)) calc(14 * var(--u)) rgba(0,0,0,.3)); animation: tvJadBob 1s ease-in-out infinite alternate; }
+.tv-edge-foot { position: absolute; left: 0; right: 0; bottom: 0; height: calc(84 * var(--u)); display: flex; align-items: center; justify-content: center; background: rgba(20, 12, 36, .7); font-size: calc(38 * var(--u)); font-weight: 800; }

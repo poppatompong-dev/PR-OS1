@@ -32,6 +32,7 @@ import { IDLE_DEFAULT_LOOK, IDLE_LABELS, TvIdle, untilText, type IdleJoke, type 
 import type { ShowcaseItem } from "@/lib/monitor/showcase";
 import { FestivalLayer, FestivalStage } from "./FestivalLayer";
 import { TvJokeAd, type AdJoke } from "./TvJokeAd";
+import { TvDayEdge } from "./TvDayEdge";
 import { festivalFor, isFestivalKey, previewFestival } from "@/lib/monitor/festivals";
 import "./monitor-board.css";
 
@@ -507,6 +508,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
       {bday ? <BirthdayShow bday={bday} still={staticMode} off={team.off} team={castPeople} /> : null}
       {welcome ? <WelcomeShow welcome={welcome} still={staticMode} off={team.off} team={castPeople} /> : null}
       <TvJokeAd jokes={adJokes} still={staticMode} events={events} team={castPeople} off={team.off} />
+      <TvDayEdge events={events} still={staticMode} team={castPeople} off={team.off} />
     </div>
   );
 }
