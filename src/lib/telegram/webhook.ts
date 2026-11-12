@@ -43,7 +43,7 @@ import {
 } from "@/lib/telegram/pulse";
 import { parseAdPick } from "@/lib/monitor/contest";
 import { buddyGotText, buddyLive, buddyOffText, buddyOnText, parseBuddyCommand, setBuddy } from "@/lib/telegram/buddy";
-import { Q_TAG, answerQuestion, forwardQuestion, isChatter, jokeHintText, looksLikeJoke, looksLikeQuestion } from "@/lib/telegram/questions";
+import { Q_TAG, answerQuestion, forwardQuestion, holdNow, isChatter, jokeHintText, looksLikeJoke, looksLikeQuestion } from "@/lib/telegram/questions";
 import { TRIAL_STEPS, markTrial, trialDone } from "@/lib/trial";
 import { JOKE_PROMPT, decideJoke, parseJokeCommand, submitJoke } from "@/lib/tv-jokes";
 import { REQ_STATUSES, REQ_STATUS_ICON, REQ_STATUS_TH, isAdminOf, setRequestStatus, tellAdminsRequest } from "@/lib/team-requests";
@@ -55,6 +55,7 @@ import {
   LOOK_PROMPT,
   chatterText,
   didNotGetText,
+  questionHeldText,
   questionSentText,
   matchIntent,
   momAddr,
@@ -281,7 +282,10 @@ async function handleText(ctx: Ctx, chatId: number, raw: string, from?: { first_
       .then(() => undefined, () => undefined);
     return [{ text: buddyGotText, keyboard: KEYBOARD }];
   }
-  if (looksLikeQuestion(text) && (await forwardQuestion(ctx.admin, person, text)) > 0) return [{ text: questionSentText(v.title, v.mom), keyboard: KEYBOARD }];
+  if (looksLikeQuestion(text)) {
+    const held = holdNow();
+    if ((await forwardQuestion(ctx.admin, person, text, held)) > 0) return [{ text: held ? questionHeldText(v.title, v.mom) : questionSentText(v.title, v.mom), keyboard: KEYBOARD }];
+  }
   if (isChatter(text)) return [{ text: chatterText(v.title, v.mom), keyboard: KEYBOARD }];
   // Kept so an admin (or Claude's sweep) can see who may need help (12 Nov 2026).
   await ctx.admin

@@ -376,6 +376,13 @@ export function questionSentText(title: string, mom = false): string {
   ].join("\n");
 }
 
+/** Hold hours (12 Nov 2026): the question waits for the helper, not the admins. */
+export function questionHeldText(title: string, mom = false): string {
+  return mom
+    ? `💌 แม่รับคำถามไว้แล้วค่ะ${esc(title)} ขอเวลาหาคำตอบแป๊บนึง เดี๋ยวตอบในแชทนี้นะคะ (ราว 15–30 นาที)`
+    : `📨 รับคำถามแล้ว ${esc(title)} · ขอเวลาหาคำตอบแป๊บนึง เดี๋ยวตอบในแชทนี้ (ราว 15–30 นาที)`;
+}
+
 /** สำเร็จรูป answers (owner, 9 Nov 2026). Plain voice; the facts are the same for everyone. */
 export const FAQ: Record<"faq_edit" | "faq_ack" | "faq_notify" | "faq_nav" | "faq_tv" | "faq_line" | "faq_mute" | "faq_announce", string> = {
   faq_edit: [

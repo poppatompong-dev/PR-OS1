@@ -34,8 +34,37 @@ export function isChatter(text: string): boolean {
 
 const newCode = () => Array.from({ length: 5 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
 
-/** Forward to every admin recipient except the asker. Returns how many got it (0 = nobody, or the asker is an admin). */
-export async function forwardQuestion(admin: SupabaseClient, person: LinePerson, raw: string): Promise<number> {
+/**
+ * พักคำถามไว้ให้ผู้ช่วยตอบก่อน (owner, 12 Nov 2026: "ไม่มีใครเป็นแอดมินนอกจากผม แต่ผมไม่มีเวลา …
+ * ให้บอทตอบเองก่อน ติดจริงค่อยส่งต่อ"): Mon–Fri 09:00–16:00 a question waits in /settings for
+ * the admin's helper (Claude, every ~15 min) instead of pinging the admins. Not answered in
+ * HOLD_MINUTES → the scheduler sends it on to the admins as before (releaseHeldQuestions).
+ */
+export const HOLD_MINUTES = 35;
+export function isHoldTime(now = new Date()): boolean {
+  const p = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", weekday: "short", hour: "2-digit", hour12: false }).formatToParts(now);
+  const wd = p.find((x) => x.type === "weekday")?.value ?? "";
+  const h = Number(p.find((x) => x.type === "hour")?.value ?? "0");
+  return wd !== "Sat" && wd !== "Sun" && h >= 9 && h < 16;
+}
+export const holdNow = (now = new Date()) => process.env.QUESTION_HOLD !== "off" && isHoldTime(now);
+
+async function sendQuestionToAdmins(admin: SupabaseClient, askerId: string, who: string, text: string, code: string, late = false): Promise<number> {
+  const ids = (await getAdminRecipientIds(admin)).filter((id) => id !== askerId);
+  const admins = (await getPeopleByIds(admin, ids)).filter((a) => a.telegramChatId);
+  let sent = 0;
+  for (const a of admins) {
+    const res = await sendTelegram(a.telegramChatId!, {
+      text: `❓ <b>คำถามจาก ${esc(who)}</b>${late ? " <i>(ยังไม่มีใครตอบ)</i>" : ""}\n\n${esc(text)}\n\n↩️ กด <b>ตอบกลับ (Reply)</b> ที่ข้อความนี้ แล้วพิมพ์คำตอบ บอทจะส่งถึง${esc(who)}ให้ · #Q${code}`,
+    });
+    if (res.ok) sent += 1;
+  }
+  return sent;
+}
+
+/** Forward to every admin recipient except the asker — or, in hold hours, keep it for the helper.
+ *  Returns how many will see it (0 = nobody, or the asker is the owner). */
+export async function forwardQuestion(admin: SupabaseClient, person: LinePerson, raw: string, held = holdNow()): Promise<number> {
   // The system owner's own test questions stay put; any other admin (the new head of
   // section, 12 Nov 2026) gets their question to the *other* admins.
   if (OWNER_IDS.has(person.id)) return 0;
@@ -51,16 +80,38 @@ export async function forwardQuestion(admin: SupabaseClient, person: LinePerson,
     action: "team_question",
     changed_by: null,
     summary: "คำถามจากทีม (Telegram)",
-    new_values: { text, code, via: "telegram" },
+    new_values: { text, code, via: "telegram", ...(held ? { held: true } : {}) },
   });
-  let sent = 0;
-  for (const a of admins) {
-    const res = await sendTelegram(a.telegramChatId!, {
-      text: `❓ <b>คำถามจาก ${esc(who)}</b>\n\n${esc(text)}\n\n↩️ กด <b>ตอบกลับ (Reply)</b> ที่ข้อความนี้ แล้วพิมพ์คำตอบ บอทจะส่งถึง${esc(who)}ให้ · #Q${code}`,
-    });
-    if (res.ok) sent += 1;
-  }
-  return sent;
+  if (held) return 1;
+  return sendQuestionToAdmins(admin, person.id, who, text, code);
+}
+
+type QRow = { entity_id: string; action: string; new_values: { code?: string; text?: string; held?: boolean } | null; changed_at: string };
+
+/** Send one held question on to the admins (the helper could not answer it, or nobody did in time). */
+export async function escalateQuestion(admin: SupabaseClient, code: string, late = false): Promise<{ ok: boolean; sent: number; error?: string }> {
+  const { data } = await admin.from("audit_logs").select("entity_id, action, new_values, changed_at").in("action", ["team_question", "team_answer", "team_question_fwd"]).order("changed_at", { ascending: false }).limit(600);
+  const rows = (data ?? []) as QRow[];
+  const q = rows.find((r) => r.action === "team_question" && r.new_values?.code === code);
+  if (!q) return { ok: false, sent: 0, error: `ไม่พบคำถาม #Q${code}` };
+  if (rows.some((r) => r.action !== "team_question" && r.new_values?.code === code)) return { ok: false, sent: 0, error: "ข้อนี้ตอบหรือส่งต่อไปแล้ว" };
+  const [asker] = await getPeopleByIds(admin, [q.entity_id]);
+  const who = asker ? titleFor(asker.id, asker.displayName) : "ทีม ปชส.";
+  await admin.from("audit_logs").insert({ entity_type: "person", entity_id: q.entity_id, action: "team_question_fwd", changed_by: null, summary: "ส่งคำถามต่อให้แอดมิน", new_values: { code, late } });
+  const sent = await sendQuestionToAdmins(admin, q.entity_id, who, String(q.new_values?.text ?? ""), code, late);
+  return { ok: true, sent };
+}
+
+/** Scheduler safety net: held questions nobody answered within HOLD_MINUTES go to the admins. */
+export async function releaseHeldQuestions(admin: SupabaseClient, now = new Date()): Promise<number> {
+  const since = new Date(now.getTime() - 3 * 86_400_000).toISOString();
+  const { data } = await admin.from("audit_logs").select("entity_id, action, new_values, changed_at").in("action", ["team_question", "team_answer", "team_question_fwd"]).gte("changed_at", since).limit(600);
+  const rows = (data ?? []) as QRow[];
+  const handled = new Set(rows.filter((r) => r.action !== "team_question").map((r) => r.new_values?.code));
+  const due = rows.filter((r) => r.action === "team_question" && r.new_values?.held && r.new_values.code && !handled.has(r.new_values.code) && now.getTime() - Date.parse(r.changed_at) >= HOLD_MINUTES * 60_000);
+  let n = 0;
+  for (const q of due) if ((await escalateQuestion(admin, q.new_values!.code!, true)).ok) n += 1;
+  return n;
 }
 
 /** An admin replied to a #Q message. null = not an answer (handle the text as usual). */
@@ -101,7 +152,7 @@ export async function answerQuestion(admin: SupabaseClient, answerer: LinePerson
   return [{ text: `✅ ส่งคำตอบถึง${esc(askerName)}แล้ว` }];
 }
 
-export type TeamQuestion = { code: string; personId: string; name: string; text: string; at: string; answer: { text: string; at: string } | null };
+export type TeamQuestion = { code: string; personId: string; name: string; text: string; at: string; answer: { text: string; at: string } | null; held: boolean };
 
 /** /settings "คำถามจากทีม" (owner, 12 Nov 2026: "คุยกับน้องให้จบข้อสงสัย"): open ones first. */
 export async function loadTeamQuestions(admin: SupabaseClient, days = 21, now = new Date()): Promise<TeamQuestion[]> {
@@ -109,12 +160,13 @@ export async function loadTeamQuestions(admin: SupabaseClient, days = 21, now = 
   const { data } = await admin
     .from("audit_logs")
     .select("entity_id, action, new_values, changed_at")
-    .in("action", ["team_question", "team_answer"])
+    .in("action", ["team_question", "team_answer", "team_question_fwd"])
     .gte("changed_at", since)
     .order("changed_at", { ascending: true })
     .limit(500);
-  type Row = { entity_id: string; action: string; new_values: { code?: string; text?: string } | null; changed_at: string };
+  type Row = { entity_id: string; action: string; new_values: { code?: string; text?: string; held?: boolean } | null; changed_at: string };
   const rows = (data ?? []) as Row[];
+  const fwd = new Set(rows.filter((r) => r.action === "team_question_fwd").map((r) => r.new_values?.code));
   const answers = new Map<string, { text: string; at: string }>();
   for (const r of rows) if (r.action === "team_answer" && r.new_values?.code) answers.set(r.new_values.code, { text: String(r.new_values.text ?? ""), at: r.changed_at });
   const qs = rows.filter((r) => r.action === "team_question" && r.new_values?.code);
@@ -128,6 +180,7 @@ export async function loadTeamQuestions(admin: SupabaseClient, days = 21, now = 
       text: String(q.new_values?.text ?? ""),
       at: q.changed_at,
       answer: answers.get(q.new_values!.code!) ?? null,
+      held: q.new_values?.held === true && !fwd.has(q.new_values.code),
     }))
     .sort((a, b) => Number(!!a.answer) - Number(!!b.answer) || b.at.localeCompare(a.at));
 }
@@ -156,8 +209,14 @@ export async function answerQuestionFromWeb(admin: SupabaseClient, code: string,
     summary: "แอดมินตอบคำถามทีม (เว็บ)",
     new_values: { code, text: answer, by, via: "web" },
   });
-  for (const a of await getPeopleByIds(admin, await getAdminRecipientIds(admin))) {
-    if (a.telegramChatId) await sendTelegram(a.telegramChatId, { text: `✅ ตอบคำถาม #Q${code} ของ${esc(who)}แล้ว (ทางเว็บ)` });
+  // A held question the admins never saw: no "answered" ping either (12 Nov 2026).
+  const held = (q.new_values as { held?: boolean } | null)?.held === true;
+  const { data: fwd } = held ? await admin.from("audit_logs").select("new_values").eq("action", "team_question_fwd").eq("entity_id", q.entity_id).limit(50) : { data: [] };
+  const pinged = !held || ((fwd ?? []) as { new_values: { code?: string } | null }[]).some((r) => r.new_values?.code === code);
+  if (pinged) {
+    for (const a of await getPeopleByIds(admin, await getAdminRecipientIds(admin))) {
+      if (a.telegramChatId) await sendTelegram(a.telegramChatId, { text: `✅ ตอบคำถาม #Q${code} ของ${esc(who)}แล้ว (ทางเว็บ)` });
+    }
   }
   return { ok: true, who };
 }

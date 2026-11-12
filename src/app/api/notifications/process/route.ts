@@ -9,6 +9,7 @@ import { processDueNotifications } from "@/lib/notifications/queue";
 import { announceBadges } from "@/lib/monitor/badge-awards";
 import { createAdminClient } from "@/lib/supabase/server";
 import { todayInBangkok } from "@/lib/date";
+import { releaseHeldQuestions } from "@/lib/telegram/questions";
 
 // One run can push the 07:00 summaries one by one; give it room (Vercel Hobby allows up to 60 s).
 export const maxDuration = 60;
@@ -23,7 +24,9 @@ export async function POST(request: NextRequest) {
     const summary = await processDueNotifications();
     // Badge news rides along, once an hour; it never blocks the real notices.
     const badges = await announceBadges(createAdminClient(), todayInBangkok()).catch(() => 0);
-    return NextResponse.json({ ok: true, ...summary, badges });
+    // Held team questions nobody answered in time go on to the admins (12 Nov 2026).
+    const released = await releaseHeldQuestions(createAdminClient()).catch(() => 0);
+    return NextResponse.json({ ok: true, ...summary, badges, released });
   } catch (err) {
     return NextResponse.json(
       { ok: false, error: err instanceof Error ? err.message : "unknown error" },

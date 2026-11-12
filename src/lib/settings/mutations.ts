@@ -821,6 +821,22 @@ export async function messagePersonTelegram(formData: FormData) {
   done(undefined, `ส่งข้อความ${hasPhoto ? "พร้อมรูป" : ""}ถึง ${p!.display_name} ทาง Telegram แล้ว`);
 }
 
+/** คำถามที่พักไว้: ผู้ช่วยตอบเองไม่ได้ → ส่งต่อให้แอดมินทาง Telegram (12 Nov 2026). */
+export async function escalateTeamQuestion(formData: FormData) {
+  await blockWritesInDemoMode();
+  await requireAdmin();
+  const code = String(formData.get("code") ?? "").toUpperCase();
+  if (!/^[A-Z0-9]{5}$/.test(code)) done("ไม่พบคำถาม");
+  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
+  if (hour >= 21 || hour < 7) done("ไม่ส่งช่วง 21:00–07:00 น. — ส่งต่อใหม่ตอนเช้า");
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const { escalateQuestion } = await import("@/lib/telegram/questions");
+  const r = await escalateQuestion(createAdminClient(), code);
+  if (!r.ok) done(r.error);
+  revalidatePath("/settings");
+  done(undefined, `ส่งต่อให้แอดมินแล้ว ${r.sent} คน`);
+}
+
 /** ปุ่ม "รีเฟรชทีวีตอนนี้" (owner, 4 Nov 2026): the TV reloads within a minute. */
 export async function reloadTv() {
   await blockWritesInDemoMode();

@@ -345,3 +345,28 @@ test("น้องบอทชวนคุย: opt in/out by words; a reply to t
   assert.match(textTo(await say(db, 502, "หยุดชวนคุย"), 502), /ไม่ชวนคุยแล้ว/);
   assert.match(textTo(await say(db, 502, "เมื่อคืนบอลใครชนะครับ"), 999), /คำถามจาก/);
 });
+
+test("hold hours: a question waits for the helper; unanswered → on to the admins once (12 Nov 2026)", async () => {
+  const { forwardQuestion, isHoldTime, releaseHeldQuestions, escalateQuestion, loadTeamQuestions } = await import("@/lib/telegram/questions");
+  assert.equal(isHoldTime(new Date("2026-11-13T10:00:00+07:00")), true); // Fri
+  assert.equal(isHoldTime(new Date("2026-11-13T16:00:00+07:00")), false);
+  assert.equal(isHoldTime(new Date("2026-11-14T10:00:00+07:00")), false); // Sat
+  const db = seedQ();
+  const f = captureFetch();
+  try {
+    const kae = { id: KAE, displayName: "นางสาวเทียมแข กิจกล้า" } as any;
+    assert.equal(await forwardQuestion(db as any, kae, "งานกาชาดต้องแต่งชุดอะไรคะ", true), 1);
+    assert.equal(f.calls.length, 0); // nobody pinged
+    const q = db.tables.audit_logs.find((r: any) => r.action === "team_question");
+    assert.equal(q.new_values.held, true);
+    assert.equal((await loadTeamQuestions(db as any))[0].held, true);
+    q.changed_at = new Date(Date.now() - 20 * 60_000).toISOString();
+    assert.equal(await releaseHeldQuestions(db as any), 0); // still inside the window
+    q.changed_at = new Date(Date.now() - 40 * 60_000).toISOString();
+    assert.equal(await releaseHeldQuestions(db as any), 1);
+    assert.ok(f.calls.some((c: any) => /ยังไม่มีใครตอบ/.test(c.body.text ?? "")));
+    assert.equal(await releaseHeldQuestions(db as any), 0); // once only
+    assert.equal((await escalateQuestion(db as any, q.new_values.code)).ok, false);
+    assert.equal((await loadTeamQuestions(db as any))[0].held, false);
+  } finally { f.restore(); }
+});
