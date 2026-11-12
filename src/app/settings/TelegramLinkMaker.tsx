@@ -31,6 +31,13 @@ export function TelegramLinkMaker({ personId, name }: { personId: string; name: 
           <button className="button primary" type="button" onClick={copy}>
             {copied ? "คัดลอกแล้ว ✓" : "คัดลอก"}
           </button>
+          {state.qr ? (
+            <div className="tg-link-qr">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={state.qr} alt={`QR ลิงก์ Telegram ของ ${name}`} width={240} height={240} />
+              <span>📱 ให้เจ้าตัวเปิดกล้องมือถือสแกน → เปิด Telegram → กด <b>Start</b></span>
+            </div>
+          ) : null}
           <small>
             ของ {name} คนเดียว · ใช้ได้ครั้งเดียว ถึง {state.expires} · ใครกดก่อนได้บัญชีนี้ — บอทจะแจ้งแอดมินว่าบัญชี Telegram ไหนผูก
           </small>

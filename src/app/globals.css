@@ -3989,3 +3989,6 @@ textarea:focus-visible {
 .tg-link-box { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-top: 6px; }
 .tg-link-box small { grid-column: 1 / -1; }
 .tg-link-error { color: var(--coral, #c0392b); }
+.tg-link-qr { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 10px; background: #fff; border-radius: 12px; border: 1px solid var(--line, #ddd); }
+.tg-link-qr img { width: 240px; height: 240px; image-rendering: pixelated; }
+.tg-link-qr span { color: #222; font-size: 15px; max-width: 260px; }

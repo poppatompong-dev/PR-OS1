@@ -864,7 +864,7 @@ export async function addTeamRequest(formData: FormData) {
   done(undefined, "เพิ่มคำขอแล้ว · ขึ้นกระดานบนทีวีภายใน 5 นาที");
 }
 
-export type TelegramLinkState = { url?: string; error?: string; expires?: string };
+export type TelegramLinkState = { url?: string; error?: string; expires?: string; qr?: string };
 
 /**
  * ลิงก์ Telegram ส่วนตัว (owner, 12 Nov 2026): for someone whose LINE sign-up did
@@ -890,7 +890,11 @@ export async function createTelegramLink(_prev: TelegramLinkState, formData: For
   const expires = new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(
     new Date(now.getTime() + ADMIN_LINK_MINUTES * 60_000),
   );
-  return { url: `https://t.me/${username}?start=${token}`, expires };
+  const url = `https://t.me/${username}?start=${token}`;
+  // QR made here (no outside service sees the link): scan from the admin's screen (12 Nov 2026).
+  const QR = (await import("qrcode")).default;
+  const qr = await QR.toDataURL(url, { margin: 1, width: 360, errorCorrectionLevel: "M" }).catch(() => undefined);
+  return { url, expires, qr };
 }
 
 /** Wrong person took a link, or a phone changed: clear this person's Telegram. */
