@@ -51,9 +51,10 @@ const TEAM_FOR_GAG = ["00000000-0000-0000-0000-000000000503", "00000000-0000-000
 const PAI = "00000000-0000-0000-0000-000000000501";
 const HEAD = "774174ff-e0cc-4bc5-922e-13fd1b05750d"; // คุณสมัชชา — ผู้กำกับกองถ่าย
 const NAT = "00000000-0000-0000-0000-000000000504"; // นัท — ลุคนางเงือก
-/** ซิตคอมออฟฟิศ ปชส. skits K1–K8 (owner, 12 Nov 2026: "ฝึกทำแก็กตลกไว้"): previews only
- *  (/tv?scene=skit cycles them, /tv?scene=K3 plays one) until the owner picks which go on air. */
-const SKITS_LIVE: string[] = [];
+/** ซิตคอมออฟฟิศ ปชส. skits K1–K9 (owner, 12 Nov 2026: "ฝึกทำแก็กตลกไว้"): the ones listed here
+ *  share the anime-scene slot (owner the same day: "ได้ทั้งหมด"). New skits start as previews
+ *  only — /tv?scene=skit cycles them, /tv?scene=K3 plays one — until the owner picks them. */
+const SKITS_LIVE: string[] = ["K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "K9"];
 // Seniors are never the butt of a gag (chased, crying…): พี่ไป๋ and the new head of section (12 Nov 2026).
 const SENIOR = new Set([PAI, "774174ff-e0cc-4bc5-922e-13fd1b05750d"]);
 
@@ -364,8 +365,9 @@ export function TvCast({ still, people, off, events = [], festival = null }: { s
         const i = sceneCursor++ % META.length;
         return castScene(i) ?? castScene(idx("B3"));
       }
-      const anime = (k: number) => !META[k].kind && canScene(k);
-      if (!sceneBag.some(anime)) sceneBag = shuffle(META.map((_, k) => k).filter((k) => !META[k].kind));
+      const inBag = (k: number) => !META[k].kind || (META[k].kind === "skit" && SKITS_LIVE.includes(META[k].key));
+      const anime = (k: number) => inBag(k) && canScene(k);
+      if (!sceneBag.some(anime)) sceneBag = shuffle(META.map((_, k) => k).filter(inBag));
       const k = sceneBag.findIndex(anime);
       return k < 0 ? null : castScene(sceneBag.splice(k, 1)[0]);
     };
