@@ -6,6 +6,8 @@ import { getSessionUser } from "@/lib/auth/roles";
 import { buildTeam } from "@/lib/settings/team";
 import { TeamPanel } from "./TeamPanel";
 import { TeamRequestsPanel } from "./TeamRequestsPanel";
+import { TeamQuestionsPanel } from "./TeamQuestionsPanel";
+import { loadTeamQuestions } from "@/lib/telegram/questions";
 import { loadTeamRequests } from "@/lib/team-requests";
 import { env, isLineLoginConfigured, isLineMessagingConfigured, isLineWebhookConfigured, isSupabaseConfigured } from "@/lib/env";
 import {
@@ -155,6 +157,8 @@ export default async function SettingsPage({
       ) : null}
 
       <TeamPanel team={team} currentUserId={user?.id ?? null} added={added ?? null} pending={pendingLine} avatarOff={supabase ? await getAvatarOffIds(supabase) : new Set()} />
+
+      <TeamQuestionsPanel questions={live ? await loadTeamQuestions(createAdminClient()).catch(() => []) : []} />
 
       <TeamRequestsPanel
         requests={live ? await loadTeamRequests(createAdminClient()).catch(() => []) : []}

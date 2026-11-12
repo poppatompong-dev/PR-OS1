@@ -915,3 +915,19 @@ export async function unlinkPersonTelegram(formData: FormData) {
   revalidatePath("/settings");
   done(undefined, `ยกเลิกผูก Telegram ของ ${p!.display_name} แล้ว · ออกลิงก์ใหม่ได้จากเมนู ⋯`);
 }
+
+/** คำถามจากทีม: answer on the web; the bot delivers it (Telegram, free). */
+export async function answerTeamQuestion(formData: FormData) {
+  await blockWritesInDemoMode();
+  const { user } = await requireAdmin();
+  const code = String(formData.get("code") ?? "").toUpperCase();
+  if (!/^[A-Z0-9]{5}$/.test(code)) done("ไม่พบคำถาม");
+  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
+  if (hour >= 21 || hour < 7) done("ไม่ส่งช่วง 21:00–07:00 น. — ตอบใหม่ตอนเช้า");
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const { answerQuestionFromWeb } = await import("@/lib/telegram/questions");
+  const r = await answerQuestionFromWeb(createAdminClient(), code, String(formData.get("answer") ?? ""), user.id);
+  if (!r.ok) done(r.error);
+  revalidatePath("/settings");
+  done(undefined, `ส่งคำตอบถึง${r.who}แล้ว`);
+}

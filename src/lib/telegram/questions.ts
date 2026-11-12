@@ -97,3 +97,64 @@ export async function answerQuestion(admin: SupabaseClient, answerer: LinePerson
   }
   return [{ text: `✅ ส่งคำตอบถึง${esc(askerName)}แล้ว` }];
 }
+
+export type TeamQuestion = { code: string; personId: string; name: string; text: string; at: string; answer: { text: string; at: string } | null };
+
+/** /settings "คำถามจากทีม" (owner, 12 Nov 2026: "คุยกับน้องให้จบข้อสงสัย"): open ones first. */
+export async function loadTeamQuestions(admin: SupabaseClient, days = 21, now = new Date()): Promise<TeamQuestion[]> {
+  const since = new Date(now.getTime() - days * 86_400_000).toISOString();
+  const { data } = await admin
+    .from("audit_logs")
+    .select("entity_id, action, new_values, changed_at")
+    .in("action", ["team_question", "team_answer"])
+    .gte("changed_at", since)
+    .order("changed_at", { ascending: true })
+    .limit(500);
+  type Row = { entity_id: string; action: string; new_values: { code?: string; text?: string } | null; changed_at: string };
+  const rows = (data ?? []) as Row[];
+  const answers = new Map<string, { text: string; at: string }>();
+  for (const r of rows) if (r.action === "team_answer" && r.new_values?.code) answers.set(r.new_values.code, { text: String(r.new_values.text ?? ""), at: r.changed_at });
+  const qs = rows.filter((r) => r.action === "team_question" && r.new_values?.code);
+  const people = await getPeopleByIds(admin, [...new Set(qs.map((q) => q.entity_id))]);
+  const nameOf = new Map(people.map((p) => [p.id, titleFor(p.id, p.displayName)]));
+  return qs
+    .map((q) => ({
+      code: q.new_values!.code!,
+      personId: q.entity_id,
+      name: nameOf.get(q.entity_id) ?? "ไม่ทราบชื่อ",
+      text: String(q.new_values?.text ?? ""),
+      at: q.changed_at,
+      answer: answers.get(q.new_values!.code!) ?? null,
+    }))
+    .sort((a, b) => Number(!!a.answer) - Number(!!b.answer) || b.at.localeCompare(a.at));
+}
+
+/** Answer from the web (admin): same message as a Telegram reply, logged as team_answer. */
+export async function answerQuestionFromWeb(admin: SupabaseClient, code: string, raw: string, by: string): Promise<{ ok: boolean; error?: string; who?: string }> {
+  const answer = raw.trim().slice(0, 1500);
+  if (!answer) return { ok: false, error: "พิมพ์คำตอบก่อน" };
+  const { data } = await admin.from("audit_logs").select("entity_id, new_values").eq("action", "team_question").order("changed_at", { ascending: false }).limit(300);
+  type Row = { entity_id: string; new_values: { code?: string; text?: string } | null };
+  const q = ((data ?? []) as Row[]).find((r) => r.new_values?.code === code);
+  if (!q) return { ok: false, error: `ไม่พบคำถาม #Q${code}` };
+  const [asker] = await getPeopleByIds(admin, [q.entity_id]);
+  const who = asker ? titleFor(asker.id, asker.displayName) : "เจ้าของคำถาม";
+  if (!asker?.telegramChatId) return { ok: false, error: `${who} ไม่ได้ผูก Telegram แล้ว ส่งคำตอบไม่ได้` };
+  const question = String(q.new_values?.text ?? "");
+  const res = await sendTelegram(asker.telegramChatId, {
+    text: `💬 <b>แอดมินตอบคำถามแล้ว</b>\n\n${esc(answer)}\n\n<i>คำถาม: ${esc(question.length > 120 ? `${question.slice(0, 119)}…` : question)}</i>\n\nถามต่อได้เลย พิมพ์มาในแชทนี้`,
+  });
+  if (!res.ok) return { ok: false, error: `ส่งคำตอบถึง${who}ไม่สำเร็จ` };
+  await admin.from("audit_logs").insert({
+    entity_type: "person",
+    entity_id: asker.id,
+    action: "team_answer",
+    changed_by: null,
+    summary: "แอดมินตอบคำถามทีม (เว็บ)",
+    new_values: { code, text: answer, by, via: "web" },
+  });
+  for (const a of await getPeopleByIds(admin, await getAdminRecipientIds(admin))) {
+    if (a.telegramChatId) await sendTelegram(a.telegramChatId, { text: `✅ ตอบคำถาม #Q${code} ของ${esc(who)}แล้ว (ทางเว็บ)` });
+  }
+  return { ok: true, who };
+}
