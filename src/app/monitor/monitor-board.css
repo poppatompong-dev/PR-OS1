@@ -338,6 +338,12 @@
 .tv-gag .sweat{position:absolute;left:0;top:0;width:22px;height:30px;background:radial-gradient(circle at 40% 35%,#fff 0 18%,#8fd3ff 20% 100%);border-radius:50% 50% 50% 50%/60% 60% 40% 40%;border:3px solid #1b1024}
 .tv-gag .puff{position:absolute;left:0;top:0;width:46px;height:46px;border-radius:50%;background:#e8dcef;border:3px solid #1b1024}
 .tv-gag .emo{position:absolute;left:0;top:0;font-size:56px;opacity:0}
+.tv-gag .car{position:absolute;left:0;top:0;width:600px;height:260px}
+.tv-gag .car svg{position:absolute;left:0;top:0}
+.tv-gag .car .drv{position:absolute;left:338px;top:28px;width:112px;height:112px}
+.tv-gag .car .spin{transform-box:fill-box;transform-origin:center;animation:tvCarSpin .3s linear infinite}
+.tv-gag .car.is-stop .spin{animation-play-state:paused}
+@keyframes tvCarSpin{to{transform:rotate(360deg)}}
 .tv-gag .tif{position:absolute;left:0;top:0;width:54px;height:68px;background-size:contain;background-repeat:no-repeat;opacity:0}
 .tv-gag .shadow{position:absolute;left:0;top:0;width:1100px;height:1960px;background-size:contain;background-repeat:no-repeat;background-position:50% 100%;filter:brightness(0) blur(6px);opacity:0;transform-origin:50% 100%;top:-900px}
 .tv-gag .card{position:absolute;left:0;top:0;width:190px;padding:12px;background:#fff;border:5px solid #1b1024;border-radius:18px;box-shadow:6px 6px 0 #1b1024;text-align:center;color:#1b1024;font-weight:900;display:flex;flex-direction:column;align-items:center;gap:2px;opacity:0}.tv-gag .card b{font-size:26px}.tv-gag .card span{font-size:30px;color:#c0182c}

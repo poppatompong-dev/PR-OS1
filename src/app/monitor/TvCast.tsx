@@ -44,6 +44,9 @@ const TIME_WINDOWS: Record<string, { from: number; to: number; every: number; fr
   T3: { from: 13 * 60, to: 16 * 60 + 30, every: 40, fri: true }, // ศุกร์แล้ว
 };
 const GAG_WITH_TEAM = 7; // น้องชวนไปต่อ — needs กุ๊ก แป้ง นัท on screen
+/** ป้าจิตรขับรถตาม (12 Nov 2026): preview only (/tv?jit=12) until the owner OKs it. */
+const GAG_CAR = 11;
+const GAG_CAR_LIVE = false;
 const TEAM_FOR_GAG = ["00000000-0000-0000-0000-000000000503", "00000000-0000-0000-0000-000000000505", "00000000-0000-0000-0000-000000000504"];
 const PAI = "00000000-0000-0000-0000-000000000501";
 // Seniors are never the butt of a gag (chased, crying…): พี่ไป๋ and the new head of section (12 Nov 2026).
@@ -221,7 +224,7 @@ export function TvCast({ still, people, off, events = [], festival = null }: { s
     const ACTS = [walkTicker, runAcross, peekCard, climbCard, hang, pair];
     const q = new URLSearchParams(window.location.search);
     // /tv?jit=fast — preview: a gag every time, any hour.
-    // /tv?jit=3 — that gag (1–11) over and over.
+    // /tv?jit=3 — that gag (1–12) over and over.
     const jitOnly = /^\d+$/.test(q.get("jit") ?? "") ? Number(q.get("jit")) - 1 : -1;
     const jitFast = q.get("jit") === "fast" || jitOnly >= 0;
     // /tv?scene=fast — every anime scene in turn · /tv?scene=B3 — that one, over and over.
@@ -365,7 +368,7 @@ export function TvCast({ still, people, off, events = [], festival = null }: { s
       if (jitOnly >= 0 && jitOnly < GAG_COUNT) return jitOnly;
       const late = bangkokHour() >= 16;
       const team = TEAM_FOR_GAG.every((id) => cast.includes(id));
-      const ok = (g: number) => (g !== GAG_HOME_TIME || late || preview) && (g !== GAG_WITH_TEAM || team);
+      const ok = (g: number) => (g !== GAG_HOME_TIME || late || preview) && (g !== GAG_WITH_TEAM || team) && (g !== GAG_CAR || GAG_CAR_LIVE || preview);
       if (!gagBag.some(ok)) gagBag = Array.from({ length: GAG_COUNT }, (_, i) => i).sort(() => Math.random() - 0.5);
       const i = gagBag.findIndex(ok);
       if (i < 0) return null;
