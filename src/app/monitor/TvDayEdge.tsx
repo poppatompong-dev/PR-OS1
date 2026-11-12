@@ -31,7 +31,7 @@ function Row({ e, chip }: { e: MonitorEvent; chip?: string }) {
   const who = e.assigneeDetail.filter((a) => !a.unavailable).map((a) => nickname(a.personId, a.name));
   return (
     <li>
-      <b>{chip ? `${chip} ` : ""}{thaiTime(e.startTime)}</b>
+      <b>{chip ? <i>{chip}</i> : null}{thaiTime(e.startTime)}</b>
       <span>
         <em><ThaiText text={screenTitle(e)} /></em>
         <small>{[e.locationName ? `📍 ${e.locationName}` : "", who.length ? `👥 ${who.join(" · ")}` : ""].filter(Boolean).join("   ")}</small>
