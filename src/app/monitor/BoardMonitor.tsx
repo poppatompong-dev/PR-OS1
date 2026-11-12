@@ -27,6 +27,7 @@ import { WELCOME_CYCLE_MS, WELCOME_DEFAULT_VARIANT, WELCOME_LABELS, WELCOME_ROLE
 import { nickname } from "@/lib/monitor/nicknames";
 import { CONTEST, contestChip, contestTickerLines, type ContestState } from "@/lib/monitor/contest";
 import { SHOWCASE_DEFAULT_LOOK, TvShowcase, type BoardRequest, type ShowcaseLook } from "./TvShowcase";
+import { ThaiText } from "./ThaiText";
 import { IDLE_DEFAULT_LOOK, IDLE_LABELS, TvIdle, untilText, type IdleJoke, type IdleLook, type IdleStats } from "./TvIdle";
 import type { ShowcaseItem } from "@/lib/monitor/showcase";
 import { FestivalLayer, FestivalStage } from "./FestivalLayer";
@@ -374,7 +375,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
                           {isDone(e, now) ? <span className="bm-done">✓ จบแล้ว</span> : null}
                           <span className="bm-time-place">📍 {e.locationName || "ไม่ระบุสถานที่"}</span>
                         </div>
-                        <h2 className={`bm-job-title ${titleSize(t)}`}>{t}</h2>
+                        <h2 className={`bm-job-title ${titleSize(t)}`}><ThaiText text={t} /></h2>
                         <p className="bm-job-place">📍 {e.locationName || "ไม่ระบุสถานที่"}</p>
                         {e.shortNote ? <p className="bm-job-note">📝 {e.shortNote}</p> : null}
                       </div>
@@ -428,7 +429,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
                       <JobIconTile title={one.title} icon={one.icon} size="calc(54 * var(--u))" />
                       <div className="bm-day-text">
                         <div className={`bm-day-title ${titleSize(screenTitle(one))}`}>
-                          <em>{thaiTime(one.startTime)}</em> {screenTitle(one)}
+                          <em>{thaiTime(one.startTime)}</em> <ThaiText text={screenTitle(one)} />
                         </div>
                         <p className="bm-day-place">📍 {one.locationName || "ไม่ระบุสถานที่"}</p>
                         {one.shortNote ? <p className="bm-day-note">📝 {one.shortNote}</p> : null}
@@ -468,7 +469,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
                   {c.events.map((e) => (
                     <div className="bm-cell-x" key={e.id} {...link(e)}>
                       <JobIconTile title={e.title} icon={e.icon} size="calc(22 * var(--u))" className="bm-inline-icon" />
-                      <em>{thaiTime(e.startTime)}</em> {screenTitle(e)}
+                      <em>{thaiTime(e.startTime)}</em> <ThaiText text={screenTitle(e)} />
                     </div>
                   ))}
                 </div>

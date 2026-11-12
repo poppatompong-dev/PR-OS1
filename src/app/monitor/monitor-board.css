@@ -554,3 +554,12 @@
 .bm-idle-bubble.is-punch.is-on { opacity: 1; transform: none; }
 .bm-idle-label { position: absolute; right: calc(10 * var(--u)); top: calc(-62 * var(--u)); z-index: 3; font-size: calc(26 * var(--u)); font-weight: 800; color: #1a1420; background: #ffd36b; border-radius: 999px; padding: calc(4 * var(--u)) calc(18 * var(--u)); }
 .hm--still .bm-idle-a, .hm--still .bm-idle-actor img { animation: none; }
+
+/* ตัดคำ (12 Nov 2026): a piece never breaks inside; breaks only at spaces / <wbr> */
+.th-nb { white-space: nowrap; }
+
+/* Sprites face LEFT as drawn, the gags/scenes were written for right-facing ones
+   (scaleX 1 = facing right): mirror the drawing once (12 Nov 2026: "ทิศทางการวิ่ง
+   การเดินผิดเพี้ยน"). The box paints nothing; ::before inherits its image, mirrored. */
+.tv-gag .sp, .tv-cast-sp { background-size: 0 0 !important; }
+.tv-gag .sp::before, .tv-cast-sp::before { content: ""; position: absolute; inset: 0; background-image: inherit; background-size: contain; background-repeat: no-repeat; background-position: 50% 100%; transform: scaleX(-1); pointer-events: none; }
