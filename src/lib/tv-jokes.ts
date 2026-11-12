@@ -40,6 +40,12 @@ export function splitJoke(text: string): { setup: string; punch: string } {
   }
   const parts = text.split(/\s*[|\n]\s*/).filter(Boolean);
   if (parts.length >= 2) return { setup: parts[0], punch: parts.slice(1).join(" ") };
+  // "…ทำไม…? .....เพราะ…" / "…อะไร...คำตอบ" (แข, 12 Nov 2026): split at the first ? or … .
+  const m = text.match(/^\s*[.…\s]*(.+?[?？]|.+?)(?:\s*(?:\.{3,}|…+)\s*|(?<=[?？])\s*)([^?？][\s\S]*)$/);
+  if (m) {
+    const setup = m[1].trim(), punch = m[2].replace(/^[.…\s]+/, "").trim();
+    if (setup.length >= 4 && punch.length >= 2) return { setup, punch };
+  }
   return { setup: "", punch: text };
 }
 

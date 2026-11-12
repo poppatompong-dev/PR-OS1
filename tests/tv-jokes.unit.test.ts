@@ -24,3 +24,9 @@ test("joke: tidy, length cap, no links, setup | punchline", () => {
     { setup: "จุดแข็งของคุณคืออะไร → คอ บ่า ไหล่ แล้วจุดอ่อน", punch: "ปัญญา.. อิอิ" },
   );
 });
+
+test("question … answer without | splits at ? or dots (12 Nov 2026)", () => {
+  assert.deepEqual(splitJoke("เงินสกุลอะไรน่ากลัวที่สุด...เงินบาด(แก๋ว)"), { setup: "เงินสกุลอะไรน่ากลัวที่สุด", punch: "เงินบาด(แก๋ว)" });
+  assert.deepEqual(splitJoke("ทำไมลูกถึงปาบอลใส่แม่? .....เพราะแม่เป็นห่วง"), { setup: "ทำไมลูกถึงปาบอลใส่แม่?", punch: "เพราะแม่เป็นห่วง" });
+  assert.deepEqual(splitJoke("ประชุมสั้นๆ 5 นาที"), { setup: "", punch: "ประชุมสั้นๆ 5 นาที" });
+});
