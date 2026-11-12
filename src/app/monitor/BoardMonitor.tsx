@@ -341,7 +341,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
                   next={
                     e && p && first
                       ? {
-                          when: `${p.wd}. ${p.d} ${p.mon} ${thaiTime(e.startTime)}`,
+                          when: `${p.wd.replace(/\.$/, "")}. ${p.d} ${p.mon} ${thaiTime(e.startTime)}`,
                           title: screenTitle(e),
                           place: e.locationName ?? "",
                           inText: untilText(first.iso, e.startTime, Date.now()),

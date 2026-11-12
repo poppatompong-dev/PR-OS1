@@ -25,6 +25,7 @@ const thaiDay = (iso: string) => {
   const [, m, d] = iso.split("-").map(Number);
   return m && d ? `${d} ${MONTHS[m - 1]}` : "";
 };
+const clean = (t: string) => t.replace(/^[.…\s]+/, "").trim();
 const REQ: Record<BoardRequest["status"], string> = { received: "📥 รับแล้ว", doing: "🛠 กำลังทำ", choose: "🎨 รอเลือก", done: "✅ เสร็จ" };
 
 function useTick(n: number, still: boolean, ms = EVERY) {
@@ -85,7 +86,7 @@ function MixLook({ news, jokes, stats, requests, dates, still }: { news: Showcas
         <div className="bm-idle-joke">
           <small>😂 มุกประกวดจาก {s.joke.name}</small>
           <p className="bm-idle-q">{s.joke.setup || "…"}</p>
-          <p className="bm-idle-a">{s.joke.punch}</p>
+          <p className="bm-idle-a">{clean(s.joke.punch)}</p>
         </div>
       ) : s.k === "stats" ? (
         <div className="bm-idle-stats">
@@ -149,7 +150,7 @@ function RestLook({ jokes, still }: { jokes: IdleJoke[]; still: boolean }) {
           <img src={castUrl(teller, "wave")} alt="" />
         </div>
         <div className="bm-idle-actor is-right">
-          <div className={`bm-idle-bubble is-punch${showPunch ? " is-on" : ""}`}>{j.punch}</div>
+          <div className={`bm-idle-bubble is-punch${showPunch ? " is-on" : ""}`}>{clean(j.punch)}</div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={castUrl(buddy, showPunch ? "up" : "stand")} alt="" />
         </div>
