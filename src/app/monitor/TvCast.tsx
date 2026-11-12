@@ -44,9 +44,9 @@ const TIME_WINDOWS: Record<string, { from: number; to: number; every: number; fr
   T3: { from: 13 * 60, to: 16 * 60 + 30, every: 40, fri: true }, // ศุกร์แล้ว
 };
 const GAG_WITH_TEAM = 7; // น้องชวนไปต่อ — needs กุ๊ก แป้ง นัท on screen
-/** ป้าจิตรขับรถตาม (12 Nov 2026): preview only (/tv?jit=12) until the owner OKs it. */
+/** ป้าจิตรขับรถตาม (12 Nov 2026): owner OK'd it the same day ("จัดเลย"); /tv?jit=12 previews it. */
 const GAG_CAR = 11;
-const GAG_CAR_LIVE = false;
+const GAG_CAR_LIVE = true;
 const TEAM_FOR_GAG = ["00000000-0000-0000-0000-000000000503", "00000000-0000-0000-0000-000000000505", "00000000-0000-0000-0000-000000000504"];
 const PAI = "00000000-0000-0000-0000-000000000501";
 // Seniors are never the butt of a gag (chased, crying…): พี่ไป๋ and the new head of section (12 Nov 2026).
