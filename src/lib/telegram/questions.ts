@@ -158,3 +158,22 @@ export async function answerQuestionFromWeb(admin: SupabaseClient, code: string,
   }
   return { ok: true, who };
 }
+
+/**
+ * A joke typed without "มุก" (12 Nov 2026: "ทำไมลูกถึงปาบอลใส่แม่? .....เพราะแม่เป็นห่วง"
+ * reached the admins as a question): a question followed by its own punchline.
+ */
+export function looksLikeJoke(text: string): boolean {
+  const t = text.replace(/\s+/g, " ").trim();
+  const q = t.search(/[?？]|ทำไม|อะไรเอ่ย|อะไรเอย|รู้ไหม|รู้มั้ย/);
+  if (q < 0) return false;
+  const after = t.slice(q);
+  return /(\.{3,}|…|เฉลย|คำตอบ|ตอบ\s*[:：]|เพราะ)/.test(after) && after.replace(/^[^?？]*[?？]/, "").trim().length >= 3;
+}
+
+export function jokeHintText(raw: string): string {
+  const t = raw.replace(/\s+/g, " ").trim();
+  const m = t.match(/^(.*?[?？])\s*\.*\s*(.+)$/);
+  const example = m ? `มุก ${m[1]} | ${m[2].replace(/^[.…\s]+/, "")}` : `มุก ${t}`;
+  return `😂 เหมือนมุกเลย! ถ้าจะส่งขึ้นจอ / ประกวดมุก พิมพ์ขึ้นต้นด้วย "มุก" แบบนี้\n\n${esc(example.slice(0, 300))}`;
+}

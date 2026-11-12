@@ -40,7 +40,7 @@ import {
   pulseNoteAdminText,
   pulseReply,
 } from "@/lib/telegram/pulse";
-import { Q_TAG, answerQuestion, forwardQuestion, isChatter, looksLikeQuestion } from "@/lib/telegram/questions";
+import { Q_TAG, answerQuestion, forwardQuestion, isChatter, jokeHintText, looksLikeJoke, looksLikeQuestion } from "@/lib/telegram/questions";
 import { TRIAL_STEPS, markTrial, trialDone } from "@/lib/trial";
 import { JOKE_PROMPT, decideJoke, parseJokeCommand, submitJoke } from "@/lib/tv-jokes";
 import { REQ_STATUSES, REQ_STATUS_ICON, REQ_STATUS_TH, isAdminOf, setRequestStatus, tellAdminsRequest } from "@/lib/team-requests";
@@ -252,6 +252,7 @@ async function handleText(ctx: Ctx, chatId: number, raw: string, from?: { first_
   if (faq) return [{ text: esc(faqText(faq, false).replace("ที่เมนูด้านล่าง", "ในแชท LINE หรือที่เว็บ")) }];
   const v = await voiceOf(ctx, person);
   // Not something the bot knows: a real question goes to the admins (6 Nov 2026).
+  if (looksLikeJoke(text)) return [{ text: jokeHintText(text), keyboard: KEYBOARD }];
   if (looksLikeQuestion(text) && (await forwardQuestion(ctx.admin, person, text)) > 0) return [{ text: questionSentText(v.title, v.mom), keyboard: KEYBOARD }];
   if (isChatter(text)) return [{ text: chatterText(v.title, v.mom), keyboard: KEYBOARD }];
   return [{ text: didNotGetText(v.title, v.mom), keyboard: KEYBOARD }];

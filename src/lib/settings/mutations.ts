@@ -931,3 +931,26 @@ export async function answerTeamQuestion(formData: FormData) {
   revalidatePath("/settings");
   done(undefined, `ส่งคำตอบถึง${r.who}แล้ว`);
 }
+
+/** คำถามจากทีม that needs no reply (chatter, already handled): closed without a message. */
+export async function closeTeamQuestion(formData: FormData) {
+  await blockWritesInDemoMode();
+  const { user } = await requireAdmin();
+  const code = String(formData.get("code") ?? "").toUpperCase();
+  if (!/^[A-Z0-9]{5}$/.test(code)) done("ไม่พบคำถาม");
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const admin = createAdminClient();
+  const { data } = await admin.from("audit_logs").select("entity_id, new_values").eq("action", "team_question").order("changed_at", { ascending: false }).limit(300);
+  const q = ((data ?? []) as { entity_id: string; new_values: { code?: string } | null }[]).find((r) => r.new_values?.code === code);
+  if (!q) done("ไม่พบคำถาม");
+  await admin.from("audit_logs").insert({
+    entity_type: "person",
+    entity_id: q!.entity_id,
+    action: "team_answer",
+    changed_by: user.id,
+    summary: "ปิดคำถามทีม (ไม่ต้องตอบ)",
+    new_values: { code, text: "(ปิด ไม่ต้องตอบ)", by: user.id, via: "closed" },
+  });
+  revalidatePath("/settings");
+  done(undefined, `ปิด #Q${code} แล้ว (ไม่ส่งข้อความ)`);
+}

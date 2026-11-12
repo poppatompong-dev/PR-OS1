@@ -292,3 +292,11 @@ test("real messages from 9 Nov: chatter gets a friendly reply, only questions go
   const q = await say(db, 506, "งานกาชาดต้องแต่งชุดอะไรคะ");
   assert.match(textTo(q, 999), /คำถามจาก แข/);
 });
+
+test("a joke typed without มุก gets the how-to, not the admins (12 Nov 2026)", async () => {
+  const { looksLikeJoke, jokeHintText } = await import("@/lib/telegram/questions");
+  assert.equal(looksLikeJoke("ลูกเล่นบาสอยู่แล้วแม่ไปตาม ทำไมลูกถึงปาบอลใส่แม่? .....เพราะแม่เป็นห่วง"), true);
+  assert.equal(looksLikeJoke("จะแก้เวลางานยังไง?"), false);
+  assert.equal(looksLikeJoke("ทำไมงานพรุ่งนี้ไม่ขึ้น"), false);
+  assert.match(jokeHintText("ทำไมลูกถึงปาบอลใส่แม่? .....เพราะแม่เป็นห่วง"), /มุก ทำไมลูกถึงปาบอลใส่แม่\? \| เพราะแม่เป็นห่วง/);
+});

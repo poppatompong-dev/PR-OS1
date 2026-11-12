@@ -3,7 +3,7 @@
 // that the bot delivers on Telegram. Server component, plain forms.
 
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
-import { answerTeamQuestion } from "@/lib/settings/mutations";
+import { answerTeamQuestion, closeTeamQuestion } from "@/lib/settings/mutations";
 import type { TeamQuestion } from "@/lib/telegram/questions";
 
 const fmt = (iso: string) => new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
@@ -23,7 +23,7 @@ export function TeamQuestionsPanel({ questions }: { questions: TeamQuestion[] })
         {questions.map((q) => (
           <details key={q.code} className="team-req" data-code={q.code} open={!q.answer}>
             <summary>
-              <b>{q.answer ? "✅ ตอบแล้ว" : "❓ รอตอบ"}</b> · {q.name}: {q.text.length > 60 ? `${q.text.slice(0, 59)}…` : q.text} <small>({fmt(q.at)} · #Q{q.code})</small>
+              <b>{q.answer ? (q.answer.text === "(ปิด ไม่ต้องตอบ)" ? "☑️ ปิดแล้ว" : "✅ ตอบแล้ว") : "❓ รอตอบ"}</b> · {q.name}: {q.text.length > 60 ? `${q.text.slice(0, 59)}…` : q.text} <small>({fmt(q.at)} · #Q{q.code})</small>
             </summary>
             <p className="team-muted">คำถาม: {q.text}</p>
             {q.answer ? <p className="team-muted">คำตอบ ({fmt(q.answer.at)}): {q.answer.text}</p> : null}
@@ -35,6 +35,12 @@ export function TeamQuestionsPanel({ questions }: { questions: TeamQuestion[] })
               </label>
               <ConfirmSubmit className="button primary" message={`ส่งคำตอบถึง ${q.name} ทาง Telegram?`}>ส่งคำตอบ</ConfirmSubmit>
             </form>
+            {q.answer ? null : (
+              <form action={closeTeamQuestion} className="team-add-form">
+                <input type="hidden" name="code" value={q.code} />
+                <ConfirmSubmit className="button secondary" message="ปิดข้อนี้โดยไม่ส่งข้อความหาน้อง?">ปิด (ไม่ต้องตอบ)</ConfirmSubmit>
+              </form>
+            )}
           </details>
         ))}
       </div>
