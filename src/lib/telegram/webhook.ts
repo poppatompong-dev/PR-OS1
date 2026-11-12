@@ -261,6 +261,11 @@ async function handleText(ctx: Ctx, chatId: number, raw: string, from?: { first_
   if (looksLikeJoke(text)) return [{ text: jokeHintText(text), keyboard: KEYBOARD }];
   if (looksLikeQuestion(text) && (await forwardQuestion(ctx.admin, person, text)) > 0) return [{ text: questionSentText(v.title, v.mom), keyboard: KEYBOARD }];
   if (isChatter(text)) return [{ text: chatterText(v.title, v.mom), keyboard: KEYBOARD }];
+  // Kept so an admin (or Claude's sweep) can see who may need help (12 Nov 2026).
+  await ctx.admin
+    .from("audit_logs")
+    .insert({ entity_type: "person", entity_id: person.id, action: "bot_unknown", changed_by: null, summary: "บอทไม่เข้าใจข้อความ (Telegram)", new_values: { text: text.slice(0, 500) } })
+    .then(() => undefined, () => undefined);
   return [{ text: didNotGetText(v.title, v.mom), keyboard: KEYBOARD }];
 }
 

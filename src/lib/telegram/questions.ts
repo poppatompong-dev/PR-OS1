@@ -180,3 +180,34 @@ export function jokeHintText(raw: string): string {
   const example = m ? `มุก ${m[1]} | ${m[2].replace(/^[.…\s]+/, "")}` : `มุก ${t}`;
   return `😂 เหมือนมุกเลย! ถ้าจะส่งขึ้นจอ / ประกวดมุก พิมพ์ขึ้นต้นด้วย "มุก" แบบนี้\n\n${esc(example.slice(0, 300))}`;
 }
+
+export type HelpSignal = { id: string; kind: "unknown" | "confused" | "note"; personId: string; name: string; text: string; at: string };
+
+/** 🆘 ต้องการความช่วยเหลือ (owner, 12 Nov 2026: "หมั่นดูข้อความ … เผื่อต้องการความช่วยเหลือ"):
+ *  what the bot didn't understand + "ยังงงอยู่" / "อยากบอก" answers, not yet handled. */
+export async function loadHelpSignals(admin: SupabaseClient, days = 7, now = new Date()): Promise<HelpSignal[]> {
+  const since = new Date(now.getTime() - days * 86_400_000).toISOString();
+  const { data } = await admin
+    .from("audit_logs")
+    .select("id, entity_id, action, new_values, changed_at")
+    .in("action", ["bot_unknown", "pulse_reply", "help_done"])
+    .gte("changed_at", since)
+    .order("changed_at", { ascending: false })
+    .limit(400);
+  type Row = { id: string; entity_id: string; action: string; new_values: { text?: string; answer?: string; note?: string } | null; changed_at: string };
+  const rows = (data ?? []) as Row[];
+  const done = new Set(rows.filter((r) => r.action === "help_done").map((r) => r.entity_id));
+  const sig = rows.filter(
+    (r) => !done.has(r.id) && (r.action === "bot_unknown" || (r.action === "pulse_reply" && (r.new_values?.answer === "confused" || r.new_values?.answer === "note"))),
+  );
+  const people = await getPeopleByIds(admin, [...new Set(sig.map((r) => r.entity_id))]);
+  const nameOf = new Map(people.map((p) => [p.id, titleFor(p.id, p.displayName)]));
+  return sig.map((r) => ({
+    id: r.id,
+    kind: r.action === "bot_unknown" ? "unknown" : r.new_values?.answer === "confused" ? "confused" : "note",
+    personId: r.entity_id,
+    name: nameOf.get(r.entity_id) ?? "ไม่ทราบชื่อ",
+    text: String(r.new_values?.text ?? r.new_values?.note ?? (r.new_values?.answer === "confused" ? "กด 😕 ยังงงอยู่" : "")),
+    at: r.changed_at,
+  }));
+}

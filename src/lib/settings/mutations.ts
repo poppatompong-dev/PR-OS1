@@ -958,3 +958,36 @@ export async function closeTeamQuestion(formData: FormData) {
   revalidatePath("/settings");
   done(undefined, `ปิด #Q${code} แล้ว (ไม่ส่งข้อความ)`);
 }
+
+/** 🆘 panel: reply privately on Telegram (optional) and mark the signal handled. */
+export async function handleHelpSignal(formData: FormData) {
+  await blockWritesInDemoMode();
+  const { user } = await requireAdmin();
+  const id = String(formData.get("signalId") ?? "");
+  const personId = String(formData.get("personId") ?? "");
+  const reply = String(formData.get("reply") ?? "").trim().slice(0, 1000);
+  if (!id || !personId) done("ไม่พบรายการ");
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const admin = createAdminClient();
+  let sent = false;
+  if (reply) {
+    const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
+    if (hour >= 21 || hour < 7) done("ไม่ส่งช่วง 21:00–07:00 น. — ตอบใหม่ตอนเช้า");
+    const { data: p } = await admin.from("people").select("telegram_chat_id").eq("id", personId).maybeSingle();
+    if (!p?.telegram_chat_id) done("คนนี้ยังไม่ได้ผูก Telegram");
+    const { sendTelegram, esc } = await import("@/lib/telegram/api");
+    const res = await sendTelegram(Number(p!.telegram_chat_id), { text: `💬 <b>จากแอดมิน</b>\n\n${esc(reply)}\n\nติดตรงไหนอีก พิมพ์มาในแชทนี้ได้เลยครับ` });
+    if (!res.ok) done(`ส่งไม่สำเร็จ: ${res.error ?? "ไม่ทราบสาเหตุ"}`);
+    sent = true;
+  }
+  await admin.from("audit_logs").insert({
+    entity_type: "help_signal",
+    entity_id: id,
+    action: "help_done",
+    changed_by: user.id,
+    summary: sent ? "ตอบสัญญาณขอความช่วยเหลือ" : "ปิดสัญญาณขอความช่วยเหลือ",
+    new_values: { personId, ...(reply ? { reply } : {}) },
+  });
+  revalidatePath("/settings");
+  done(undefined, sent ? "ส่งคำตอบแล้ว" : "ปิดรายการแล้ว");
+}

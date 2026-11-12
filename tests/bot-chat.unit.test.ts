@@ -313,3 +313,9 @@ test("คู่มือ: admins get the head guide, others don't", async () => 
   assert.match(textTo(await say(db, 502, "คู่มือ"), 502), /คู่มือสั้น ๆ สำหรับ[\s\S]*รายงาน 17\.00[\s\S]*ตอบกลับ \(Reply\)/);
   assert.doesNotMatch(textTo(await say(db, 506, "คู่มือ"), 506), /คู่มือสั้น ๆ สำหรับ/);
 });
+
+test("what the bot didn't understand is kept for the help panel (12 Nov 2026)", async () => {
+  const db = seed();
+  await say(db, 506, "asdf ghjk");
+  assert.ok(db.tables.audit_logs.some((r: any) => r.action === "bot_unknown" && r.entity_id === KAE && r.new_values?.text === "asdf ghjk"));
+});
