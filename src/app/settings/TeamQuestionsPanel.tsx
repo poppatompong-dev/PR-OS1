@@ -24,11 +24,12 @@ export function TeamQuestionsPanel({ questions, help = [] }: { questions: TeamQu
         {help.map((h) => (
           <details key={h.id} className="team-req" data-signal={h.id} open>
             <summary>
-              <b>{h.kind === "unknown" ? "🤔 บอทไม่เข้าใจ" : h.kind === "confused" ? "😕 ยังงงอยู่" : "💬 อยากบอก"}</b> · {h.name}: {h.text.length > 70 ? `${h.text.slice(0, 69)}…` : h.text} <small>({fmt(h.at)})</small>
+              <b>{h.kind === "buddy" ? "🤖 ชวนคุย" : h.kind === "unknown" ? "🤔 บอทไม่เข้าใจ" : h.kind === "confused" ? "😕 ยังงงอยู่" : "💬 อยากบอก"}</b> · {h.name}: {h.text.length > 70 ? `${h.text.slice(0, 69)}…` : h.text} <small>({fmt(h.at)})</small>
             </summary>
             <form action={handleHelpSignal} className="team-add-form">
               <input type="hidden" name="signalId" value={h.id} />
               <input type="hidden" name="personId" value={h.personId} />
+              {h.kind === "buddy" ? <input type="hidden" name="buddy" value="on" /> : null}
               <label className="form-field">
                 ตอบ (เว้นว่าง = ปิดโดยไม่ส่ง)
                 <textarea className="input" name="reply" rows={2} maxLength={1000} />

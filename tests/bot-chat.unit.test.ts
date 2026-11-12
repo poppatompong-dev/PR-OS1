@@ -327,3 +327,21 @@ test("พี่เอิร์ธ types แบบ 2 → thanked and passed to th
   assert.match(textTo(pick, 999), /เลือกแบบโฆษณามุกเต็มจอ: แบบ 2/);
   assert.ok(!db.tables.audit_logs.some((r: any) => r.action === "bot_unknown"));
 });
+
+test("น้องบอทชวนคุย: opt in/out by words; a reply to today's line goes to the 🆘 panel, not the admins (12 Nov 2026)", async () => {
+  const { parseBuddyCommand } = await import("@/lib/telegram/buddy");
+  assert.equal(parseBuddyCommand("หยุดชวนคุย ครับ"), "off");
+  assert.equal(parseBuddyCommand("ชวนคุย"), "on");
+  assert.equal(parseBuddyCommand("ชวนคุยกับใครดี"), null);
+  const db = seedQ();
+  // not opted in → the usual flow (a question goes to the admins)
+  assert.match(textTo(await say(db, 502, "เมื่อคืนบอลใครชนะครับ"), 999), /คำถามจาก/);
+  assert.match(textTo(await say(db, 502, "ชวนคุย"), 502), /จัดไปครับ/);
+  db.tables.audit_logs.push({ id: "bm1", entity_type: "person", entity_id: EARTH, action: "buddy_msg", new_values: { message: "x" }, changed_at: new Date().toISOString() });
+  const r = await say(db, 502, "เมื่อคืนหงส์ชนะครับ ดูไหม");
+  assert.match(textTo(r, 502), /น้องบอทมาคุยต่อ/);
+  assert.equal(textTo(r, 999), "");
+  assert.ok(db.tables.audit_logs.some((x: any) => x.action === "bot_unknown" && x.new_values?.buddy === true));
+  assert.match(textTo(await say(db, 502, "หยุดชวนคุย"), 502), /ไม่ชวนคุยแล้ว/);
+  assert.match(textTo(await say(db, 502, "เมื่อคืนบอลใครชนะครับ"), 999), /คำถามจาก/);
+});

@@ -143,6 +143,14 @@ function MemberMenu({ m, currentUserId }: { m: TeamMember; currentUserId: string
                 <input type="hidden" name="personId" value={m.personId} />
                 <textarea className="input" name="message" rows={3} maxLength={1000} required placeholder={`ข้อความถึง ${m.displayName}`} />
                 <label className="team-check" style={{ flexWrap: "wrap" }}>
+                  🤖 ชวนคุย
+                  <select name="buddy" defaultValue="" className="input" style={{ width: "auto" }}>
+                    <option value="">ไม่ใช่ (ข้อความจากแอดมิน)</option>
+                    <option value="invite">ส่งคำชวน + ปุ่ม เอา/ไม่เอา (ข้อความด้านบนไม่ถูกส่ง)</option>
+                    <option value="line">ข้อความชวนคุยวันนี้ (เฉพาะคนที่กดเอา · วันละ 1)</option>
+                  </select>
+                </label>
+                <label className="team-check" style={{ flexWrap: "wrap" }}>
                   🖼️ แนบรูป (ไม่บังคับ)
                   <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" />
                 </label>

@@ -789,11 +789,27 @@ export async function messagePersonTelegram(formData: FormData) {
   const hasPhoto = photo instanceof File && photo.size > 0;
   if (hasPhoto && !/^image\/(jpeg|png|webp)$/.test(photo.type)) done("แนบได้เฉพาะรูป JPG / PNG / WEBP");
   if (hasPhoto && photo.size > 8 * 1024 * 1024) done("รูปใหญ่เกิน 8 MB");
-  const caption = `💬 <b>จากแอดมิน</b>\n\n${esc(hasPhoto ? message.slice(0, 980) : message)}`;
-  const res = hasPhoto
+  // น้องบอทชวนคุย (12 Nov 2026): "invite" asks first (buttons); "line" is today's chat line —
+  // only to someone who said yes, working hours, one a day.
+  const buddy = String(formData.get("buddy") ?? "");
+  const { BUDDY_HEAD, buddyInvite, buddySentToday, isBuddyOn } = await import("@/lib/telegram/buddy");
+  if (buddy === "invite" || buddy === "line") {
+    const wd = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", weekday: "short" }).format(new Date());
+    if (hour < 9 || hour >= 16 || wd === "Sat" || wd === "Sun") done("ชวนคุยส่งเฉพาะจันทร์–ศุกร์ 09:00–16:00 น.");
+    if (hasPhoto) done("ชวนคุยไม่แนบรูป");
+  }
+  if (buddy === "line") {
+    if (!(await isBuddyOn(admin, personId))) done("คนนี้ยังไม่ได้เปิดรับชวนคุย — ส่งคำชวน (invite) ก่อน");
+    if (await buddySentToday(admin, personId)) done("วันนี้ชวนคุยไปแล้ว 1 ครั้ง — ตอบต่อได้จากแผง 🆘");
+  }
+  const caption = buddy === "line" ? `${BUDDY_HEAD}\n\n${esc(message)}` : `💬 <b>จากแอดมิน</b>\n\n${esc(hasPhoto ? message.slice(0, 980) : message)}`;
+  const res = buddy === "invite"
+    ? await sendTelegram(Number(p!.telegram_chat_id), buddyInvite())
+    : hasPhoto
     ? await sendTelegramPhotoFile(Number(p!.telegram_chat_id), await photo.arrayBuffer(), photo.type, caption)
     : await sendTelegram(Number(p!.telegram_chat_id), { text: caption });
   if (!res.ok) done(`ส่งไม่สำเร็จ: ${res.error ?? "ไม่ทราบสาเหตุ"}`);
+  if (buddy === "line") await admin.from("audit_logs").insert({ entity_type: "person", entity_id: personId, action: "buddy_msg", changed_by: user.id, summary: "น้องบอทชวนคุย", new_values: { message } });
   await admin.from("audit_logs").insert({
     entity_type: "person",
     entity_id: personId,
@@ -976,8 +992,15 @@ export async function handleHelpSignal(formData: FormData) {
     const { data: p } = await admin.from("people").select("telegram_chat_id").eq("id", personId).maybeSingle();
     if (!p?.telegram_chat_id) done("คนนี้ยังไม่ได้ผูก Telegram");
     const { sendTelegram, esc } = await import("@/lib/telegram/api");
-    const res = await sendTelegram(Number(p!.telegram_chat_id), { text: `💬 <b>จากแอดมิน</b>\n\n${esc(reply)}\n\nติดตรงไหนอีก พิมพ์มาในแชทนี้ได้เลยครับ` });
+    // A reply in the น้องบอทชวนคุย chat keeps the bot's voice (and the chat stays "live").
+    const buddy = formData.get("buddy") === "on";
+    const { BUDDY_HEAD, isBuddyOn } = await import("@/lib/telegram/buddy");
+    if (buddy && !(await isBuddyOn(admin, personId))) done("คนนี้ปิดชวนคุยแล้ว — ปิดรายการโดยไม่ส่ง (เว้นช่องตอบว่าง)");
+    const res = await sendTelegram(Number(p!.telegram_chat_id), {
+      text: buddy ? `${BUDDY_HEAD}\n\n${esc(reply)}` : `💬 <b>จากแอดมิน</b>\n\n${esc(reply)}\n\nติดตรงไหนอีก พิมพ์มาในแชทนี้ได้เลยครับ`,
+    });
     if (!res.ok) done(`ส่งไม่สำเร็จ: ${res.error ?? "ไม่ทราบสาเหตุ"}`);
+    if (buddy) await admin.from("audit_logs").insert({ entity_type: "person", entity_id: personId, action: "buddy_msg", changed_by: user.id, summary: "น้องบอทชวนคุย (ตอบ)", new_values: { message: reply } });
     sent = true;
   }
   await admin.from("audit_logs").insert({

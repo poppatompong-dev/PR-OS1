@@ -42,6 +42,7 @@ import {
   pulseReply,
 } from "@/lib/telegram/pulse";
 import { parseAdPick } from "@/lib/monitor/contest";
+import { buddyGotText, buddyLive, buddyOffText, buddyOnText, parseBuddyCommand, setBuddy } from "@/lib/telegram/buddy";
 import { Q_TAG, answerQuestion, forwardQuestion, isChatter, jokeHintText, looksLikeJoke, looksLikeQuestion } from "@/lib/telegram/questions";
 import { TRIAL_STEPS, markTrial, trialDone } from "@/lib/trial";
 import { JOKE_PROMPT, decideJoke, parseJokeCommand, submitJoke } from "@/lib/tv-jokes";
@@ -252,6 +253,12 @@ async function handleText(ctx: Ctx, chatId: number, raw: string, from?: { first_
   }
   if (/^(📋)?(รายการงาน|แก้งาน|แก้ไขงาน|จัดการงาน|ยกเลิกงาน|เลื่อนงาน|ลบงาน|\/jobs)$/.test(text.replace(/\s+/g, ""))) return [tgJobs()];
   if (/^(เพิ่มงาน|สร้างงาน|\/add)/.test(text.replace(/\s+/g, ""))) return [tgAddEvent()];
+  // น้องบอทชวนคุย (12 Nov 2026): "หยุดชวนคุย" / "ชวนคุย".
+  const buddyCmd = parseBuddyCommand(text);
+  if (buddyCmd) {
+    await setBuddy(ctx.admin, person.id, buddyCmd === "on");
+    return [{ text: buddyCmd === "on" ? buddyOnText : buddyOffText, keyboard: KEYBOARD }];
+  }
   // เลือกแบบโฆษณามุก (12 Nov 2026): "แบบ 2" goes to the admins (and the ❓ panel), not "ไม่เข้าใจ".
   const adPick = parseAdPick(text);
   if (adPick) {
@@ -266,6 +273,14 @@ async function handleText(ctx: Ctx, chatId: number, raw: string, from?: { first_
   const v = await voiceOf(ctx, person);
   // Not something the bot knows: a real question goes to the admins (6 Nov 2026).
   if (looksLikeJoke(text)) return [{ text: jokeHintText(text), keyboard: KEYBOARD }];
+  // A reply to today's buddy line: kept for the 🆘 panel (answered on the next round), not sent to the admins.
+  if (await buddyLive(ctx.admin, person.id)) {
+    await ctx.admin
+      .from("audit_logs")
+      .insert({ entity_type: "person", entity_id: person.id, action: "bot_unknown", changed_by: null, summary: "ตอบน้องบอทชวนคุย (Telegram)", new_values: { text: text.slice(0, 500), buddy: true } })
+      .then(() => undefined, () => undefined);
+    return [{ text: buddyGotText, keyboard: KEYBOARD }];
+  }
   if (looksLikeQuestion(text) && (await forwardQuestion(ctx.admin, person, text)) > 0) return [{ text: questionSentText(v.title, v.mom), keyboard: KEYBOARD }];
   if (isChatter(text)) return [{ text: chatterText(v.title, v.mom), keyboard: KEYBOARD }];
   // Kept so an admin (or Claude's sweep) can see who may need help (12 Nov 2026).
@@ -561,6 +576,13 @@ async function handleCallback(ctx: Ctx, q: NonNullable<TgUpdate["callback_query"
     const toAdmins = pulseAdminText(person.displayName, p.id);
     if (toAdmins) await tellAdminsByTelegram(ctx.admin, toAdmins);
     await sendTelegram(chatId, pulseReply(p.id));
+    return;
+  }
+
+  if (p.a === "bd" && (p.id === "on" || p.id === "off")) {
+    await setBuddy(ctx.admin, person.id, p.id === "on");
+    await answerCallback(q.id, p.id === "on" ? "🤝 จัดไปครับ" : "🙏 ได้ครับ");
+    await sendTelegram(chatId, { text: p.id === "on" ? buddyOnText : buddyOffText });
     return;
   }
 
