@@ -581,3 +581,77 @@
 .bm-idle-stats span b { font-size: calc(58 * var(--u)); }
 .bm-idle-stats span { font-size: calc(21 * var(--u)); }
 .bm-idle-dates p { font-size: calc(24 * var(--u)); }
+
+/* ── ช่วงโฆษณามุก เต็มจอ (TvJokeAd, 12 Nov 2026) ─────────────────────────── */
+.bm > .tv-jad, .tv-jad { position: fixed !important; inset: 0; width: 100vw; height: 100vh; z-index: 46 !important; margin: 0; pointer-events: none; overflow: hidden; opacity: 0; transition: opacity .8s ease; font-family: inherit; --u: min(calc(100vw / 1920), calc(100vh / 1080)); }
+.tv-jad.is-on { opacity: 1; }
+.tv-jad .th-nb { white-space: nowrap; }
+.tv-jad p { margin: 0; }
+.tv-jad .is-s { font-size: calc(104 * var(--u)); }
+.tv-jad .is-m { font-size: calc(80 * var(--u)); }
+.tv-jad .is-l { font-size: calc(60 * var(--u)); }
+.tv-jad-label { position: absolute; right: calc(20 * var(--u)); bottom: calc(14 * var(--u)); font-size: calc(22 * var(--u)); color: #fff; background: rgba(0,0,0,.45); padding: calc(4 * var(--u)) calc(14 * var(--u)); border-radius: 99px; z-index: 5; }
+.tv-jad-left2 { position: absolute; left: calc(28 * var(--u)); top: calc(24 * var(--u)); font-size: calc(28 * var(--u)); font-weight: 800; color: #fff; background: rgba(0,0,0,.4); padding: calc(6 * var(--u)) calc(18 * var(--u)); border-radius: 99px; z-index: 4; }
+.tv-jad .is-face { border-radius: 50%; object-fit: cover; background: #fff; border: calc(8 * var(--u)) solid #fff; }
+
+/* 1 ป้ายโฆษณาทีวี */
+.tv-jad--1 { background: radial-gradient(circle at 20% 15%, #ff8fd1 0, transparent 40%), radial-gradient(circle at 85% 80%, #ffd36b 0, transparent 38%), linear-gradient(135deg, #4b1d7a, #7a2e9a 55%, #c2357f); color: #fff; }
+.tv-jad--1 .tv-jad-bar { position: absolute; left: 0; right: 0; top: 0; height: calc(86 * var(--u)); display: flex; justify-content: space-between; align-items: center; padding: 0 calc(40 * var(--u)); background: rgba(0,0,0,.35); font-size: calc(36 * var(--u)); font-weight: 900; letter-spacing: .02em; }
+.tv-jad--1 .tv-jad-left { font-size: calc(28 * var(--u)); font-weight: 700; opacity: .85; }
+.tv-jad--1 .tv-jad-body { position: absolute; left: calc(150 * var(--u)); right: calc(620 * var(--u)); top: calc(150 * var(--u)); bottom: calc(160 * var(--u)); display: flex; flex-direction: column; justify-content: center; gap: calc(36 * var(--u)); }
+.tv-jad--1 .tv-jad-no { align-self: flex-start; background: #ffd36b; color: #4b1d7a; font-weight: 900; font-size: calc(48 * var(--u)); padding: calc(8 * var(--u)) calc(34 * var(--u)); border-radius: calc(18 * var(--u)); transform: rotate(-3deg); box-shadow: calc(8 * var(--u)) calc(8 * var(--u)) 0 rgba(0,0,0,.25); }
+.tv-jad--1 .tv-jad-q { font-weight: 800; line-height: 1.25; text-shadow: 0 calc(4 * var(--u)) calc(14 * var(--u)) rgba(0,0,0,.35); }
+.tv-jad--1 .tv-jad-a { font-weight: 900; line-height: 1.2; color: #ffe26b; text-shadow: 0 calc(5 * var(--u)) 0 #7a1f6a; opacity: 0; transform: translateY(calc(60 * var(--u))) scale(.9); transition: opacity .5s ease, transform .6s cubic-bezier(.2, 1.6, .4, 1); }
+.tv-jad--1.is-punch .tv-jad-a { opacity: 1; transform: none; }
+.tv-jad--1.is-punch .tv-jad-q { opacity: .7; }
+.tv-jad--1 .tv-jad-from { position: absolute; right: calc(80 * var(--u)); bottom: calc(110 * var(--u)); width: calc(480 * var(--u)); display: flex; flex-direction: column; align-items: center; gap: calc(10 * var(--u)); font-size: calc(40 * var(--u)); }
+.tv-jad--1 .tv-jad-me { height: calc(640 * var(--u)); width: auto; filter: drop-shadow(0 calc(12 * var(--u)) calc(18 * var(--u)) rgba(0,0,0,.35)); }
+.tv-jad--1 .tv-jad-me.is-face { width: calc(380 * var(--u)); height: calc(380 * var(--u)); }
+.tv-jad--1 .tv-jad-from span { background: #fff; color: #4b1d7a; padding: calc(6 * var(--u)) calc(26 * var(--u)); border-radius: 99px; font-weight: 700; }
+.tv-jad--1 .tv-jad-cta { position: absolute; left: 0; right: 0; bottom: 0; height: calc(78 * var(--u)); display: flex; align-items: center; justify-content: center; background: #ffd36b; color: #4b1d7a; font-size: calc(34 * var(--u)); font-weight: 700; }
+
+/* 2 ตัวการ์ตูนเล่าเอง */
+.tv-jad--2 { background: linear-gradient(#8fd3ff, #d8f1ff 62%, #9ed98a 62%, #7cc46a); }
+.tv-jad--2 .tv-jad-sky { position: absolute; inset: 0; background: radial-gradient(ellipse calc(260 * var(--u)) calc(70 * var(--u)) at 20% 18%, #fff 60%, transparent 62%), radial-gradient(ellipse calc(200 * var(--u)) calc(60 * var(--u)) at 70% 12%, #fff 60%, transparent 62%); }
+.tv-jad--2 .tv-jad-tag { position: absolute; right: calc(40 * var(--u)); top: calc(26 * var(--u)); background: #fff; color: #4b1d7a; border: calc(5 * var(--u)) solid #1b1024; border-radius: 99px; padding: calc(8 * var(--u)) calc(30 * var(--u)); font-size: calc(38 * var(--u)); font-weight: 800; box-shadow: calc(6 * var(--u)) calc(6 * var(--u)) 0 #1b1024; }
+.tv-jad--2 .tv-jad-teller { position: absolute; left: calc(120 * var(--u)); bottom: calc(60 * var(--u)); display: flex; align-items: flex-end; gap: 0; }
+.tv-jad--2 .tv-jad-me { height: calc(760 * var(--u)); width: auto; order: 1; filter: drop-shadow(0 calc(10 * var(--u)) calc(14 * var(--u)) rgba(0,0,0,.25)); }
+.tv-jad--2 .tv-jad-me.is-face { width: calc(420 * var(--u)); height: calc(420 * var(--u)); margin-bottom: calc(160 * var(--u)); }
+.tv-jad--2 .tv-jad-bubble { order: 2; position: relative; align-self: flex-start; margin: calc(-40 * var(--u)) 0 0 calc(20 * var(--u)); width: calc(1000 * var(--u)); background: #fff; color: #1b1024; border: calc(7 * var(--u)) solid #1b1024; border-radius: calc(46 * var(--u)); padding: calc(34 * var(--u)) calc(46 * var(--u)); font-weight: 900; line-height: 1.25; box-shadow: calc(10 * var(--u)) calc(10 * var(--u)) 0 #1b1024; }
+.tv-jad--2 .tv-jad-bubble::before { content: ""; position: absolute; left: calc(-46 * var(--u)); top: calc(90 * var(--u)); border: calc(24 * var(--u)) solid transparent; border-right: calc(46 * var(--u)) solid #1b1024; }
+.tv-jad--2 .tv-jad-bubble.is-punch { background: #ffe26b; animation: tvJadPop .5s cubic-bezier(.2, 1.6, .4, 1); }
+.tv-jad--2 .tv-jad-pals { position: absolute; right: calc(60 * var(--u)); bottom: calc(60 * var(--u)); display: flex; gap: calc(10 * var(--u)); transform: translateY(110%); transition: transform .6s cubic-bezier(.2, 1.4, .4, 1); }
+.tv-jad--2.is-punch .tv-jad-pals { transform: none; }
+.tv-jad--2 .tv-jad-pal { position: relative; display: flex; flex-direction: column; align-items: center; }
+.tv-jad--2 .tv-jad-palimg { height: calc(420 * var(--u)); width: auto; transform: scaleX(-1); }
+.tv-jad--2 .tv-jad-palimg.is-face { width: calc(220 * var(--u)); height: calc(220 * var(--u)); transform: none; }
+.tv-jad--2 .tv-jad-ha { font-size: calc(54 * var(--u)); font-weight: 900; color: #c2357f; -webkit-text-stroke: calc(2 * var(--u)) #fff; animation: tvJadBob .6s ease-in-out infinite alternate; }
+
+/* 3 เวทีเกมโชว์ */
+.tv-jad--3 { background: radial-gradient(ellipse at 50% 110%, #3a1450 0, #12061c 60%); color: #fff; }
+.tv-jad--3 .tv-jad-curtain { position: absolute; top: 0; bottom: 0; width: 52%; background: repeating-linear-gradient(90deg, #8e0f24 0 calc(40 * var(--u)), #b8172f calc(40 * var(--u)) calc(80 * var(--u))); box-shadow: inset 0 calc(-40 * var(--u)) calc(60 * var(--u)) rgba(0,0,0,.5); transition: transform 1.2s cubic-bezier(.6, 0, .3, 1); z-index: 3; }
+.tv-jad--3 .tv-jad-curtain.is-l { left: 0; }
+.tv-jad--3 .tv-jad-curtain.is-r { right: 0; }
+.tv-jad--3.is-on .tv-jad-curtain.is-l { transform: translateX(-88%); }
+.tv-jad--3.is-on .tv-jad-curtain.is-r { transform: translateX(88%); }
+.tv-jad--3 .tv-jad-spot { position: absolute; left: 50%; top: calc(-100 * var(--u)); width: calc(1300 * var(--u)); height: calc(1300 * var(--u)); translate: -50% 0; background: conic-gradient(from 160deg at 50% 0, transparent 0, rgba(255, 240, 180, .18) 10deg, rgba(255, 240, 180, .18) 30deg, transparent 40deg); }
+.tv-jad--3 .tv-jad-sign { position: absolute; left: 50%; top: calc(70 * var(--u)); translate: -50% 0; padding: calc(16 * var(--u)) calc(60 * var(--u)); border-radius: calc(26 * var(--u)); background: #ffd36b; color: #5a1530; font-size: calc(64 * var(--u)); font-weight: 900; box-shadow: 0 0 0 calc(10 * var(--u)) #5a1530, 0 0 calc(60 * var(--u)) rgba(255, 211, 107, .7); }
+.tv-jad--3 .tv-jad-sign i { position: absolute; inset: calc(-22 * var(--u)); border-radius: calc(40 * var(--u)); background: radial-gradient(circle, #fff7cf 0 calc(6 * var(--u)), transparent calc(7 * var(--u))) 0 0 / calc(34 * var(--u)) calc(34 * var(--u)); -webkit-mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); padding: calc(12 * var(--u)); animation: tvJadBulbs .5s steps(2) infinite; }
+.tv-jad--3 .tv-jad-screen { position: absolute; left: calc(220 * var(--u)); right: calc(560 * var(--u)); top: calc(260 * var(--u)); bottom: calc(150 * var(--u)); display: flex; flex-direction: column; justify-content: center; gap: calc(40 * var(--u)); text-align: center; }
+.tv-jad--3 .tv-jad-q { font-weight: 800; line-height: 1.25; }
+.tv-jad--3 .tv-jad-a { font-weight: 900; line-height: 1.2; color: #ffd36b; opacity: 0; transform: scale(.6); transition: opacity .4s, transform .5s cubic-bezier(.2, 1.7, .4, 1); }
+.tv-jad--3.is-punch .tv-jad-a { opacity: 1; transform: none; }
+.tv-jad--3 .tv-jad-ding { display: inline-block; font-size: .6em; background: #ff4f8b; color: #fff; padding: 0 .4em; border-radius: .3em; transform: rotate(-6deg); }
+.tv-jad--3 .tv-jad-podium { position: absolute; right: calc(110 * var(--u)); bottom: 0; width: calc(420 * var(--u)); display: flex; flex-direction: column; align-items: center; }
+.tv-jad--3 .tv-jad-me { height: calc(560 * var(--u)); width: auto; margin-bottom: calc(-6 * var(--u)); }
+.tv-jad--3 .tv-jad-me.is-face { width: calc(320 * var(--u)); height: calc(320 * var(--u)); margin-bottom: calc(20 * var(--u)); }
+.tv-jad--3 .tv-jad-podium span { width: 100%; text-align: center; background: linear-gradient(#ffd36b, #d99a1c); color: #5a1530; font-size: calc(44 * var(--u)); font-weight: 900; padding: calc(22 * var(--u)) 0 calc(40 * var(--u)); border-radius: calc(16 * var(--u)) calc(16 * var(--u)) 0 0; }
+.tv-jad--3 .tv-jad-laughs { position: absolute; left: 0; right: 0; bottom: 0; height: 60%; visibility: hidden; }
+.tv-jad--3.is-punch .tv-jad-laughs { visibility: visible; }
+.tv-jad--3 .tv-jad-laughs span { position: absolute; bottom: 0; font-size: calc(70 * var(--u)); font-weight: 900; color: #ff8fd1; opacity: 0; animation: tvJadRise 2.6s ease-out infinite; }
+.tv-jad--3 .tv-jad-left2 { z-index: 4; }
+
+@keyframes tvJadPop { from { transform: scale(.85); } to { transform: none; } }
+@keyframes tvJadBob { from { transform: translateY(0) rotate(-4deg); } to { transform: translateY(calc(-14 * var(--u))) rotate(4deg); } }
+@keyframes tvJadBulbs { 50% { opacity: .35; } }
+@keyframes tvJadRise { 0% { opacity: 0; transform: translateY(0); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(calc(-520 * var(--u))) rotate(-10deg); } }

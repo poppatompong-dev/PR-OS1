@@ -103,7 +103,7 @@ export async function decideJoke(admin: SupabaseClient, jokeId: string, ok: bool
   return { toast: ok ? "✅ ขึ้นจอแล้ว" : "❌ ไม่ใช้มุกนี้", done: `${ok ? "✅ ขึ้นจอแล้ว" : "❌ ไม่ใช้"} · ${esc(text)}` };
 }
 
-export type TvJoke = { id: string; personId: string; name: string; setup: string; punch: string; at?: string };
+export type TvJoke = { id: string; personId: string; name: string; setup: string; punch: string; at?: string; no?: number };
 
 /** Approved jokes of the last JOKE_DAYS days, newest first (public TV feed). */
 export async function loadApprovedJokes(admin: SupabaseClient, now = new Date()): Promise<TvJoke[]> {

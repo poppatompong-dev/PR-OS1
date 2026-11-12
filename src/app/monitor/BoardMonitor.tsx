@@ -31,6 +31,7 @@ import { ThaiText } from "./ThaiText";
 import { IDLE_DEFAULT_LOOK, IDLE_LABELS, TvIdle, untilText, type IdleJoke, type IdleLook, type IdleStats } from "./TvIdle";
 import type { ShowcaseItem } from "@/lib/monitor/showcase";
 import { FestivalLayer, FestivalStage } from "./FestivalLayer";
+import { TvJokeAd, type AdJoke } from "./TvJokeAd";
 import { festivalFor, isFestivalKey, previewFestival } from "@/lib/monitor/festivals";
 import "./monitor-board.css";
 
@@ -111,6 +112,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
   const [contestJokes, setContestJokes] = useState<string[]>([]);
   // กล่อง "วันนี้" ตอนไม่มีงาน (owner, 12 Nov 2026): ?idle=1|2|3 previews a look, ?idle=all cycles them.
   const [idleJokes, setIdleJokes] = useState<IdleJoke[]>([]);
+  const [adJokes, setAdJokes] = useState<AdJoke[]>([]);
   const [idleStats, setIdleStats] = useState<IdleStats>(null);
   const [idlePrev, setIdlePrev] = useState<{ look: IdleLook | null; all: boolean }>({ look: null, all: false });
   const [idleCycle, setIdleCycle] = useState<IdleLook>(1);
@@ -136,8 +138,9 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
     const load = () =>
       fetch("/api/monitor/jokes")
         .then((r) => (r.ok ? r.json() : null))
-        .then((j: { contest?: ContestState; jokes?: Array<{ name: string; setup: string; punch: string; at?: string }> } | null) => {
+        .then((j: { contest?: ContestState; jokes?: AdJoke[] } | null) => {
           setContest(j?.contest ?? null);
+          setAdJokes(j?.jokes ?? []);
           setContestJokes(contestTickerLines(j?.jokes ?? []));
           const a = Date.parse(CONTEST.start), z = Date.parse(CONTEST.end);
           setIdleJokes(
@@ -503,6 +506,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
       <TvCast still={staticMode} people={castPeople} off={team.off} events={events} festival={festival} />
       {bday ? <BirthdayShow bday={bday} still={staticMode} off={team.off} team={castPeople} /> : null}
       {welcome ? <WelcomeShow welcome={welcome} still={staticMode} off={team.off} team={castPeople} /> : null}
+      <TvJokeAd jokes={adJokes} still={staticMode} events={events} team={castPeople} off={team.off} />
     </div>
   );
 }

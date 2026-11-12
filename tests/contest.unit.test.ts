@@ -21,3 +21,20 @@ test("ticker: only approved jokes sent during the contest", async () => {
   ]);
   assert.deepEqual(lines, ["😂 มุกประกวดจาก นัท: จุดแข็งของคุณคืออะไร → คอ บ่า ไหล่ แล้วจุดอ่อน → ปัญญา.. อิอิ"]);
 });
+
+test("มุกที่ N: order sent, rejected skipped, outside the window skipped", async () => {
+  const { contestNumbers, contestTickerLines } = await import("@/lib/monitor/contest");
+  const nums = contestNumbers(
+    [
+      { id: "c", at: "2026-11-11T05:00:00Z" },
+      { id: "a", at: "2026-11-10T01:00:00Z" },
+      { id: "x", at: "2026-11-10T02:00:00Z" },
+      { id: "b", at: "2026-11-10T03:00:00Z" },
+      { id: "old", at: "2026-11-09T09:00:00Z" },
+      { id: "late", at: "2026-11-20T10:00:00Z" },
+    ],
+    new Set(["x"]),
+  );
+  assert.deepEqual([...nums.entries()], [["a", 1], ["b", 2], ["c", 3]]);
+  assert.match(contestTickerLines([{ name: "แข", setup: "", punch: "ฮา", at: "2026-11-10T03:00:00Z", no: 2 }])[0], /^😂 มุกประกวดที่ 2 จาก แข: ฮา$/);
+});
