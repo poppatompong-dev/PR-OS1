@@ -340,7 +340,7 @@
 .tv-gag .emo{position:absolute;left:0;top:0;font-size:56px;opacity:0}
 .tv-gag .car{position:absolute;left:0;top:0;width:600px;height:260px}
 .tv-gag .car svg{position:absolute;left:0;top:0}
-.tv-gag .car .drv{position:absolute;left:338px;top:28px;width:112px;height:112px}
+.tv-gag .car .drv{position:absolute;left:331px;top:-57px;width:138px;height:246px}
 .tv-gag .car .spin{transform-box:fill-box;transform-origin:center;animation:tvCarSpin .3s linear infinite}
 .tv-gag .car.is-stop .spin{animation-play-state:paused}
 @keyframes tvCarSpin{to{transform:rotate(360deg)}}
