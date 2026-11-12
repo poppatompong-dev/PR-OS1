@@ -9,6 +9,10 @@
 // when a job starts within 30 min, on the still screen and with reduced motion.
 // Three looks for the team to pick (owner asked for previews first):
 //   1 ป้ายโฆษณาทีวี   2 ตัวการ์ตูนเล่าเอง   3 เวทีเกมโชว์
+// กองเชียร์ (owner, 12 Nov 2026: "แอคติ้งจากกองเชียร์ … สมาชิกในงาน เพิ่มสีสัน"): 4 team cartoons,
+// a different 4 each time, act out one of three bits in turn — แถวคนดู (sit, then jump
+// and cheer), วิ่งกรูเข้ามา (run in at the punch line, jump, sit laughing), เก็ตช้า (one
+// of them stays puzzled, then "อ๋อ!"; never พี่ไป๋ or คุณสมัชชา).
 // /tv?jokead=1|2|3 previews a look (an ad every ~22 s, any hour); ?jokead=all cycles them.
 // Not on air until a look is chosen: JOKE_AD_LIVE.
 
@@ -43,6 +47,62 @@ export function jobSoon(events: Pick<MonitorEvent, "eventDate" | "startTime" | "
   });
 }
 
+export type CrowdMode = "audience" | "rush" | "late";
+export const CROWD_MODES: CrowdMode[] = ["audience", "rush", "late"];
+const SENIOR = new Set(["00000000-0000-0000-0000-000000000501", "774174ff-e0cc-4bc5-922e-13fd1b05750d"]);
+const CHEERS = ["555", "ฮ่า ๆ", "5555+", "😂"];
+
+/** Four cheerers for show n (never the teller), rotating so everyone gets a turn; the
+ *  เก็ตช้า one is never a senior (พี่ไป๋ / คุณสมัชชา). */
+export function pickCrowd(pool: string[], teller: string, n: number): { ids: string[]; late: number } {
+  const p = [...new Set(pool)].filter((id) => id !== teller).sort();
+  if (!p.length) return { ids: [], late: -1 };
+  const ids: string[] = [];
+  for (let k = 0; k < Math.min(4, p.length); k++) ids.push(p[(n * 4 + k) % p.length]);
+  const uniq = [...new Set(ids)];
+  const late = uniq.findIndex((id, k) => k >= 1 && !SENIOR.has(id));
+  return { ids: uniq, late: late >= 0 ? late : uniq.findIndex((id) => !SENIOR.has(id)) };
+}
+
+type FanPose = "off" | "sit" | "run" | "up" | "shock";
+/** What fan k does at beat 0 (question) · 1 (punch line) · 2 (+1 s) · 3 (+2.5 s). */
+export function fanPose(mode: CrowdMode, beat: number, k: number, late: number): { pose: FanPose; say: string | null } {
+  const cheer = CHEERS[k % CHEERS.length];
+  if (mode === "rush") {
+    if (beat === 0) return { pose: "off", say: null };
+    if (beat === 1) return { pose: "run", say: null };
+    if (beat === 2) return { pose: "up", say: cheer };
+    return { pose: "sit", say: cheer };
+  }
+  if (beat === 0) return { pose: "sit", say: null };
+  if (mode === "late" && k === late) return beat < 3 ? { pose: "shock", say: "?" } : { pose: "up", say: "อ๋อ!" };
+  return { pose: "up", say: cheer };
+}
+
+const fanSrc = (id: string, p: string) => `/cast/${id}/${p}.webp`;
+const FAN_IMGS = ["sit", "up", "runA", "runB", "stand-shock"] as const;
+
+function Crowd({ ids, mode, beat, late }: { ids: string[]; mode: CrowdMode; beat: number; late: number }) {
+  return (
+    <div className={`tv-jad-crowd is-${mode}`}>
+      {ids.map((id, k) => {
+        const { pose, say } = fanPose(mode, beat, k, late);
+        return (
+          <div key={id} className={`tv-jad-fan is-${k < ids.length / 2 ? "l" : "r"} pose-${pose}${say === "?" || say === "อ๋อ!" ? " is-late" : ""}`} style={{ ["--k" as string]: k }}>
+            {say ? <span className="tv-jad-say">{say}</span> : null}
+            <div className="tv-jad-fanbody">
+              {FAN_IMGS.map((p) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={p} className={`f-${p}`} src={fanSrc(id, p)} alt="" />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export const adHead = (j: Pick<AdJoke, "no">) => (j.no ? `มุกประกวดที่ ${j.no}` : "มุกจากทีม");
 const sizeOf = (t: string) => (t.length <= 24 ? "is-s" : t.length <= 50 ? "is-m" : "is-l");
 const clean = (t: string) => t.replace(/^[.…\s=]+/, "").trim();
@@ -64,10 +124,13 @@ export function TvJokeAd({ jokes, still, events, team, off }: { jokes: AdJoke[];
   const [show, setShow] = useState<{ j: AdJoke; look: JokeAdLook; n: number; pv: boolean } | null>(null);
   const [phase, setPhase] = useState(0); // 0 off · 1 question · 2 punch line
   const [left, setLeft] = useState(JOKE_AD_SECONDS);
+  const [beat, setBeat] = useState(0); // crowd: 0 question · 1 punch · 2 +1 s · 3 +2.5 s
   const list = useMemo(() => adOrder(jokes.filter((j) => j.punch)), [jokes]);
-  const ref = useRef({ list, events, idx: 0, n: 0 });
+  const ref = useRef({ list, events, team, off, idx: 0, n: 0 });
   ref.current.list = list;
   ref.current.events = events;
+  ref.current.team = team;
+  ref.current.off = off;
 
   useEffect(() => {
     if (still) return;
@@ -96,9 +159,18 @@ export function TvJokeAd({ jokes, still, events, team, off }: { jokes: AdJoke[];
       const n = r.n++;
       const look: JokeAdLook = prevLook ?? (q === "all" ? (((n % 3) + 1) as JokeAdLook) : JOKE_AD_LOOK);
       html.dataset.tvShow = "1";
+      // warm the cheerers' sprites before the punch line
+      for (const id of pickCrowd(r.team.filter((x) => CAST_IDS.includes(x) && !r.off.has(x)), j.personId, n).ids) {
+        for (const p of FAN_IMGS) { const im = new Image(); im.src = fanSrc(id, p); }
+      }
       setShow({ j, look, n, pv: preview });
       setLeft(JOKE_AD_SECONDS);
       setPhase(j.setup ? 1 : 2);
+      setBeat(0);
+      const pt = j.setup ? PUNCH_AT : 1.5; // one-liners: give the room a moment to read
+      later(pt * 1000, () => setBeat(1));
+      later((pt + 1) * 1000, () => setBeat(2));
+      later((pt + 2.5) * 1000, () => setBeat(3));
       for (let s = 1; s < JOKE_AD_SECONDS; s++) later(s * 1000, () => setLeft(JOKE_AD_SECONDS - s));
       if (j.setup) later(PUNCH_AT * 1000, () => setPhase(2));
       later((JOKE_AD_SECONDS - 0.8) * 1000, () => setPhase(0));
@@ -119,8 +191,9 @@ export function TvJokeAd({ jokes, still, events, team, off }: { jokes: AdJoke[];
 
   if (!show) return null;
   const { j, look, n, pv } = show;
-  const friends = team.filter((id) => id !== j.personId && CAST_IDS.includes(id) && !off.has(id));
-  const pals = friends.length ? [friends[(n * 3) % friends.length], friends[(n * 3 + 1) % friends.length]].filter((v, i, a) => a.indexOf(v) === i) : [];
+  const crowd = pickCrowd(team.filter((id) => CAST_IDS.includes(id) && !off.has(id)), j.personId, n);
+  const mode = CROWD_MODES[n % CROWD_MODES.length];
+  const fans = crowd.ids.length ? <Crowd ids={crowd.ids} mode={mode} beat={beat} late={crowd.late} /> : null;
   const setup = j.setup ? clean(j.setup) : "";
   const punch = clean(j.punch);
   const cls = `tv-jad tv-jad--${look}${phase ? " is-on" : ""}${phase === 2 ? " is-punch" : ""}${setup ? "" : " is-one"}`;
@@ -142,6 +215,7 @@ export function TvJokeAd({ jokes, still, events, team, off }: { jokes: AdJoke[];
             <Who id={j.personId} off={off} pose={phase === 2 ? "up" : "wave"} className="tv-jad-me" />
             <span>จาก <b>{j.name}</b></span>
           </div>
+          {fans}
           <div className="tv-jad-cta">อยากขึ้นจอบ้าง? พิมพ์ <b>มุก</b> ในแชทบอท Telegram 😆</div>
         </>
       ) : look === 2 ? (
@@ -154,14 +228,7 @@ export function TvJokeAd({ jokes, still, events, team, off }: { jokes: AdJoke[];
             </div>
             <Who id={j.personId} off={off} pose={phase === 2 ? "up" : "wave"} className="tv-jad-me" />
           </div>
-          <div className="tv-jad-pals">
-            {pals.map((id) => (
-              <div key={id} className="tv-jad-pal">
-                <span className="tv-jad-ha">555</span>
-                <Who id={id} off={off} pose={phase === 2 ? "up" : "stand"} className="tv-jad-palimg" />
-              </div>
-            ))}
-          </div>
+          {fans}
           <div className="tv-jad-left2">📺 โฆษณามุก · อีก {left} วิ</div>
         </>
       ) : (
@@ -186,6 +253,7 @@ export function TvJokeAd({ jokes, still, events, team, off }: { jokes: AdJoke[];
               <span key={i} style={{ left: `${[1.5, 7, 12, 71, 80, 89][i]}%`, animationDelay: `${i * 0.35}s` }}>{t}</span>
             ))}
           </div>
+          {fans}
           <div className="tv-jad-left2">🎤 เวทีมุก · อีก {left} วิ</div>
         </>
       )}
