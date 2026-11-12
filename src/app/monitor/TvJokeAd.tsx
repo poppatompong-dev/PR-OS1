@@ -65,7 +65,7 @@ export function pickCrowd(pool: string[], teller: string, n: number): { ids: str
 }
 
 type FanPose = "off" | "sit" | "run" | "up" | "shock";
-/** What fan k does at beat 0 (question) · 1 (punch line) · 2 (+1 s) · 3 (+2.5 s). */
+/** What fan k does at beat 0 (question) · 1 (punch line) · 2 (+1 s) · 3 (+3.2 s). */
 export function fanPose(mode: CrowdMode, beat: number, k: number, late: number): { pose: FanPose; say: string | null } {
   const cheer = CHEERS[k % CHEERS.length];
   if (mode === "rush") {
@@ -124,7 +124,7 @@ export function TvJokeAd({ jokes, still, events, team, off }: { jokes: AdJoke[];
   const [show, setShow] = useState<{ j: AdJoke; look: JokeAdLook; n: number; pv: boolean } | null>(null);
   const [phase, setPhase] = useState(0); // 0 off · 1 question · 2 punch line
   const [left, setLeft] = useState(JOKE_AD_SECONDS);
-  const [beat, setBeat] = useState(0); // crowd: 0 question · 1 punch · 2 +1 s · 3 +2.5 s
+  const [beat, setBeat] = useState(0); // crowd: 0 question · 1 punch · 2 +1 s · 3 +3.2 s
   const list = useMemo(() => adOrder(jokes.filter((j) => j.punch)), [jokes]);
   const ref = useRef({ list, events, team, off, idx: 0, n: 0 });
   ref.current.list = list;
@@ -170,7 +170,7 @@ export function TvJokeAd({ jokes, still, events, team, off }: { jokes: AdJoke[];
       const pt = j.setup ? PUNCH_AT : 1.5; // one-liners: give the room a moment to read
       later(pt * 1000, () => setBeat(1));
       later((pt + 1) * 1000, () => setBeat(2));
-      later((pt + 2.5) * 1000, () => setBeat(3));
+      later((pt + 3.2) * 1000, () => setBeat(3));
       for (let s = 1; s < JOKE_AD_SECONDS; s++) later(s * 1000, () => setLeft(JOKE_AD_SECONDS - s));
       if (j.setup) later(PUNCH_AT * 1000, () => setPhase(2));
       later((JOKE_AD_SECONDS - 0.8) * 1000, () => setPhase(0));
@@ -247,11 +247,6 @@ export function TvJokeAd({ jokes, still, events, team, off }: { jokes: AdJoke[];
           <div className="tv-jad-podium">
             <Who id={j.personId} off={off} pose={phase === 2 ? "up" : "wave"} className="tv-jad-me" />
             <span>{j.name}</span>
-          </div>
-          <div className="tv-jad-laughs">
-            {["555", "😂", "ฮ่า ๆ", "555+", "🤣", "555"].map((t, i) => (
-              <span key={i} style={{ left: `${[1.5, 7, 12, 71, 80, 89][i]}%`, animationDelay: `${i * 0.35}s` }}>{t}</span>
-            ))}
           </div>
           {fans}
           <div className="tv-jad-left2">🎤 เวทีมุก · อีก {left} วิ</div>

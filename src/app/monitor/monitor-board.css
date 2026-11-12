@@ -640,27 +640,24 @@
 .tv-jad--3 .tv-jad-me { height: calc(560 * var(--u)); width: auto; margin-bottom: calc(-6 * var(--u)); }
 .tv-jad--3 .tv-jad-me.is-face { width: calc(320 * var(--u)); height: calc(320 * var(--u)); margin-bottom: calc(20 * var(--u)); }
 .tv-jad--3 .tv-jad-podium span { width: 100%; text-align: center; background: linear-gradient(#ffd36b, #d99a1c); color: #5a1530; font-size: calc(44 * var(--u)); font-weight: 900; padding: calc(22 * var(--u)) 0 calc(40 * var(--u)); border-radius: calc(16 * var(--u)) calc(16 * var(--u)) 0 0; }
-.tv-jad--3 .tv-jad-laughs { position: absolute; left: 0; right: 0; bottom: 0; height: 60%; visibility: hidden; z-index: 2; }
-.tv-jad--3.is-punch .tv-jad-laughs { visibility: visible; }
-.tv-jad--3 .tv-jad-laughs span { position: absolute; bottom: 0; font-size: calc(70 * var(--u)); font-weight: 900; color: #ff8fd1; opacity: 0; animation: tvJadRise 2.6s ease-out infinite; }
 .tv-jad--3 .tv-jad-left2 { z-index: 4; }
 
 @keyframes tvJadPop { from { transform: scale(.85); } to { transform: none; } }
 @keyframes tvJadBob { from { transform: translateY(0) rotate(-4deg); } to { transform: translateY(calc(-14 * var(--u))) rotate(4deg); } }
 @keyframes tvJadBulbs { 50% { opacity: .35; } }
-@keyframes tvJadRise { 0% { opacity: 0; transform: translateY(0); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(calc(-520 * var(--u))) rotate(-10deg); } }
 
 /* กองเชียร์ (4 team cartoons acting along) */
 .tv-jad-crowd { position: absolute; display: flex; align-items: flex-end; justify-content: space-around; z-index: 3; --fh: calc(300 * var(--u)); }
-.tv-jad--1 .tv-jad-crowd { left: calc(80 * var(--u)); width: calc(1240 * var(--u)); bottom: calc(78 * var(--u)); height: calc(380 * var(--u)); --fh: calc(290 * var(--u)); }
-.tv-jad--2 .tv-jad-crowd { left: calc(760 * var(--u)); right: calc(30 * var(--u)); bottom: calc(30 * var(--u)); height: calc(480 * var(--u)); --fh: calc(380 * var(--u)); }
-.tv-jad--3 .tv-jad-crowd { left: calc(150 * var(--u)); width: calc(1180 * var(--u)); bottom: 0; height: calc(360 * var(--u)); --fh: calc(280 * var(--u)); }
+.tv-jad--1 .tv-jad-crowd { left: calc(80 * var(--u)); width: calc(1240 * var(--u)); bottom: calc(78 * var(--u)); height: calc(440 * var(--u)); --fh: calc(370 * var(--u)); }
+.tv-jad--2 .tv-jad-crowd { left: calc(760 * var(--u)); right: calc(30 * var(--u)); bottom: calc(30 * var(--u)); height: calc(500 * var(--u)); --fh: calc(420 * var(--u)); }
+.tv-jad--3 .tv-jad-crowd { left: calc(150 * var(--u)); width: calc(1180 * var(--u)); bottom: 0; height: calc(420 * var(--u)); --fh: calc(350 * var(--u)); }
 .tv-jad-fan { position: relative; flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; transition: transform .9s cubic-bezier(.2, .8, .3, 1); }
 .tv-jad-fanbody { position: relative; height: var(--fh); width: 100%; }
 .tv-jad-fanbody img { position: absolute; bottom: 0; left: 50%; height: 100%; width: auto; translate: -50% 0; display: none; filter: drop-shadow(0 calc(8 * var(--u)) calc(10 * var(--u)) rgba(0,0,0,.3)); }
 .tv-jad-fan.is-l .tv-jad-fanbody img { transform: scaleX(-1); }
 .tv-jad-fan.pose-sit .f-sit, .tv-jad-fan.pose-up .f-up, .tv-jad-fan.pose-shock .f-stand-shock, .tv-jad-fan.pose-run .f-runA, .tv-jad-fan.pose-run .f-runB { display: block; }
 .tv-jad-fan.pose-off .f-runA { display: block; }
+.tv-jad-fanbody img.f-sit { translate: -50% 21%; }
 .tv-jad-fan.pose-run .f-runA { animation: tvJadStepA .26s steps(1) infinite; }
 .tv-jad-fan.pose-run .f-runB { animation: tvJadStepB .26s steps(1) infinite; }
 .tv-jad-fan.pose-sit .tv-jad-fanbody { animation: tvJadSway 1.6s ease-in-out infinite alternate; animation-delay: calc(var(--k) * -.4s); transform-origin: 50% 100%; }
@@ -668,7 +665,7 @@
 .tv-jad-fan.pose-shock .tv-jad-fanbody { animation: tvJadShake .5s ease-in-out infinite; }
 .tv-jad-crowd.is-rush .tv-jad-fan.pose-off.is-l { transform: translateX(-130vw); transition: none; }
 .tv-jad-crowd.is-rush .tv-jad-fan.pose-off.is-r { transform: translateX(130vw); transition: none; }
-.tv-jad-say { position: absolute; bottom: calc(var(--fh) + 6 * var(--u)); left: 50%; translate: -50% 0; white-space: nowrap; background: #fff; color: #c2357f; border: calc(4 * var(--u)) solid #1b1024; border-radius: 99px; padding: calc(2 * var(--u)) calc(18 * var(--u)); font-size: calc(40 * var(--u)); font-weight: 900; box-shadow: calc(4 * var(--u)) calc(4 * var(--u)) 0 #1b1024; animation: tvJadPop .35s cubic-bezier(.2, 1.7, .4, 1); z-index: 1; }
+.tv-jad-say { position: absolute; bottom: calc(var(--fh) * .78); left: 50%; translate: -50% 0; white-space: nowrap; background: #fff; color: #c2357f; border: calc(4 * var(--u)) solid #1b1024; border-radius: 99px; padding: calc(2 * var(--u)) calc(18 * var(--u)); font-size: calc(40 * var(--u)); font-weight: 900; box-shadow: calc(4 * var(--u)) calc(4 * var(--u)) 0 #1b1024; animation: tvJadPop .35s cubic-bezier(.2, 1.7, .4, 1); z-index: 1; }
 .tv-jad-fan.is-late .tv-jad-say { background: #ffe26b; color: #1b1024; font-size: calc(54 * var(--u)); }
 @keyframes tvJadStepA { 0% { opacity: 1; } 50% { opacity: 0; } }
 @keyframes tvJadStepB { 0% { opacity: 0; } 50% { opacity: 1; } }
