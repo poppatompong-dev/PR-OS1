@@ -183,7 +183,7 @@ export function TvJokeAd({ jokes, still, events, team, off }: { jokes: AdJoke[];
           </div>
           <div className="tv-jad-laughs">
             {["555", "😂", "ฮ่า ๆ", "555+", "🤣", "555"].map((t, i) => (
-              <span key={i} style={{ left: `${12 + i * 15}%`, animationDelay: `${i * 0.25}s` }}>{t}</span>
+              <span key={i} style={{ left: `${[1.5, 7, 12, 71, 80, 89][i]}%`, animationDelay: `${i * 0.35}s` }}>{t}</span>
             ))}
           </div>
           <div className="tv-jad-left2">🎤 เวทีมุก · อีก {left} วิ</div>
