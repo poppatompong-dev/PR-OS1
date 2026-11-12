@@ -6,7 +6,7 @@
 //       will see the TV again before them (16:00–16:45, every 10 min)
 // Full screen, 14 s. Waits for a birthday / welcome / joke-ad show (html[data-tv-show]);
 // never on the still screen or with reduced motion.
-// /tv?edge=am|pm previews one (every ~20 s, any hour). Not on air until the owner OKs it.
+// /tv?edge=am|pm previews one (every ~20 s, any hour). On air since 12 Nov 2026 (owner: "ลุย").
 
 import { useEffect, useRef, useState } from "react";
 import type { MonitorEvent } from "@/lib/monitor/types";
@@ -17,7 +17,7 @@ import { CAST_IDS, castUrl } from "@/lib/monitor/cast";
 import { edgeNow, jobsBeforeBack, jobsToday, type Edge } from "@/lib/monitor/tv-hours";
 import { ThaiText } from "./ThaiText";
 
-export const DAY_EDGE_LIVE = false;
+export const DAY_EDGE_LIVE = true;
 const SECONDS = 14;
 const MAX_ROWS = 4;
 
