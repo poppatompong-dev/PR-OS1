@@ -11,6 +11,7 @@
 
 import gsap from "gsap";
 import { MALE_IDS } from "@/lib/monitor/catchphrases";
+import { stepTime } from "@/lib/monitor/cast";
 
 export const SCENE_EARTH = "00000000-0000-0000-0000-000000000502";
 /** earth: needs พี่เอิร์ธ (+ ป้าจิตร) · n: people (never พี่ไป๋) · all: whole cast · badge: a real badge holder */
@@ -102,7 +103,7 @@ let tl=null, ivs=[], follows=[], tos=[];
 const el=(cls,html)=>{const d=document.createElement('div');d.className=cls;if(html!==undefined)d.innerHTML=html;st.appendChild(d);return d};
 const sprite=(who,pose,x)=>{const d=el('sp');d.style.width=SW+'px';d.style.height=SH+'px';d.style.backgroundImage=`url(${url(who,pose)})`;d.dataset.who=who;gsap.set(d,{xPercent:-50,yPercent:-100,x,y:FLOOR,transformOrigin:'50% 100%'});return d};
 const show=(d,pose)=>{d.style.backgroundImage=`url(${url(d.dataset.who,pose)})`};
-const cyc=(d,a,b,s)=>{let k=0;show(d,a);const iv=setInterval(()=>{k^=1;show(d,k?b:a)},s*1000);ivs.push(iv)};
+const cyc=(d,a,b,s)=>{let k=0;show(d,a);const iv=setInterval(()=>{k^=1;show(d,k?b:a)},stepTime(d.dataset.who,s)*1000);ivs.push(iv)};
 const stopCyc=()=>{ivs.forEach(clearInterval);ivs=[]};
 const follow=(e,t,dx,dy)=>follows.push([e,t,dx,dy]);
 const tick=()=>follows.forEach(([e,t,dx,dy])=>{const s=gsap.getProperty(t,'scaleY')||1;gsap.set(e,{x:gsap.getProperty(t,'x')+dx*Math.abs(s),y:gsap.getProperty(t,'y')+dy*Math.abs(s)})});

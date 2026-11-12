@@ -18,3 +18,7 @@ export const CAST_IDS: string[] = [
 ];
 
 export const castUrl = (id: string, pose: CastPose) => `/cast/${id}/${pose}.webp`;
+
+/** Slower leg swaps for someone who asked (แข, 12 Nov 2026: "วิ่งช้า ๆ หน่อยค่ะ"): × the cycle time. */
+export const STEP_SLOW: Readonly<Record<string, number>> = { "00000000-0000-0000-0000-000000000506": 1.7 };
+export const stepTime = (id: string | undefined, sec: number) => sec * ((id && STEP_SLOW[id]) || 1);

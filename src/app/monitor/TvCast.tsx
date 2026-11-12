@@ -10,7 +10,7 @@
 
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
-import { CAST_IDS, CAST_POSES, castUrl, type CastPose } from "@/lib/monitor/cast";
+import { CAST_IDS, CAST_POSES, castUrl, stepTime, type CastPose } from "@/lib/monitor/cast";
 import { EARTH_ID, GAG_COUNT, GAG_HOME_TIME, playGag, preloadGags } from "./tv-gags";
 import { BADGE_TEXT, BUILTIN_JOKES, SCENES, playScene, preloadScene } from "./tv-scenes";
 import { catchphrase } from "@/lib/monitor/catchphrases";
@@ -126,7 +126,7 @@ export function TvCast({ still, people, off, events = [], festival = null }: { s
       const s: Sprite = {
         el, id,
         set: (p) => { el.style.backgroundImage = `url(${castUrl(id, p)})`; },
-        cycle: (a, b, sec) => { let k = 0; s.set(a); if (iv) clearInterval(iv); iv = setInterval(() => { k ^= 1; s.set(k ? b : a); }, sec * 1000); timers.add(iv); },
+        cycle: (a, b, sec) => { let k = 0; s.set(a); if (iv) clearInterval(iv); iv = setInterval(() => { k ^= 1; s.set(k ? b : a); }, stepTime(id, sec) * 1000); timers.add(iv); },
         stop: (p) => { if (iv) { clearInterval(iv); timers.delete(iv); iv = null; } if (p) s.set(p); },
       };
       s.set("stand");
