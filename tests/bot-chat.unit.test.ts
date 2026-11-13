@@ -347,8 +347,9 @@ test("น้องบอทชวนคุย: opt in/out by words; a reply to t
 });
 
 test("hold hours: a question waits for the helper; unanswered → on to the admins once (12 Nov 2026)", async () => {
-  const { forwardQuestion, isHoldTime, releaseHeldQuestions, escalateQuestion, loadTeamQuestions } = await import("@/lib/telegram/questions");
+  const { forwardQuestion, isHoldTime, holdNow, releaseHeldQuestions, escalateQuestion, loadTeamQuestions } = await import("@/lib/telegram/questions");
   assert.equal(isHoldTime(new Date("2026-11-13T10:00:00+07:00")), true); // Fri
+  assert.equal(holdNow(new Date("2026-11-13T10:00:00+07:00")), false); // off unless QUESTION_HOLD=on (13 Nov 2026)
   assert.equal(isHoldTime(new Date("2026-11-13T16:00:00+07:00")), false);
   assert.equal(isHoldTime(new Date("2026-11-14T10:00:00+07:00")), false); // Sat
   const db = seedQ();

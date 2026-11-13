@@ -47,7 +47,9 @@ export function isHoldTime(now = new Date()): boolean {
   const h = Number(p.find((x) => x.type === "hour")?.value ?? "0");
   return wd !== "Sat" && wd !== "Sun" && h >= 9 && h < 16;
 }
-export const holdNow = (now = new Date()) => process.env.QUESTION_HOLD !== "off" && isHoldTime(now);
+// Off by default since 13 Nov 2026 (owner: the 15-minute answering rounds cost
+// too much) — questions go to the admins at once again. QUESTION_HOLD=on brings it back.
+export const holdNow = (now = new Date()) => process.env.QUESTION_HOLD === "on" && isHoldTime(now);
 
 async function sendQuestionToAdmins(admin: SupabaseClient, askerId: string, who: string, text: string, code: string, late = false): Promise<number> {
   const ids = (await getAdminRecipientIds(admin)).filter((id) => id !== askerId);
