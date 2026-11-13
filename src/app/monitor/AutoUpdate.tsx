@@ -68,5 +68,23 @@ export function AutoUpdate() {
       window.removeEventListener("online", check);
     };
   }, []);
+
+  // The office TV box runs this page in Firefox (13 Nov 2026): the browser
+  // chrome only goes away in real full-screen, and that needs a user gesture.
+  // The first tap / remote key (and any later one, after a reload) asks for it.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("fs") === "0") return;
+    const go = () => {
+      const el = document.documentElement;
+      if (document.fullscreenElement || !el.requestFullscreen) return;
+      el.requestFullscreen().catch(() => undefined);
+    };
+    window.addEventListener("pointerdown", go);
+    window.addEventListener("keydown", go);
+    return () => {
+      window.removeEventListener("pointerdown", go);
+      window.removeEventListener("keydown", go);
+    };
+  }, []);
   return null;
 }
