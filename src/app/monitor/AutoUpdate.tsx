@@ -81,7 +81,17 @@ export function AutoUpdate() {
     };
     window.addEventListener("pointerdown", go);
     window.addEventListener("keydown", go);
+    // Firefox Beta on the box is set to allow full-screen without a gesture
+    // (about:config full-screen-api.allow-trusted-requests-only = false), so
+    // it also goes full-screen by itself after every load; elsewhere this is a no-op.
+    const auto = window.setTimeout(go, 1500);
+    const back = () => {
+      if (document.visibilityState === "visible") go();
+    };
+    document.addEventListener("visibilitychange", back);
     return () => {
+      window.clearTimeout(auto);
+      document.removeEventListener("visibilitychange", back);
       window.removeEventListener("pointerdown", go);
       window.removeEventListener("keydown", go);
     };
