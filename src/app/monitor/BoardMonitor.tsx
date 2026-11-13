@@ -62,7 +62,27 @@ function dayParts(iso: string) {
   return { wd: TH_WEEKDAY_SHORT[p.weekday], d: p.d, mon: TH_MONTH_SHORT[p.m - 1] };
 }
 
+/**
+ * โหมดเบา (13 Nov 2026): the office TV box (Android 9, 1 GB) keeps the board,
+ * ticker, joke ads and the morning/evening cards, but drops the running
+ * cartoon scenes, bench hops, festival particles and the count-up numbers.
+ * ?lite=1 forces it, ?lite=0 turns it off; otherwise an Android device with
+ * no touch screen (a TV box, never a phone) gets it by itself.
+ */
+function detectLite(): boolean {
+  if (typeof window === "undefined") return false;
+  const q = new URLSearchParams(window.location.search).get("lite");
+  if (q === "1") return true;
+  if (q === "0") return false;
+  return /Android/i.test(navigator.userAgent) && (navigator.maxTouchPoints ?? 0) === 0;
+}
+
 export function BoardMonitor({ linkable = false, staticMode = false, theme = "a", fest }: { linkable?: boolean; staticMode?: boolean; theme?: BoardTheme; fest?: string }) {
+  const [lite, setLite] = useState(false);
+  useEffect(() => {
+    setLite(detectLite());
+  }, []);
+  const calm = staticMode || lite;
   const [events, setEvents] = useState<MonitorEvent[]>([]);
   const [notes, setNotes] = useState<MonitorAnnouncement[]>([]);
   const [team, setTeam] = useState<{ ids: Record<string, string>; off: Set<string> }>({ ids: {}, off: new Set() });
@@ -286,7 +306,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
   const festival = isFestivalKey(fest) ? previewFestival(fest) : today ? festivalFor(today) : null;
 
   return (
-    <div className={`hm bm bm--${theme}${staticMode ? " hm--still" : ""}${festival ? ` bm--fest-${festival.key}` : ""}${bday ? " bm--bday" : ""}${welcome ? " bm--wel" : ""} bm-space-${Math.min(fit.level, 2)}`}>
+    <div className={`hm bm bm--${theme}${staticMode ? " hm--still" : ""}${lite ? " hm--lite" : ""}${festival ? ` bm--fest-${festival.key}` : ""}${bday ? " bm--bday" : ""}${welcome ? " bm--wel" : ""} bm-space-${Math.min(fit.level, 2)}`}>
       <FestivalLayer festival={festival?.key ?? null} />
       <header className="hm-head bm-head">
         <span className="bm-seal">
@@ -304,9 +324,9 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
         ) : bday ? (
           <BirthdayBanner bday={bday} off={team.off} still={staticMode} />
         ) : (
-          <FestivalStage festival={festival?.key ?? null} still={staticMode} daysLeft={festival?.daysLeft} />
+          <FestivalStage festival={festival?.key ?? null} still={calm} daysLeft={festival?.daysLeft} />
         )}
-        <TeamPulse still={staticMode} noFace={team.off} />
+        <TeamPulse still={calm} noFace={team.off} />
         <div className="hm-clock bm-clock">
           <b>{clock ? `${clock.hh}.${clock.mm}` : "--.--"}<small> น.</small></b>
           <span>{today ? thaiLongDate(today) : ""}</span>
@@ -413,7 +433,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
             if (!d) {
               // ม้านั่งทีมอยู่ในช่องว่างแรก กินที่ทุกช่องว่างที่เหลือ
               const filled = board?.dayRows.length ?? 0;
-              if (i === filled) return <TeamBench key="bench" span={4 - filled} still={staticMode} />;
+              if (i === filled) return <TeamBench key="bench" span={4 - filled} still={calm} />;
               return null;
             }
             const p = dayParts(d.iso);
@@ -504,7 +524,7 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
       ) : (
         <div className="hm-ticker hm-ticker--quiet bm-ticker">พิมพ์ &quot;ประกาศ ข้อความ&quot; ในแชทบอท เพื่อขึ้นประกาศที่นี่ · ไม่มีงานเปลี่ยนแปลงหรือยกเลิก</div>
       )}
-      <TvCast still={staticMode} people={castPeople} off={team.off} events={events} festival={festival} />
+      <TvCast still={calm} people={castPeople} off={team.off} events={events} festival={festival} />
       {bday ? <BirthdayShow bday={bday} still={staticMode} off={team.off} team={castPeople} /> : null}
       {welcome ? <WelcomeShow welcome={welcome} still={staticMode} off={team.off} team={castPeople} /> : null}
       <TvJokeAd jokes={adJokes} still={staticMode} events={events} team={castPeople} off={team.off} />

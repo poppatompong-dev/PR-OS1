@@ -704,3 +704,11 @@
 .tv-edge-crew { position: absolute; right: calc(60 * var(--u)); bottom: calc(96 * var(--u)); display: flex; align-items: flex-end; }
 .tv-edge-crew img { height: calc(470 * var(--u)); width: auto; margin-left: calc(-70 * var(--u)); filter: drop-shadow(0 calc(10 * var(--u)) calc(14 * var(--u)) rgba(0,0,0,.3)); animation: tvJadBob 1s ease-in-out infinite alternate; }
 .tv-edge-foot { position: absolute; left: 0; right: 0; bottom: 0; height: calc(84 * var(--u)); display: flex; align-items: center; justify-content: center; background: rgba(20, 12, 36, .7); font-size: calc(38 * var(--u)); font-weight: 800; }
+
+/* โหมดเบา (13 Nov 2026) — the 1 GB TV box: no always-on loops; one-shot pops stay. */
+.hm--lite .bm-pulse-item::after, .hm--lite .bm-rq-pill.is-choose, .hm--lite .bm-idle-actor img, .hm--lite .tv-edge-crew img,
+.hm--lite .tv-jad-fan, .hm--lite .tv-jad--3 .tv-jad-sign i, .hm--lite .bm-sc-img.is-live, .hm--lite .bm-idle-news img.is-live,
+.hm--lite .bm-idle-photo img.is-live { animation: none !important; }
+.hm--lite .bm-fest-stage .fx, .hm--lite .bm-fest-stage .fx * { animation: none !important; }
+.hm--lite .hm-card, .hm--lite .bm-cell { box-shadow: none; }
+.hm--lite * { text-shadow: none !important; }
