@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ClassicMonitor } from "./ClassicMonitor";
 import { TableMonitor } from "./TableMonitor";
 import { HeroMonitor } from "./HeroMonitor";
@@ -9,6 +10,10 @@ import { getSessionUser } from "@/lib/auth/roles";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
+
+// The office TV box opens this page as an installed web app (13 Nov 2026):
+// its own manifest starts at /monitor full-screen, instead of the app's "/".
+export const metadata: Metadata = { manifest: "/monitor/manifest.json" };
 
 // Default since 29 Oct 2026: ผังคุณกุ๊ก (BoardMonitor), ?theme=a|b|c.
 // The 28 Oct "แบบ A · งานถัดไปเด่น" stays at /monitor?v=hero.
