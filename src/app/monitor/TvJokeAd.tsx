@@ -14,7 +14,8 @@
 // and cheer), วิ่งกรูเข้ามา (run in at the punch line, jump, sit laughing), เก็ตช้า (one
 // of them stays puzzled, then "อ๋อ!"; never พี่ไป๋ or คุณสมัชชา).
 // /tv?jokead=1|2|3 previews a look (an ad every ~22 s, any hour); ?jokead=all cycles them.
-// Not on air until a look is chosen: JOKE_AD_LIVE.
+// On air since 13 Nov 2026 (owner, 12 Nov: no pick from พี่เอิร์ธ by morning → rotate 1→2→3).
+// JOKE_AD_LOOK = 0 rotates; 1|2|3 fixes one look once he picks.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MonitorEvent } from "@/lib/monitor/types";
@@ -23,8 +24,8 @@ import { avatarUrl } from "@/lib/avatars";
 import { ThaiText } from "./ThaiText";
 
 export type JokeAdLook = 1 | 2 | 3;
-export const JOKE_AD_LIVE = false;
-export const JOKE_AD_LOOK: JokeAdLook = 1;
+export const JOKE_AD_LIVE = true;
+export const JOKE_AD_LOOK: JokeAdLook | 0 = 0;
 export const JOKE_AD_EVERY_MIN = 10;
 export const JOKE_AD_SECONDS = 15;
 const PUNCH_AT = 5.5;
@@ -157,7 +158,7 @@ export function TvJokeAd({ jokes, still, events, team, off }: { jokes: AdJoke[];
       if (html.dataset.tvShow) return next(30); // birthday / welcome has the screen
       const j = r.list[r.idx++ % r.list.length];
       const n = r.n++;
-      const look: JokeAdLook = prevLook ?? (q === "all" ? (((n % 3) + 1) as JokeAdLook) : JOKE_AD_LOOK);
+      const look: JokeAdLook = prevLook ?? (q === "all" || JOKE_AD_LOOK === 0 ? (((n % 3) + 1) as JokeAdLook) : JOKE_AD_LOOK);
       html.dataset.tvShow = "1";
       // warm the cheerers' sprites before the punch line
       for (const id of pickCrowd(r.team.filter((x) => CAST_IDS.includes(x) && !r.off.has(x)), j.personId, n).ids) {
