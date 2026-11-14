@@ -10,6 +10,7 @@ import { announceBadges } from "@/lib/monitor/badge-awards";
 import { createAdminClient } from "@/lib/supabase/server";
 import { todayInBangkok } from "@/lib/date";
 import { releaseHeldQuestions } from "@/lib/telegram/questions";
+import { sendContestReport } from "@/lib/monitor/contest-report";
 
 // One run can push the 07:00 summaries one by one; give it room (Vercel Hobby allows up to 60 s).
 export const maxDuration = 60;
@@ -26,7 +27,9 @@ export async function POST(request: NextRequest) {
     const badges = await announceBadges(createAdminClient(), todayInBangkok()).catch(() => 0);
     // Held team questions nobody answered in time go on to the admins (12 Nov 2026).
     const released = await releaseHeldQuestions(createAdminClient()).catch(() => 0);
-    return NextResponse.json({ ok: true, ...summary, badges, released });
+    // ประกวดมุก: once the window closes, the judges get the numbered list (13 Nov 2026).
+    const contest = await sendContestReport(createAdminClient()).catch(() => 0);
+    return NextResponse.json({ ok: true, ...summary, badges, released, contest });
   } catch (err) {
     return NextResponse.json(
       { ok: false, error: err instanceof Error ? err.message : "unknown error" },

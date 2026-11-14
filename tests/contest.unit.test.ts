@@ -47,3 +47,29 @@ test("joke-ad pick: แบบ N in plain words", async () => {
   assert.equal(parseAdPick("ขอลุค แบบ 2"), null);
   assert.equal(parseAdPick("แบบ 4"), null);
 });
+
+test("judges' report: numbered list, tally, rejected aside, sent once after the close (13 Nov 2026)", async () => {
+  const { buildContestReport, contestReportDue } = await import("@/lib/monitor/contest-report");
+  const entries = [
+    { id: "a", name: "นัท", text: "จุดแข็งของคุณคืออะไร → คอ บ่า ไหล่ แล้วจุดอ่อน | ปัญญา.. อิอิ", at: "2026-11-10T03:54:00Z", no: 1, status: "ok" as const },
+    { id: "b", name: "แข", text: "เงินสกุลอะไรน่ากลัวที่สุด | เงินบาด(แก๋ว)", at: "2026-11-12T03:07:00Z", no: 2, status: "ok" as const },
+    { id: "c", name: "นัท", text: "ขยันแต่ไม่แสดงออก", at: "2026-11-12T03:06:00Z", no: 3, status: "ok" as const },
+    { id: "d", name: "ภัส", text: "มุกที่ถูกตัด <x>", at: "2026-11-12T04:00:00Z", no: null, status: "no" as const },
+  ];
+  const parts = buildContestReport(entries);
+  assert.equal(parts.length, 1);
+  const t = parts[0];
+  assert.match(t, /รับมา 4 มุก · เข้าประกวด 3 มุก \(ไม่ใช้ 1\) · จาก 2 คน/);
+  assert.match(t, /<b>มุกที่ 1<\/b> · นัท · อ\. 10 พ\.ย\. 10:54\nจุดแข็ง.*\n→ ปัญญา/);
+  assert.match(t, /<b>มุกที่ 3<\/b> · นัท · .*\nขยันแต่ไม่แสดงออก/);
+  assert.match(t, /📊 ส่งต่อคน: นัท 2 · แข 1/);
+  assert.match(t, /🚫 ไม่ใช้.*ภัส — มุกที่ถูกตัด &lt;x&gt;/);
+  assert.match(t, /ประกาศบนทีวี จ\. 23 พ\.ย\./);
+  // long lists split under Telegram's limit
+  const many = Array.from({ length: 60 }, (_, i) => ({ id: String(i), name: "นัท", text: `มุกยาว ๆ หมายเลข ${i} `.repeat(6), at: "2026-11-12T03:00:00Z", no: i + 1, status: "ok" as const }));
+  const p2 = buildContestReport(many);
+  assert.ok(p2.length >= 2 && p2.every((s) => s.length <= 3600));
+  assert.equal(contestReportDue(new Date("2026-11-20T15:59:00+07:00"), false), false);
+  assert.equal(contestReportDue(new Date("2026-11-20T16:00:00+07:00"), false), true);
+  assert.equal(contestReportDue(new Date("2026-11-20T16:30:00+07:00"), true), false);
+});
