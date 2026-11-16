@@ -60,9 +60,21 @@ export function AutoUpdate() {
       if (hm === "05:30") reloadOnce("daily");
     }, 60_000);
 
+    // ล้างหน่วยความจำ (16 Nov 2026): the 1 GB TV box (โหมดเบา) reloads every 2 hours,
+    // waiting until no full-screen show (birthday, joke ad, day-edge card) is on.
+    const born = Date.now();
+    const lite = document.querySelector(".hm--lite") !== null || new URLSearchParams(window.location.search).get("lite") === "1";
+    const fresh = window.setInterval(() => {
+      const isLite = lite || document.querySelector(".hm--lite") !== null;
+      if (!isLite || Date.now() - born < 2 * 3600_000) return;
+      if (document.documentElement.dataset.tvShow) return;
+      reloadOnce("memory", true);
+    }, 60_000);
+
     return () => {
       window.clearInterval(id);
       window.clearInterval(daily);
+      window.clearInterval(fresh);
       document.removeEventListener("visibilitychange", wake);
       window.removeEventListener("pageshow", wake);
       window.removeEventListener("online", check);
