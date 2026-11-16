@@ -712,3 +712,9 @@
 .hm--lite .bm-fest-stage .fx, .hm--lite .bm-fest-stage .fx * { animation: none !important; }
 .hm--lite .hm-card, .hm--lite .bm-cell { box-shadow: none; }
 .hm--lite * { text-shadow: none !important; }
+/* โหมดเบา, 16 Nov 2026: every looping animation on the board stops (the box spent a whole CPU core
+   compositing them); the ticker shows one line at a time with a short fade. Full-screen shows keep their motion. */
+.hm--lite *:not(.bm-ticker-step):not([class*="tv-jad"] *):not([class*="tv-jad"]):not([class*="tv-edge"] *):not([class*="tv-edge"]):not([class*="tv-bday"] *):not([class*="tv-bday"]):not([class*="tv-wel"] *):not([class*="tv-wel"]) { animation: none !important; }
+.hm--lite .bm-ticker--step { justify-content: flex-start; padding: 0 calc(44 * var(--u)); }
+.hm--lite .bm-ticker-step { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; animation: bm-tick-in .5s ease-out both; }
+@keyframes bm-tick-in { from { opacity: 0; transform: translateY(40%); } }

@@ -96,6 +96,12 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
     setLite(detectLite());
   }, []);
   const calm = staticMode || lite;
+  const [tickStep, setTickStep] = useState(0);
+  useEffect(() => {
+    if (!lite) return;
+    const t = window.setInterval(() => setTickStep((n) => n + 1), 7000);
+    return () => window.clearInterval(t);
+  }, [lite]);
   const [events, setEvents] = useState<MonitorEvent[]>([]);
   const [notes, setNotes] = useState<MonitorAnnouncement[]>([]);
   const [team, setTeam] = useState<{ ids: Record<string, string>; off: Set<string> }>({ ids: {}, off: new Set() });
@@ -533,7 +539,15 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
         ) : null}
       </footer>
 
-      {ticker.length > 0 ? (
+      {ticker.length > 0 && lite ? (
+        // โหมดเบา: one line at a time instead of a scrolling strip — the strip kept
+        // the TV box's graphics busy every frame (16 Nov 2026).
+        <div className="hm-ticker bm-ticker bm-ticker--step" aria-label="ประกาศและการเปลี่ยนแปลง">
+          <div key={tickStep % ticker.length} className="bm-ticker-step">
+            {ticker[tickStep % ticker.length]}
+          </div>
+        </div>
+      ) : ticker.length > 0 ? (
         <div className="hm-ticker bm-ticker" aria-label="ประกาศและการเปลี่ยนแปลง">
           <div style={{ animationDuration: `${Math.max(20, ticker.join("").length / 6)}s` }}>
             <span>{ticker.join("   •   ")}   •   </span>
