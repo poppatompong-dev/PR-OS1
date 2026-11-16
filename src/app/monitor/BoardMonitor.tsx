@@ -72,9 +72,22 @@ function dayParts(iso: string) {
 function detectLite(): boolean {
   if (typeof window === "undefined") return false;
   const q = new URLSearchParams(window.location.search).get("lite");
+  // The box's home app opens /tv?lite=1; remembered so later reloads stay light (16 Nov 2026).
+  try {
+    if (q === "1") localStorage.setItem("pr-os-tv-lite", "1");
+    if (q === "0") localStorage.removeItem("pr-os-tv-lite");
+  } catch {
+    /* storage blocked */
+  }
   if (q === "1") return true;
   if (q === "0") return false;
-  return /Android/i.test(navigator.userAgent) && (navigator.maxTouchPoints ?? 0) === 0;
+  try {
+    if (localStorage.getItem("pr-os-tv-lite") === "1") return true;
+  } catch {
+    /* storage blocked */
+  }
+  const coarse = window.matchMedia?.("(any-pointer: coarse)").matches ?? false;
+  return /Android/i.test(navigator.userAgent) && !coarse && (navigator.maxTouchPoints ?? 0) === 0;
 }
 
 export function BoardMonitor({ linkable = false, staticMode = false, theme = "a", fest }: { linkable?: boolean; staticMode?: boolean; theme?: BoardTheme; fest?: string }) {
