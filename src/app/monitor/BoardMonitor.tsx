@@ -102,7 +102,13 @@ export function BoardMonitor({ linkable = false, staticMode = false, theme = "a"
   const [clock, setClock] = useState<ReturnType<typeof bangkokNow> | null>(null);
 
   useEffect(() => {
-    const tick = () => setClock(bangkokNow());
+    // The board shows minutes only: re-render once a minute, not every second —
+    // a whole-board render each second made the 1 GB TV box stutter (16 Nov 2026).
+    const tick = () =>
+      setClock((prev) => {
+        const next = bangkokNow();
+        return prev && prev.iso === next.iso && prev.hh === next.hh && prev.mm === next.mm ? prev : next;
+      });
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
