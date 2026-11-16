@@ -1,7 +1,7 @@
 // ช่วงโฆษณามุกเต็มจอ (12 Nov 2026).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { adHead, adOrder, jobSoon } from "@/app/monitor/TvJokeAd";
+import { adHead, adIndex, adOrder, jobSoon } from "@/app/monitor/TvJokeAd";
 
 test("ad order: contest numbers first, later jokes by time", () => {
   const out = adOrder([
@@ -42,4 +42,15 @@ test("กองเชียร์: 4 fans, never the teller, rotate; the slow on
   assert.deepEqual(fanPose("late", 2, 1, 1), { pose: "shock", say: "?" });
   assert.deepEqual(fanPose("late", 3, 1, 1), { pose: "up", say: "อ๋อ!" });
   assert.equal(fanPose("audience", 0, 2, 1).pose, "sit");
+});
+
+test("adIndex: เลือกมุกตามช่วงเวลา รีโหลดหน้าแล้วไม่วนกลับมุกที่ 1", () => {
+  const slot = 10 * 60_000;
+  const t0 = Date.parse("2026-11-16T03:00:00Z");
+  const seen = new Set<number>();
+  for (let k = 0; k < 15; k++) seen.add(adIndex(t0 + k * slot, 15, 10));
+  assert.equal(seen.size, 15);
+  // same slot → same joke, whatever moment the page loaded
+  assert.equal(adIndex(t0 + 1000, 15, 10), adIndex(t0 + 9 * 60_000, 15, 10));
+  assert.equal(adIndex(t0, 0, 10), 0);
 });

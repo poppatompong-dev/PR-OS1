@@ -39,6 +39,16 @@ export function adOrder(jokes: AdJoke[]): AdJoke[] {
   return [...jokes].sort((a, b) => (a.no ?? 1e9) - (b.no ?? 1e9) || (a.at ?? "").localeCompare(b.at ?? ""));
 }
 
+/**
+ * Which joke a time slot gets (16 Nov 2026): by the clock, not a counter, so a page
+ * reload (deploys, the 2-hour refresh on the TV box, power-up) carries on through the
+ * list instead of starting again at มุกที่ 1 — before, only the first few ever aired.
+ */
+export function adIndex(nowMs: number, len: number, everyMin = JOKE_AD_EVERY_MIN): number {
+  if (len <= 0) return 0;
+  return Math.floor(nowMs / (everyMin * 60_000)) % len;
+}
+
 /** A job (not cancelled) starts within the next 30 min, Bangkok time. */
 export function jobSoon(events: Pick<MonitorEvent, "eventDate" | "startTime" | "status">[], nowMs: number, gapMin = JOB_GAP_MIN): boolean {
   return events.some((e) => {
@@ -156,7 +166,7 @@ export function TvJokeAd({ jokes, still, events, team, off }: { jokes: AdJoke[];
         if (jobSoon(r.events, Date.now())) return next(120);
       }
       if (html.dataset.tvShow) return next(30); // birthday / welcome has the screen
-      const j = r.list[r.idx++ % r.list.length];
+      const j = r.list[preview ? r.idx++ % r.list.length : adIndex(Date.now(), r.list.length)];
       const n = r.n++;
       const look: JokeAdLook = prevLook ?? (q === "all" || JOKE_AD_LOOK === 0 ? (((n % 3) + 1) as JokeAdLook) : JOKE_AD_LOOK);
       html.dataset.tvShow = "1";
