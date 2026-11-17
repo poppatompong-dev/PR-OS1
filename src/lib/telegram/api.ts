@@ -20,6 +20,8 @@ export type TgMessage = {
   /** The command buttons under the typing box (like LINE's rich menu). Ignored when `buttons` is set. */
   keyboard?: string[][];
   photo?: string;
+  /** Deliver without a sound (urgent notes at night, 17 Nov 2026). */
+  silent?: boolean;
 };
 
 function apiUrl(method: string): string {
@@ -60,12 +62,13 @@ function markup(m: TgMessage) {
 /** Free. Telegram allows 4096 characters of text (1024 for a photo caption). */
 export async function sendTelegram(chatId: number | string, m: TgMessage): Promise<SendResult> {
   const res = m.photo
-    ? await call<{ message_id: number }>("sendPhoto", { chat_id: chatId, photo: m.photo, caption: m.text.slice(0, 1024), parse_mode: "HTML", ...markup(m) })
+    ? await call<{ message_id: number }>("sendPhoto", { chat_id: chatId, photo: m.photo, caption: m.text.slice(0, 1024), parse_mode: "HTML", ...(m.silent ? { disable_notification: true } : {}), ...markup(m) })
     : await call<{ message_id: number }>("sendMessage", {
         chat_id: chatId,
         text: m.text.slice(0, 4096),
         parse_mode: "HTML",
         disable_web_page_preview: true,
+        ...(m.silent ? { disable_notification: true } : {}),
         ...markup(m),
       });
   return res.ok ? { ok: true, providerMessageId: res.result ? `tg:${res.result.message_id}` : undefined } : { ok: false, error: res.error, status: res.status };

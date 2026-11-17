@@ -11,6 +11,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { todayInBangkok } from "@/lib/date";
 import { releaseHeldQuestions } from "@/lib/telegram/questions";
 import { sendContestReport } from "@/lib/monitor/contest-report";
+import { runHeadDuties } from "@/lib/notifications/head-brief";
 
 // One run can push the 07:00 summaries one by one; give it room (Vercel Hobby allows up to 60 s).
 export const maxDuration = 60;
@@ -29,7 +30,9 @@ export async function POST(request: NextRequest) {
     const released = await releaseHeldQuestions(createAdminClient()).catch(() => 0);
     // ประกวดมุก: once the window closes, the judges get the numbered list (13 Nov 2026).
     const contest = await sendContestReport(createAdminClient()).catch(() => 0);
-    return NextResponse.json({ ok: true, ...summary, badges, released, contest });
+    // หัวหน้าฝ่าย: 07:30 สรุปภาพรวม + เตือนงานใกล้ถึงที่ยังไม่มีใครรับทราบ (17 Nov 2026).
+    const head = await runHeadDuties(createAdminClient()).catch(() => ({ brief: 0, nobody: 0 }));
+    return NextResponse.json({ ok: true, ...summary, badges, released, contest, head });
   } catch (err) {
     return NextResponse.json(
       { ok: false, error: err instanceof Error ? err.message : "unknown error" },

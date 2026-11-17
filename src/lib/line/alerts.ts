@@ -10,6 +10,7 @@ import { getAdminRecipientIds, getPeopleByIds, logPush, type TaskItem } from "@/
 import { unavailableAlertMessage } from "@/lib/line/messages";
 import { sendTelegram } from "@/lib/telegram/api";
 import { tgUnavailableAlert } from "@/lib/telegram/messages";
+import { HEAD_LIVE, bangkokMinutes, isQuietHour, tellHeadsUnavailable } from "@/lib/notifications/head-brief";
 
 export function currentQuotaMonth(now = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit" }).format(now);
@@ -20,6 +21,8 @@ export async function alertAdminsUnavailable(admin: SupabaseClient, task: TaskIt
   const lineOn = isLineMessagingConfigured();
   if (!tgOn && !lineOn) return 0;
   const admins = await getPeopleByIds(admin, await getAdminRecipientIds(admin));
+  // 21:00–07:00: still sent at once, without a sound (owner, 17 Nov 2026).
+  const silent = HEAD_LIVE && isQuietHour(bangkokMinutes());
   let remaining: number | null = null; // LINE quota, read only if someone needs LINE
   let sent = 0;
   for (const a of admins) {
@@ -34,7 +37,7 @@ export async function alertAdminsUnavailable(admin: SupabaseClient, task: TaskIt
       remaining -= 1;
     }
     const res = viaTelegram
-      ? await sendTelegram(a.telegramChatId!, tgUnavailableAlert(task))
+      ? await sendTelegram(a.telegramChatId!, { ...tgUnavailableAlert(task), silent })
       : await pushMessages(a.lineUserId!, [unavailableAlertMessage(task)]);
     if (res.ok) sent += 1;
     await logPush(admin, {
@@ -49,6 +52,8 @@ export async function alertAdminsUnavailable(admin: SupabaseClient, task: TaskIt
       quotaMonth: currentQuotaMonth(),
     });
   }
+  // หัวหน้าฝ่ายรู้ด้วย (17 Nov 2026) — never blocks the admins' alert.
+  if (tgOn) sent += await tellHeadsUnavailable(admin, tgUnavailableAlert(task)).catch(() => 0);
   return sent;
 }
 

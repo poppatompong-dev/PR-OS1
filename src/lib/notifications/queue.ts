@@ -594,7 +594,7 @@ async function runLocked(
     .delete()
     .like("run_key", "rl:%")
     .lt("created_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString());
-  for (const prefix of ["webhook:%", "tgu:%", "daily:%", "admin17:%"]) {
+  for (const prefix of ["webhook:%", "tgu:%", "daily:%", "admin17:%", "nobody:%"]) {
     await admin.from("notification_runs").delete().like("run_key", prefix).lt("created_at", weekAgo);
   }
 
