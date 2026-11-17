@@ -5,7 +5,7 @@ import { lookAskMore, matchIntent, vagueLook } from "@/lib/telegram/chat";
 
 test("vagueLook: ไม่มีรายละเอียด = ถามต่อ", () => {
   for (const t of ["ลุคของฉัน", "ลุค", "ลุคใหม่ค่ะ", "ขอลุคหน่อย", "อยากได้ลุคใหม่ 💕", "ลุคแบบไหนก็ได้"]) assert.equal(vagueLook(t), true, t);
-  for (const t of ["ชุดไทยสีชมพูถือกระทง", "ลุคนักบินอวกาศ เรียกว่ากัปตันกุ๊ก", "นางฟ้า"]) assert.equal(vagueLook(t), false, t);
+  for (const t of ["แบบ 2", "ขอลุค แบบ 3", "๑", "ชุดไทยสีชมพูถือกระทง", "ลุคนักบินอวกาศ เรียกว่ากัปตันกุ๊ก", "นางฟ้า"]) assert.equal(vagueLook(t), false, t);
 });
 
 test("matchIntent: 'ลุค' เดี่ยว ๆ เข้าใจว่าขอลุค", () => {

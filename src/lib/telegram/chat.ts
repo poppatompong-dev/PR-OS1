@@ -441,6 +441,8 @@ export const IDEA_PROMPT = [
  * "บอทไม่ต้องถามผม ควรต้องถามคนที่สนทนาด้วย"). The bot asks the person, not the admins.
  */
 export function vagueLook(text: string): boolean {
+  // "แบบ 2" / "2" picks one of the samples on offer — that is a full answer.
+  if (/[0-9๐-๙]/.test(text)) return false;
   const rest = norm(text)
     .replace(/[\p{Extended_Pictographic}\uFE0F]/gu, "")
     .replace(/(ขอ|อยาก|ได้|เปลี่ยน|ลุค|ฉายา|ใหม่|ของ|ฉัน|หนู|เรา|ผม|ดิฉัน|เค้า|ตัวเอง|แบบ|ไหน|ก็ได้|อะไร|ค่ะ|คะ|ครับ|คับ|จ้า|จ้ะ|หน่อย|นะ|ด้วย|ให้|ที|สิ|ซิ|เลย|ลอง|ทำ|แอดมิน|แม่|พี่)/g, "");
