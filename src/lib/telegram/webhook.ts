@@ -53,6 +53,8 @@ import {
   IDEA_PROMPT,
   isAnnounceQuestion,
   LOOK_PROMPT,
+  lookAskMore,
+  vagueLook,
   chatterText,
   didNotGetText,
   questionHeldText,
@@ -199,7 +201,11 @@ async function handleText(ctx: Ctx, chatId: number, raw: string, from?: { first_
 
   // ขอลุค / ไอเดียแก็ก: the text after the prompt goes to the admins.
   for (const kind of ["look_request", "gag_idea"] as const) {
-    if (!raw.startsWith("/") && (await takePendingAction(ctx.admin, stateKey(chatId), kind))) return [await forwardWish(ctx, person, kind, raw)];
+    if (!raw.startsWith("/") && (await takePendingAction(ctx.admin, stateKey(chatId), kind))) {
+      // Too vague to draw? Ask the person again, not the admins (17 Nov 2026).
+      if (kind === "look_request" && vagueLook(raw)) return [await askLookDetail(ctx, chatId, person)];
+      return [await forwardWish(ctx, person, kind, raw)];
+    }
   }
 
   const pendingAssignment = await takePendingReason(ctx.admin, stateKey(chatId));
@@ -357,6 +363,7 @@ async function chatReply(ctx: Ctx, person: LinePerson, chatId: number, text: str
         .replace(/^\s*(ขอลุค|ขอฉายา|อยากได้ลุค|เปลี่ยนลุค|ไอเดียแก็ก|ไอเดีย|เสนอแก็ก|อยากให้มีแก็ก|ขอแก็ก)\s*[:：]?\s*/, "")
         .replace(/^\s*(อยาก)?\s*(ขอ|เปลี่ยน|ได้|มี)?\s*(ลุค|ฉายา)(ใหม่)?\s*(ค่ะ|คะ|ครับ|คับ|จ้า|หน่อย|นะ)*\s*[:：]?\s*/, "")
         .trim();
+      if (intent === "look" && rest && vagueLook(rest)) return [await askLookDetail(ctx, chatId, person)];
       if (rest.length >= 4) return [await forwardWish(ctx, person, kind, rest)];
       await setPendingAction(ctx.admin, stateKey(chatId), kind, 15);
       return [{ text: intent === "look" ? LOOK_PROMPT : IDEA_PROMPT }];
@@ -389,6 +396,13 @@ async function setMom(ctx: Ctx, person: LinePerson, on: boolean): Promise<TgMess
 
 function bangkokHhmmNow(): string {
   return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+}
+
+/** The bot asks what look they want and waits 15 min for the answer. */
+async function askLookDetail(ctx: Ctx, chatId: number, person: LinePerson): Promise<TgMessage> {
+  await setPendingAction(ctx.admin, stateKey(chatId), "look_request", 15);
+  const { title, mom } = await voiceOf(ctx, person);
+  return { text: lookAskMore(title, mom), keyboard: KEYBOARD };
 }
 
 /** ขอลุค / ไอเดียแก็ก → logged + every admin gets it on Telegram. */

@@ -66,6 +66,8 @@ export function matchIntent(raw: string): Intent | null {
   if (/^(ปิด|หยุด|เลิก)โหมดแม่/.test(t)) return "mom_off";
   if (/^(เปิด|ขอ)โหมดแม่/.test(t)) return "mom_on";
   if (/^(ขอลุค|ขอฉายา|อยากได้ลุค|เปลี่ยนลุค)/.test(t) || /(เปลี่ยนฉายา|อยากได้ฉายา|ขอฉายา|อยากเปลี่ยนลุค|อยากได้ลุค|ขอลุค)/.test(t)) return "look";
+  // "ลุค" / "ลุคของฉัน" alone (17 Nov 2026: นัท typed "ลุค" and the bot did not understand).
+  if (/^ลุค(ใหม่)?(ของ)?(ฉัน|หนู|เรา|ผม|ดิฉัน|เค้า|ตัวเอง)?(ค่ะ|คะ|ครับ|คับ|จ้า|จ้ะ|หน่อย|นะ)*$/.test(t)) return "look";
   if (/^(ไอเดีย|เสนอแก็ก|ไอเดียแก็ก|อยากให้มีแก็ก|ขอแก็ก)/.test(t)) return "idea";
   if (/(เปลี่ยนรูป|รูปการ์ตูน|เปลี่ยนการ์ตูน|รูปบนจอ|รูปไม่สวย|ทำรูปใหม่)/.test(t)) return "how_avatar";
   if (/(แนบ(ไฟล์|รูป|เอกสาร|pdf)|ไฟล์แนบ|ส่งไฟล์|อัปโหลด|อัพโหลด)/.test(t)) return "how_attach";
@@ -433,6 +435,25 @@ export const IDEA_PROMPT = [
   "เช่น <code>แข กับ แป้ง แย่งขนมชิ้นสุดท้าย แล้วพี่ไป๋เดินมาแบ่งให้</code>",
   "🙏 ขอเป็นมุกน่ารัก ไม่ล้อใครให้เสียใจนะ · แอดมินเลือกไปทำเป็นฉากบนจอ พร้อมชื่อคนคิด",
 ].join("\n");
+
+/**
+ * A look wish with nothing to draw from — "ลุคของฉัน", "ลุคใหม่ค่ะ" (owner, 17 Nov 2026:
+ * "บอทไม่ต้องถามผม ควรต้องถามคนที่สนทนาด้วย"). The bot asks the person, not the admins.
+ */
+export function vagueLook(text: string): boolean {
+  const rest = norm(text)
+    .replace(/[\p{Extended_Pictographic}\uFE0F]/gu, "")
+    .replace(/(ขอ|อยาก|ได้|เปลี่ยน|ลุค|ฉายา|ใหม่|ของ|ฉัน|หนู|เรา|ผม|ดิฉัน|เค้า|ตัวเอง|แบบ|ไหน|ก็ได้|อะไร|ค่ะ|คะ|ครับ|คับ|จ้า|จ้ะ|หน่อย|นะ|ด้วย|ให้|ที|สิ|ซิ|เลย|ลอง|ทำ|แอดมิน|แม่|พี่)/g, "");
+  return rest.length < 3;
+}
+
+/** Asked back when the wish is too vague to draw. */
+export function lookAskMore(title: string, mom: boolean): string {
+  const ex = "เช่น <code>ชุดไทยสีชมพูถือกระทง</code> · <code>นักข่าวภาคสนามถือไมค์</code> · <code>ชุดนักบินอวกาศ</code>";
+  return mom
+    ? `💅 อยากได้ลุคแบบไหนบอกแม่หน่อยจ้ะ${esc(title)} เล่าสั้น ๆ ว่าชุด สี หรือของที่ถือ\n${ex}\nพิมพ์ตอบมาในแชทนี้ได้เลย (ภายใน 15 นาที) แม่จะส่งให้แอดมินทำตัวอย่างให้เลือก ✨`
+    : `✨ อยากได้ลุคแบบไหนครับ${esc(title)} เล่าสั้น ๆ ว่าชุด สี หรือของที่ถือ\n${ex}\nพิมพ์ตอบมาในแชทนี้ได้เลย (ภายใน 15 นาที) แอดมินจะทำตัวอย่างให้เลือก`;
+}
 
 export const LOOK_PROMPT = [
   "✨ <b>ขอลุคพิเศษให้ตัวการ์ตูน</b>",
