@@ -448,11 +448,11 @@ export function vagueLook(text: string): boolean {
 }
 
 /** Asked back when the wish is too vague to draw. */
-export function lookAskMore(title: string, mom: boolean): string {
+export function lookAskMore(title: string, mom: boolean, within = "ภายใน 15 นาที"): string {
   const ex = "เช่น <code>ชุดไทยสีชมพูถือกระทง</code> · <code>นักข่าวภาคสนามถือไมค์</code> · <code>ชุดนักบินอวกาศ</code>";
   return mom
-    ? `💅 อยากได้ลุคแบบไหนบอกแม่หน่อยจ้ะ${esc(title)} เล่าสั้น ๆ ว่าชุด สี หรือของที่ถือ\n${ex}\nพิมพ์ตอบมาในแชทนี้ได้เลย (ภายใน 15 นาที) แม่จะส่งให้แอดมินทำตัวอย่างให้เลือก ✨`
-    : `✨ อยากได้ลุคแบบไหนครับ${esc(title)} เล่าสั้น ๆ ว่าชุด สี หรือของที่ถือ\n${ex}\nพิมพ์ตอบมาในแชทนี้ได้เลย (ภายใน 15 นาที) แอดมินจะทำตัวอย่างให้เลือก`;
+    ? `💅 อยากได้ลุคแบบไหนบอกแม่หน่อยจ้ะ${esc(title)} เล่าสั้น ๆ ว่าชุด สี หรือของที่ถือ\n${ex}\nพิมพ์ตอบมาในแชทนี้ได้เลย (${within}) แม่จะส่งให้แอดมินทำตัวอย่างให้เลือก ✨`
+    : `✨ อยากได้ลุคแบบไหนครับ${esc(title)} เล่าสั้น ๆ ว่าชุด สี หรือของที่ถือ\n${ex}\nพิมพ์ตอบมาในแชทนี้ได้เลย (${within}) แอดมินจะทำตัวอย่างให้เลือก`;
 }
 
 export const LOOK_PROMPT = [

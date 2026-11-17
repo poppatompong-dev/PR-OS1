@@ -200,8 +200,11 @@ async function handleText(ctx: Ctx, chatId: number, raw: string, from?: { first_
   }
 
   // ขอลุค / ไอเดียแก็ก: the text after the prompt goes to the admins.
+  // A menu button pressed while a wish is awaited is still that button (the wait can be
+  // hours when an admin asked for the detail), so it never becomes the wish.
+  const menuTap = KEYBOARD.flat().includes(raw);
   for (const kind of ["look_request", "gag_idea"] as const) {
-    if (!raw.startsWith("/") && (await takePendingAction(ctx.admin, stateKey(chatId), kind))) {
+    if (!raw.startsWith("/") && !menuTap && (await takePendingAction(ctx.admin, stateKey(chatId), kind))) {
       // Too vague to draw? Ask the person again, not the admins (17 Nov 2026).
       if (kind === "look_request" && vagueLook(raw)) return [await askLookDetail(ctx, chatId, person)];
       return [await forwardWish(ctx, person, kind, raw)];
