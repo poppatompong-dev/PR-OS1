@@ -1,6 +1,6 @@
 // ตัวอย่างสรุปหัวหน้าฝ่ายส่งเข้า Telegram ของแอดมินที่กดเท่านั้น (owner, 17 Nov 2026:
 // "ส่งตัวอย่างให้ป๊อปปี้ดูก่อน"). Real data, the reader's own chat, nobody else.
-// Body: { what?: "brief" | "intro" | "nobody" } — default all three.
+// Body: { what?: "brief" | "intro" | "nobody", day?: "YYYY-MM-DD" } — default all three, today.
 
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
@@ -22,7 +22,8 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const [me] = await getPeopleByIds(admin, [user.personId]);
   if (!me?.telegramChatId) return NextResponse.json({ error: "บัญชีนี้ยังไม่ผูก Telegram" }, { status: 400 });
-  const body = (await request.json().catch(() => ({}))) as { what?: string };
+  const body = (await request.json().catch(() => ({}))) as { what?: string; day?: string };
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(body.day ?? "") ? body.day : undefined;
   const want = (k: string) => !body.what || body.what === k;
   const [head] = await getPeopleByIds(admin, HEAD_IDS);
   const tag = "🧪 <i>ตัวอย่าง · ส่งถึงคุณคนเดียว</i>\n\n";
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
 
   // Written as the head will see it (her greeting), so the owner reviews the real thing.
   const reader = head ?? me;
-  const { msg, jobs } = await composeBrief(admin, { id: reader.id, displayName: reader.displayName });
+  const { msg, jobs } = await composeBrief(admin, { id: reader.id, displayName: reader.displayName }, day);
   if (want("brief") && (await sendTelegram(me.telegramChatId, { ...msg, text: tag + msg.text })).ok) sent.push("brief");
   if (want("intro")) {
     const intro = buildHeadIntro(titleFor(reader.id, reader.displayName));
