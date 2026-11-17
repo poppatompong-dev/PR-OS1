@@ -12,13 +12,19 @@ HAND = {'stand': (169, 276), 'wave': (192, 166), 'up': (181, 161), 'walkA': (171
         'runA': (173, 262), 'runB': (185, 259), 'sit': (185, 271)}
 
 # shirt hue band per person (blue for ภัส, lavender for แข)
-SHIRT = {'pat': (0.53, 0.68), 'kae': (0.66, 0.86)}
+MID = {'pat': 0.62, 'kae': 0.62, 'nat': 0.40}  # the shirt's usual lightness, so the blouse keeps its colour
+SHIRT = {'pat': (0.53, 0.68), 'kae': (0.66, 0.86), 'nat': None}  # None = grey shirt (นัท)
 
 LOOKS = {
     'pat': {
         '1': dict(name='ชมพูทอง', blouse=(250, 240, 228), sabai=(236, 92, 150), sabai2=(255, 170, 205), trim=(232, 180, 60), pants=(120, 70, 160), krathong=False, flower=False),
         '2': dict(name='ชมพูหวาน', blouse=(255, 222, 232), sabai=(214, 40, 120), sabai2=(250, 130, 180), trim=(240, 196, 70), pants=(200, 150, 50), krathong=False, flower=False),
         '3': dict(name='ชมพูทัดดอกไม้', blouse=(250, 240, 228), sabai=(245, 130, 175), sabai2=(255, 200, 220), trim=(232, 180, 60), pants=(30, 130, 120), krathong=False, flower=True),
+    },
+    'nat': {
+        '1': dict(name='ชมพูบานเย็น', blouse=(255, 236, 244), sabai=(220, 50, 130), sabai2=(250, 140, 190), trim=(236, 190, 60), pants=(120, 60, 150), krathong=True, flower=False),
+        '2': dict(name='ชมพูพาสเทล', blouse=(250, 240, 228), sabai=(245, 150, 190), sabai2=(255, 210, 230), trim=(232, 180, 60), pants=(60, 120, 170), krathong=True, flower=True),
+        '3': dict(name='ชมพูทอง', blouse=(255, 228, 238), sabai=(236, 92, 150), sabai2=(255, 170, 205), trim=(240, 196, 70), pants=(200, 150, 50), krathong=True, flower=False),
     },
     'kae': {
         '1': dict(name='สไบเขียวทอง', blouse=(250, 240, 228), sabai=(40, 140, 90), sabai2=(120, 200, 150), trim=(236, 190, 60), pants=(170, 40, 50), krathong=True, flower=False),
@@ -34,15 +40,17 @@ def shade(base, l, mid=0.62):
 
 def recolor(im, person, lk):
     px = im.load(); w, h = im.size
-    lo, hi = SHIRT[person]
+    band = SHIRT[person]
+    lo, hi = band or (0.0, 1.0)
     shirt = np.zeros((h, w), bool)
     for y in range(90, h):
         for x in range(w):
             r, g, b, a = px[x, y]
             if a < 40: continue
             hh, l, s = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
-            if y < 300 and lo < hh < hi and s > 0.25 and not (y < 212 and 70 <= x <= 150):
-                px[x, y] = shade(lk['blouse'], l) + (a,); shirt[y, x] = True
+            is_shirt = (lo < hh < hi and s > 0.25) if band else (s < 0.18 and 0.15 < l < 0.78 and y < 294)
+            if y < 300 and is_shirt and not (y < 212 and 70 <= x <= 150):
+                px[x, y] = shade(lk['blouse'], l, MID[person]) + (a,); shirt[y, x] = True
             elif 296 <= y < 356 and s < 0.35 and 0.12 < l < 0.86 and not (hh < 0.12 and s > 0.3):
                 # โจงกระเบน: base colour with soft vertical folds and a fine gold check
                 base = shade(lk['pants'], l, 0.5)
@@ -55,8 +63,8 @@ def recolor(im, person, lk):
         r, g, b, a = px[int(x), int(y)]
         if a < 20: continue
         hh, l, s = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
-        if lo - 0.04 < hh < hi + 0.04 and s > 0.08 and l < 0.9:
-            px[int(x), int(y)] = shade(lk['blouse'], l) + (a,)
+        if (lo - 0.04 < hh < hi + 0.04 and s > 0.08 and l < 0.9) if band else (s < 0.22 and 0.12 < l < 0.85 and y < 296):
+            px[int(x), int(y)] = shade(lk['blouse'], l, MID[person]) + (a,)
     return im, shirt
 
 def sabai(im, shirt, lk):
