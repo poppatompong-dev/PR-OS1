@@ -21,7 +21,7 @@ import { jobIcon } from "@/lib/events/job-icon";
 /** คุณสมัชชา ปาลวัตร์ หัวหน้าฝ่ายบริการและเผยแพร่วิชาการ. */
 export const HEAD_IDS = ["774174ff-e0cc-4bc5-922e-13fd1b05750d"];
 /** Off until the owner approves the preview; then heads + admins get everything below. */
-export const HEAD_LIVE = false;
+export const HEAD_LIVE = true; // owner approved the preview, 17 Nov 2026 ("เปิดได้")
 export const BRIEF_WINDOW = { from: 7 * 60 + 30, to: 8 * 60 }; // 07:30–07:59
 export const NOBODY_HOURS = 24;
 
