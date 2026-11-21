@@ -776,7 +776,9 @@ export async function messagePersonTelegram(formData: FormData) {
   const message = String(formData.get("message") ?? "").trim().slice(0, 1000);
   if (!message) done("พิมพ์ข้อความก่อนส่ง");
   const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
-  if (!officeOpen()) done("ส่งได้เฉพาะเวลาราชการ จ–ศ 08:00–16:30 — ไว้ส่งใหม่ในเวลาราชการ");
+  // Office hours unless the admin ticks "ยกเว้นครั้งนี้" (owner, 21 Nov 2026: rare, explicit).
+  const anyTime = String(formData.get("anyTime") ?? "") === "on";
+  if (!officeOpen() && !anyTime) done("ส่งได้เฉพาะเวลาราชการ จ–ศ 08:00–16:30 — หรือติ๊ก 'ส่งนอกเวลา (ยกเว้นครั้งนี้)'");
   const { createAdminClient } = await import("@/lib/supabase/server");
   const admin = createAdminClient();
   const { data: p } = await admin.from("people").select("display_name, telegram_chat_id").eq("id", personId).maybeSingle();

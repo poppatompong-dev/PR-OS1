@@ -155,6 +155,9 @@ function MemberMenu({ m, currentUserId, delegateId }: { m: TeamMember; currentUs
               <form action={messagePersonTelegram} className="team-menu-form">
                 <input type="hidden" name="personId" value={m.personId} />
                 <textarea className="input" name="message" rows={3} maxLength={1000} required placeholder={`ข้อความถึง ${m.displayName}`} />
+                <label className="team-check">
+                  <input type="checkbox" name="anyTime" /> ส่งนอกเวลา (ยกเว้นครั้งนี้)
+                </label>
                 <label className="team-check" style={{ flexWrap: "wrap" }}>
                   🤖 ชวนคุย
                   <select name="buddy" defaultValue="" className="input" style={{ width: "auto" }}>
