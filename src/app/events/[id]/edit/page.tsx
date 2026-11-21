@@ -1,3 +1,4 @@
+import { requireEditorPage } from "@/lib/auth/require-editor-page";
 import { notFound } from "next/navigation";
 import { IconPicker } from "@/components/IconPicker";
 import { PlaceInput } from "@/components/PlaceInput";
@@ -20,6 +21,7 @@ export default async function EditEventPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { id } = await params;
+  await requireEditorPage(`/events/${id}`);
   const { error } = await searchParams;
 
   const [event, formData] = await Promise.all([getEventById(id), getEventFormData()]);

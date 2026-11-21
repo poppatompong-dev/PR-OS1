@@ -11,6 +11,7 @@
 // client because a phone caller has no web session — the caller was checked
 // in authenticateLiff() and here in canManage().
 
+import { NOT_EDITOR_MSG, canEditJobs } from "@/lib/auth/job-editor";
 import { mapMetadata, pointsFromMetadata, type MapPoint } from "@/lib/maps";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LiffCaller } from "@/lib/liff/auth";
@@ -25,14 +26,13 @@ import { jobIcon } from "@/lib/events/job-icon";
 type Admin = SupabaseClient;
 export type ManageRole = "admin" | "supervisor" | "staff" | "assignee" | "display" | null;
 
-/** Web roles that edit any job (same as can.editPublished). Others: only jobs they created. */
-const TEAM_ROLES = new Set(["admin", "supervisor", "staff"]);
-
-export function canManage(role: ManageRole, caller: { personId: string; userId: string | null }, ev: { created_by: string | null; metadata: unknown }): boolean {
-  if (role && TEAM_ROLES.has(role)) return true;
-  const meta = (ev.metadata ?? {}) as { created_by_person_id?: unknown };
-  if (meta.created_by_person_id && meta.created_by_person_id === caller.personId) return true;
-  return Boolean(caller.userId && ev.created_by === caller.userId);
+/**
+ * Who may change a job from the phone forms. Since 20 Nov 2026 only the job editor
+ * (พี่เอิร์ธ, or the stand-in the owner switched on) — `editor` comes from canEditJobs().
+ * The role and job are kept in the signature so callers stay unchanged.
+ */
+export function canManage(_role: ManageRole, _caller: { personId: string; userId: string | null }, _ev: { created_by: string | null; metadata: unknown }, editor = false): boolean {
+  return editor;
 }
 
 export async function callerRole(admin: Admin, caller: LiffCaller): Promise<ManageRole> {
@@ -213,6 +213,7 @@ export type JobListItem = {
 /** Jobs from yesterday to 60 days ahead (drafts included), newest work first. */
 export async function listJobs(admin: Admin, caller: LiffCaller): Promise<JobListItem[]> {
   const role = await callerRole(admin, caller);
+  const editor = await canEditJobs(admin, caller.personId);
   const today = bangkokToday();
   const { data: events } = await admin
     .from("events")
@@ -269,7 +270,7 @@ export async function listJobs(admin: Admin, caller: LiffCaller): Promise<JobLis
       hasChanges: Boolean(e.has_changes),
       people,
       mine: meta.created_by_person_id === caller.personId || Boolean(caller.userId && e.created_by === caller.userId),
-      canManage: canManage(role, caller, e),
+      canManage: canManage(role, caller, e, editor),
     } as JobListItem;
   });
 }
@@ -302,7 +303,7 @@ async function loadManageable(admin: Admin, caller: LiffCaller, eventId: string)
     .maybeSingle();
   if (!ev || ev.deleted_at) return { ok: false as const, status: 404, error: "ไม่พบงานนี้ (อาจถูกลบไปแล้ว)" };
   const role = await callerRole(admin, caller);
-  if (!canManage(role, caller, ev)) return { ok: false as const, status: 403, error: "แก้ได้เฉพาะงานที่คุณสั่งเอง · งานอื่นแจ้งแอดมิน" };
+  if (!canManage(role, caller, ev, await canEditJobs(admin, caller.personId))) return { ok: false as const, status: 403, error: NOT_EDITOR_MSG };
   return { ok: true as const, ev };
 }
 

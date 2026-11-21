@@ -165,13 +165,13 @@ test("reminders never arrive after the start, nor at a superseded time", () => {
 });
 
 test("Bangkok clock and the send windows", () => {
-  // 2026-10-20 00:05 UTC = 07:05 Bangkok
-  const c = bangkokClock(new Date("2026-10-20T00:05:00Z"));
-  assert.deepEqual(c, { date: "2026-10-20", month: "2026-10", minutes: 7 * 60 + 5 });
+  // 2026-10-20 01:05 UTC = 08:05 Bangkok
+  const c = bangkokClock(new Date("2026-10-20T01:05:00Z"));
+  assert.deepEqual(c, { date: "2026-10-20", month: "2026-10", minutes: 8 * 60 + 5 });
   assert.ok(c.minutes >= WINDOWS.daily.from && c.minutes < WINDOWS.daily.to);
   // 2026-10-31 17:30 UTC is already 1 Nov in Bangkok — month rolls with Thai time
   assert.equal(bangkokClock(new Date("2026-10-31T17:30:00Z")).month, "2026-11");
-  const evening = bangkokClock(new Date("2026-10-20T10:00:00Z")); // 17:00
+  const evening = bangkokClock(new Date("2026-10-20T09:00:00Z")); // 16:00
   assert.ok(evening.minutes >= WINDOWS.adminReport.from && evening.minutes < WINDOWS.adminReport.to);
 });
 

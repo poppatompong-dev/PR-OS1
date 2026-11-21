@@ -2,6 +2,7 @@
 // chats only: everything is a free send, so there is no reply-token race like
 // LINE's, but the bot still only speaks when spoken to.
 
+import { NOT_EDITOR_MSG, canEditJobs } from "@/lib/auth/job-editor";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, todayInBangkok } from "@/lib/date";
 import { alertAdminsUnavailable, tellAdminsByTelegram } from "@/lib/line/alerts";
@@ -262,7 +263,7 @@ async function handleText(ctx: Ctx, chatId: number, raw: string, from?: { first_
     }
   }
   if (/^(📋)?(รายการงาน|แก้งาน|แก้ไขงาน|จัดการงาน|ยกเลิกงาน|เลื่อนงาน|ลบงาน|\/jobs)$/.test(text.replace(/\s+/g, ""))) return [tgJobs()];
-  if (/^(เพิ่มงาน|สร้างงาน|\/add)/.test(text.replace(/\s+/g, ""))) return [tgAddEvent()];
+  if (/^(เพิ่มงาน|สร้างงาน|\/add)/.test(text.replace(/\s+/g, ""))) return [(await canEditJobs(ctx.admin, person.id)) ? tgAddEvent() : { text: `🙏 ${NOT_EDITOR_MSG}`, keyboard: KEYBOARD }];
   // น้องบอทชวนคุย (12 Nov 2026): "หยุดชวนคุย" / "ชวนคุย".
   const buddyCmd = parseBuddyCommand(text);
   if (buddyCmd) {

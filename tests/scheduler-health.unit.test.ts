@@ -39,7 +39,9 @@ test("17:00 report mentions failed pushes", () => {
   assert.doesNotMatch(none.text, /ไม่สำเร็จ/);
 });
 
-test("the 07:00 summary window closes by 07:30 (no late 'good morning' pushes)", () => {
-  assert.equal(WINDOWS.daily.from, 7 * 60);
-  assert.ok(WINDOWS.daily.to <= 7 * 60 + 30);
+test("the morning summary: 08:00 on working days, 07:00 at weekends, each closes in 30 min", () => {
+  assert.equal(WINDOWS.daily.from, 8 * 60);
+  assert.ok(WINDOWS.daily.to <= 8 * 60 + 30);
+  assert.equal(WINDOWS.dailyWeekend.from, 7 * 60);
+  assert.ok(WINDOWS.adminReport.to <= 16 * 60 + 30);
 });

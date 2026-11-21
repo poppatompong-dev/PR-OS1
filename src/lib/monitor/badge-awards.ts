@@ -3,6 +3,7 @@
 // notification processor, once an hour. Only the current month's badges are
 // announced; the record is an audit row per person, month and badge.
 
+import { officeOpen } from "@/lib/notifications/office-hours";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { BADGE_LABEL, loadBench, type BadgeKey } from "@/lib/monitor/badges";
 import { claimRun } from "@/lib/line/data";
@@ -19,8 +20,9 @@ export function badgeMessage(name: string, badges: BadgeKey[], monthLabel: strin
 }
 
 export async function announceBadges(admin: SupabaseClient, todayIso: string, now = Date.now()): Promise<number> {
+  // Office hours only (20 Nov 2026).
+  if (!officeOpen(new Date(now))) return 0;
   const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date(now)));
-  if (hour < 8 || hour >= 21) return 0;
   if (Number(todayIso.slice(8, 10)) <= 7) return 0; // the bench still shows last month
   if (!(await claimRun(admin, `badges:${todayIso}:${hour}`))) return 0;
 

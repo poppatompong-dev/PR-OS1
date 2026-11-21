@@ -6,7 +6,7 @@
 //   tv_joke_ok / tv_joke_no   entity_id = the tv_joke row id, new_values { by }
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getAdminRecipientIds, getPeopleByIds } from "@/lib/line/data";
+import { getAdminRecipientIds, getFunRecipientIds, getPeopleByIds } from "@/lib/line/data";
 import { esc, sendTelegram } from "@/lib/telegram/api";
 import { nickname } from "@/lib/monitor/nicknames";
 
@@ -68,7 +68,7 @@ export async function submitJoke(admin: SupabaseClient, person: { id: string; di
   if (error || !data) return "⚠️ ส่งไม่สำเร็จ ลองใหม่อีกครั้งครับ";
   const name = nickname(person.id, person.displayName);
   const { setup, punch } = splitJoke(c.text);
-  const people = await getPeopleByIds(admin, await getAdminRecipientIds(admin));
+  const people = await getPeopleByIds(admin, await getFunRecipientIds(admin));
   for (const a of people) {
     if (!a.telegramChatId) continue;
     await sendTelegram(a.telegramChatId, {

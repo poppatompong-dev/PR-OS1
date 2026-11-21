@@ -119,6 +119,15 @@ export async function getAdminRecipientIds(admin: SupabaseClient): Promise<strin
   return (profiles ?? []).map((p: any) => p.person_id).filter(Boolean);
 }
 
+/**
+ * พี่เอิร์ธ hears about work only (20 Nov 2026): look/gag requests, jokes, contest,
+ * questions, links and other fun or system notes go to the other admins.
+ */
+export const WORK_ONLY_ADMIN_IDS = new Set(["00000000-0000-0000-0000-000000000502"]);
+export async function getFunRecipientIds(admin: SupabaseClient): Promise<string[]> {
+  return (await getAdminRecipientIds(admin)).filter((id) => !WORK_ONLY_ADMIN_IDS.has(id));
+}
+
 export async function getPeopleByIds(admin: SupabaseClient, ids: string[]): Promise<LinePerson[]> {
   if (ids.length === 0) return [];
   const { data } = await admin

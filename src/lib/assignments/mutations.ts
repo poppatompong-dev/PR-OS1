@@ -9,6 +9,7 @@ import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { recordUnavailable } from "@/lib/line/data";
 import { alertAdminsUnavailable } from "@/lib/line/alerts";
 import { can, getSessionUser } from "@/lib/auth/roles";
+import { NOT_EDITOR_MSG, canEditJobs } from "@/lib/auth/job-editor";
 import { isSupabaseConfigured } from "@/lib/env";
 import { normalizeRoleIds, roleColumns, sameRoles } from "@/lib/assignments/roles";
 
@@ -90,6 +91,7 @@ export async function addAssignment(formData: FormData) {
   if (!can.manageAssignments(user.role)) {
     redirect(`/events/${eventId}?error=${encodeURIComponent("ไม่มีสิทธิ์จัดการผู้รับผิดชอบ")}`);
   }
+  if (!(await canEditJobs(createAdminClient(), user.personId))) redirect(`/events/${eventId}?error=${encodeURIComponent(NOT_EDITOR_MSG)}`);
   if (!personId || roleIds.length === 0) {
     redirect(`/events/${eventId}?error=${encodeURIComponent("กรุณาเลือกบุคคลและอย่างน้อย 1 หน้าที่")}`);
   }
@@ -157,6 +159,7 @@ export async function updateAssignmentRoles(formData: FormData) {
   if (!can.manageAssignments(user.role)) {
     redirect(`/events/${eventId}?error=${encodeURIComponent("ไม่มีสิทธิ์จัดการผู้รับผิดชอบ")}`);
   }
+  if (!(await canEditJobs(createAdminClient(), user.personId))) redirect(`/events/${eventId}?error=${encodeURIComponent(NOT_EDITOR_MSG)}`);
   if (roleIds.length === 0) {
     redirect(`/events/${eventId}?error=${encodeURIComponent("เลือกอย่างน้อย 1 หน้าที่ — ถ้าไม่ต้องไปแล้ว ให้กด นำออก")}`);
   }
@@ -257,6 +260,7 @@ export async function removeAssignment(formData: FormData) {
   if (!can.manageAssignments(user.role)) {
     redirect(`/events/${eventId}?error=${encodeURIComponent("ไม่มีสิทธิ์จัดการผู้รับผิดชอบ")}`);
   }
+  if (!(await canEditJobs(createAdminClient(), user.personId))) redirect(`/events/${eventId}?error=${encodeURIComponent(NOT_EDITOR_MSG)}`);
 
   const { error } = await supabase
     .from("assignments")

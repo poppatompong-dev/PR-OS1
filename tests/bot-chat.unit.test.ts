@@ -210,19 +210,17 @@ test("what counts as a question for the admins", () => {
   for (const q of ["5555", "ฮ่าๆๆ", "โอเคค่ะ", "👍👍", "qwerty zz", "ค่ะ"]) assert.equal(looksLikeQuestion(q), false, q);
 });
 
-test("a question the bot can't answer reaches both admins, and the answer comes back", async () => {
+test("a question the bot can't answer reaches the admins (not พี่เอิร์ธ, 20 Nov 2026), and the answer comes back", async () => {
   const db = seedQ();
   const ask = await say(db, 506, "ชุดวันจันทร์งานต้อนรับใส่สีอะไรคะ");
   assert.match(textTo(ask, 506), /ส่งคำถามนี้ถึงแอดมิน|ส่งคำถามถึงแอดมินแล้ว/);
   const toAdmin = textTo(ask, 999);
   assert.match(toAdmin, /คำถามจาก แข[\s\S]*ชุดวันจันทร์[\s\S]*#Q[A-Z0-9]{5}/);
-  assert.match(textTo(ask, 502), /#Q[A-Z0-9]{5}/);
+  assert.equal(textTo(ask, 502), "");
   assert.ok(db.tables.audit_logs.some((r: any) => r.action === "team_question" && r.entity_id === KAE));
 
-  const ans = await replyTo(db, 502, toAdmin, "ชุดผ้าไทยโทนสีชมพูนะ");
+  const ans = await replyTo(db, 999, toAdmin, "ชุดผ้าไทยโทนสีชมพูนะ");
   assert.match(textTo(ans, 506), /แอดมินตอบคำถามแล้ว[\s\S]*ชุดผ้าไทยโทนสีชมพู[\s\S]*คำถาม: ชุดวันจันทร์/);
-  assert.match(textTo(ans, 502), /ส่งคำตอบถึงแขแล้ว/);
-  assert.match(textTo(ans, 999), /ตอบคำถาม #Q[A-Z0-9]{5} ของแขแล้ว/);
   assert.ok(db.tables.audit_logs.some((r: any) => r.action === "team_answer" && r.entity_id === KAE));
 });
 

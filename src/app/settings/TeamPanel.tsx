@@ -9,6 +9,7 @@ import { Avatar } from "@/components/Avatar";
 import { BellRing, UserPlus } from "lucide-react";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { TelegramLinkMaker } from "./TelegramLinkMaker";
+import { JOB_OWNER_ID } from "@/lib/auth/job-editor";
 import { StatusPill } from "@/components/StatusPill";
 import { TRIAL_STEPS } from "@/lib/trial";
 import { hasAvatar } from "@/lib/avatars";
@@ -28,6 +29,7 @@ import {
   dismissLineRegistration,
   setAccountSuspended,
   setAdminWatcher,
+  setJobDelegate,
   notifyAvatarReady,
   messagePersonTelegram,
   unlinkPersonTelegram,
@@ -58,7 +60,7 @@ function RoleOptions({ current }: { current?: string }) {
   );
 }
 
-function MemberMenu({ m, currentUserId }: { m: TeamMember; currentUserId: string | null }) {
+function MemberMenu({ m, currentUserId, delegateId }: { m: TeamMember; currentUserId: string | null; delegateId?: string | null }) {
   const isSelf = m.accounts.some((a) => a.id === currentUserId);
   return (
     <details className="team-menu">
@@ -125,8 +127,19 @@ function MemberMenu({ m, currentUserId }: { m: TeamMember; currentUserId: string
                 <BellRing size={15} aria-hidden="true" />
                 {m.watcher ? "เลิกรับแจ้งเตือนฝั่งแอดมิน" : "รับแจ้งเตือนฝั่งแอดมิน"}
               </button>
-              <small>ได้รายงาน 17:00 และแจ้งเมื่อมีคนกด ไม่สะดวก · พิมพ์ อนุญาตกลุ่มนี้ ในกลุ่มไลน์ได้</small>
+              <small>ได้รายงาน 16:00 และแจ้งเมื่อมีคนกด ไม่สะดวก · พิมพ์ อนุญาตกลุ่มนี้ ในกลุ่มไลน์ได้</small>
             </form>
+
+            {m.personId !== JOB_OWNER_ID ? (
+              <form action={setJobDelegate} className="team-menu-form">
+                <input type="hidden" name="personId" value={m.personId} />
+                <input type="hidden" name="on" value={(delegateId !== m.personId).toString()} />
+                <button className="button secondary" type="submit">
+                  {delegateId === m.personId ? "ปิดสิทธิ์แก้งานแทนพี่เอิร์ธ" : "ให้แก้งานแทนพี่เอิร์ธวันนี้"}
+                </button>
+                <small>{delegateId === m.personId ? "กำลังแก้งานแทนได้ · หมดเองเที่ยงคืน" : "ปกติแก้งานได้เฉพาะพี่เอิร์ธ · ใช้ตอนพี่เอิร์ธไม่อยู่ หมดเองเที่ยงคืน"}</small>
+              </form>
+            ) : null}
 
             {!m.telegramLinked ? <TelegramLinkMaker personId={m.personId} name={m.displayName} /> : null}
             {m.telegramLinked ? (
@@ -295,8 +308,11 @@ export function TeamPanel({
   added,
   pending = [],
   avatarOff = new Set<string>(),
+  delegateId = null,
 }: {
   team: TeamMember[];
+  /** Who may change jobs today in place of พี่เอิร์ธ (job-editor.ts). */
+  delegateId?: string | null;
   /** People who chose "no cartoon" (0018). */
   avatarOff?: Set<string>;
   currentUserId: string | null;
@@ -467,7 +483,7 @@ export function TeamPanel({
                     {m.suspended ? <StatusPill label="ระงับ" tone="red" /> : <span className="team-muted">ใช้งาน</span>}
                   </td>
                   <td className="team-actions-cell">
-                    <MemberMenu m={m} currentUserId={currentUserId} />
+                    <MemberMenu m={m} currentUserId={currentUserId} delegateId={delegateId} />
                   </td>
                 </tr>
               );

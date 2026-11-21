@@ -37,13 +37,11 @@ test("only title / date / time / place reset acknowledgement", () => {
   assert.deepEqual(significantFields(before, { ...same, startTime: "10:30", locationId: A }), ["เวลาเริ่ม", "สถานที่"]);
 });
 
-test("team web roles manage any job; a LINE-only person only the jobs they gave out", () => {
+test("only the job editor (พี่เอิร์ธ / stand-in) manages jobs from the phone (20 Nov 2026)", () => {
   const ev = { created_by: null, metadata: { created_by_person_id: A } };
-  assert.equal(canManage("supervisor", { personId: B, userId: "u" }, ev), true);
-  assert.equal(canManage(null, { personId: A, userId: null }, ev), true);
-  assert.equal(canManage(null, { personId: B, userId: null }, ev), false);
-  assert.equal(canManage("display", { personId: B, userId: "u" }, ev), false);
-  assert.equal(canManage("assignee", { personId: B, userId: "u2" }, { created_by: "u2", metadata: {} }), true);
+  assert.equal(canManage("supervisor", { personId: B, userId: "u" }, ev), false);
+  assert.equal(canManage(null, { personId: A, userId: null }, ev), false);
+  assert.equal(canManage("admin", { personId: B, userId: "u" }, ev, true), true);
 });
 
 test("the way in: LINE words, Telegram keyboard and buttons", () => {

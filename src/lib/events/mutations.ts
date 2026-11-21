@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { can, getSessionUser } from "@/lib/auth/roles";
+import { NOT_EDITOR_MSG, canEditJobs } from "@/lib/auth/job-editor";
 import { parseStagedFormValues } from "@/lib/attachments/rules";
 import { attachStaged } from "@/lib/attachments/staging";
 import { normalizeRoleIds, roleColumns } from "@/lib/assignments/roles";
@@ -31,6 +32,7 @@ export async function createEvent(formData: FormData) {
   const user = await getSessionUser(supabase);
   if (!user) redirect("/login");
   if (!can.createDraft(user.role)) fail("บัญชีของคุณไม่มีสิทธิ์สร้างงาน");
+  if (!(await canEditJobs(createAdminClient(), user.personId))) fail(NOT_EDITOR_MSG);
 
   const intent = String(formData.get("intent") ?? "draft");
   const publish = intent === "publish";
@@ -154,10 +156,14 @@ export async function createEvent(formData: FormData) {
 
 type Actor = { id: string; role: import("@/lib/auth/roles").AppRole };
 
-async function loadActor() {
+/** Every lifecycle action below changes a job: พี่เอิร์ธ only (20 Nov 2026). */
+async function loadActor(eventId?: string) {
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
   if (!user) redirect("/login");
+  if (!(await canEditJobs(createAdminClient(), user.personId))) {
+    redirect(eventId ? `/events/${eventId}?error=${encodeURIComponent(NOT_EDITOR_MSG)}` : `/schedule?error=${encodeURIComponent(NOT_EDITOR_MSG)}`);
+  }
   return { supabase, user };
 }
 
@@ -187,7 +193,7 @@ export async function editEvent(formData: FormData) {
   await blockWritesInDemoMode();
   const eventId = String(formData.get("eventId") ?? "");
   const editPath = `/events/${eventId}/edit`;
-  const { supabase, user } = await loadActor();
+  const { supabase, user } = await loadActor(eventId);
   if (!can.editPublished(user.role)) {
     redirect(`/events/${eventId}?error=${encodeURIComponent("ไม่มีสิทธิ์แก้ไขงาน")}`);
   }
@@ -313,7 +319,7 @@ export async function editEvent(formData: FormData) {
 export async function publishEvent(formData: FormData) {
   await blockWritesInDemoMode();
   const eventId = String(formData.get("eventId") ?? "");
-  const { supabase, user } = await loadActor();
+  const { supabase, user } = await loadActor(eventId);
   if (!can.publishEvent(user.role)) {
     redirect(`/events/${eventId}?error=${encodeURIComponent("ไม่มีสิทธิ์เผยแพร่งาน")}`);
   }
@@ -374,7 +380,7 @@ export async function publishEvent(formData: FormData) {
 export async function completeEvent(formData: FormData) {
   await blockWritesInDemoMode();
   const eventId = String(formData.get("eventId") ?? "");
-  const { supabase, user } = await loadActor();
+  const { supabase, user } = await loadActor(eventId);
   if (!can.publishEvent(user.role)) {
     redirect(`/events/${eventId}?error=${encodeURIComponent("ไม่มีสิทธิ์ปิดงาน")}`);
   }
@@ -452,7 +458,7 @@ export async function postponeEvent(formData: FormData) {
   await blockWritesInDemoMode();
   const eventId = String(formData.get("eventId") ?? "");
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 200);
-  const { supabase, user } = await loadActor();
+  const { supabase, user } = await loadActor(eventId);
   if (!can.publishEvent(user.role)) {
     redirect(`/events/${eventId}?error=${encodeURIComponent("ไม่มีสิทธิ์เลื่อนงาน")}`);
   }
@@ -503,7 +509,7 @@ export async function cancelEvent(formData: FormData) {
   await blockWritesInDemoMode();
   const eventId = String(formData.get("eventId") ?? "");
   const reason = String(formData.get("reason") ?? "").trim();
-  const { supabase, user } = await loadActor();
+  const { supabase, user } = await loadActor(eventId);
   if (!can.cancelEvent(user.role)) {
     redirect(`/events/${eventId}?error=${encodeURIComponent("ไม่มีสิทธิ์ยกเลิกงาน")}`);
   }
@@ -542,7 +548,7 @@ export async function cancelEvent(formData: FormData) {
 export async function deleteEvent(formData: FormData) {
   await blockWritesInDemoMode();
   const eventId = String(formData.get("eventId") ?? "");
-  const { supabase, user } = await loadActor();
+  const { supabase, user } = await loadActor(eventId);
   // Soft delete is a supervisor/admin action.
   if (!can.cancelEvent(user.role)) {
     redirect(`/events/${eventId}?error=${encodeURIComponent("ไม่มีสิทธิ์ลบงาน")}`);

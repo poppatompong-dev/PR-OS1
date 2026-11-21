@@ -17,12 +17,13 @@ import { esc, sendTelegram, type TgButton, type TgMessage } from "@/lib/telegram
 import { titleFor } from "@/lib/telegram/chat";
 import { nickname } from "@/lib/monitor/nicknames";
 import { jobIcon } from "@/lib/events/job-icon";
+import { jobStartMs, nextOfficeOpen, officeOpen } from "@/lib/notifications/office-hours";
 
 /** คุณสมัชชา ปาลวัตร์ หัวหน้าฝ่ายบริการและเผยแพร่วิชาการ. */
 export const HEAD_IDS = ["774174ff-e0cc-4bc5-922e-13fd1b05750d"];
 /** Off until the owner approves the preview; then heads + admins get everything below. */
 export const HEAD_LIVE = true; // owner approved the preview, 17 Nov 2026 ("เปิดได้")
-export const BRIEF_WINDOW = { from: 7 * 60 + 30, to: 8 * 60 }; // 07:30–07:59
+export const BRIEF_WINDOW = { from: 8 * 60, to: 8 * 60 + 30 }; // 08:00–08:29, in office hours (20 Nov 2026)
 export const NOBODY_HOURS = 24;
 
 export type BriefPerson = { id: string; name: string; ack: boolean; off: boolean; reason: string | null };
@@ -45,10 +46,13 @@ export function bangkokMinutes(now = new Date()): number {
 /** 21:00–07:00: urgent notes still go, without a sound. */
 export const isQuietHour = (minutes: number) => minutes >= 21 * 60 || minutes < 7 * 60;
 
-/** Weekdays always; Saturday/Sunday only when there is work today or tomorrow. */
-export function briefDue(dateIso: string, jobCount: number): boolean {
+/**
+ * Working days only (20 Nov 2026: the bot keeps to office hours; weekend jobs reach the
+ * people on them through their own cards). `jobCount` is kept for callers.
+ */
+export function briefDue(dateIso: string, _jobCount = 0): boolean {
   const wd = new Date(`${dateIso}T12:00:00+07:00`).getUTCDay();
-  return (wd !== 0 && wd !== 6) || jobCount > 0;
+  return wd !== 0 && wd !== 6;
 }
 
 /** Nobody on the job has acknowledged it (or nobody is assigned at all). */
@@ -122,8 +126,8 @@ export function buildHeadIntro(greet: string): TgMessage {
       `🙏 เรียน${esc(greet)}`,
       "ระบบ PR-OS ได้เพิ่มการรายงานความเคลื่อนไหวงานฝ่าย ปชส. ให้ทาง Telegram นี้แล้วครับ",
       "",
-      "📋 <b>ทุกเช้า 07:30</b> — สรุปงานวันนี้และพรุ่งนี้ ใครไปงานไหน สถานะการรับทราบ เรื่องที่ต้องติดตาม และงานที่เพิ่ม แก้ไข หรือยกเลิก (เสาร์-อาทิตย์ส่งเฉพาะวันที่มีงาน)",
-      "🚨 <b>แจ้งทันที</b> — เมื่อมีผู้แจ้งไม่สะดวก และเมื่องานเหลือไม่ถึง 24 ชม. แต่ยังไม่มีใครรับทราบ (ช่วงกลางคืนส่งแบบไม่มีเสียง)",
+      "📋 <b>ทุกเช้าวันทำการ 08:00</b> — สรุปงานวันนี้และพรุ่งนี้ ใครไปงานไหน สถานะการรับทราบ เรื่องที่ต้องติดตาม และงานที่เพิ่ม แก้ไข หรือยกเลิก",
+      "🚨 <b>แจ้งทันที (ในเวลาราชการ)</b> — เมื่อมีผู้แจ้งไม่สะดวก และเมื่องานใกล้ถึงแต่ยังไม่มีใครรับทราบ",
       "",
       "<b>วิธีใช้เบื้องต้น</b>",
       "• กดปุ่ม 📋 เปิดรายการงาน ใต้ข้อความ เพื่อดูรายละเอียดงานทั้งหมด",
@@ -213,7 +217,6 @@ export async function runHeadDuties(admin: SupabaseClient, now = new Date()): Pr
   if (!HEAD_LIVE) return { brief: 0, nobody: 0 };
   const today = todayInBangkok();
   const minutes = bangkokMinutes(now);
-  const silent = isQuietHour(minutes);
   const people = await headRecipients(admin);
   let brief = 0;
   let nobody = 0;
@@ -232,13 +235,16 @@ export async function runHeadDuties(admin: SupabaseClient, now = new Date()): Pr
   }
 
   // งานเหลือไม่ถึง 24 ชม. แต่ยังไม่มีใครรับทราบ — once per job (per date, in case it moves).
-  const soon = (await loadBriefJobs(admin, today, addDays(today, 1))).filter((j) => {
+  // In office hours only; a job before the next office morning is caught before closing.
+  if (!officeOpen(now)) return { brief, nobody };
+  const reopen = nextOfficeOpen(new Date(`${today}T16:30:00+07:00`)).getTime() + 90 * 60_000;
+  const soon = (await loadBriefJobs(admin, today, addDays(today, 4))).filter((j) => {
     const h = hoursLeft(j, now);
-    return h > 0 && h <= NOBODY_HOURS && nobodyYet(j);
+    return h > 0 && (h <= NOBODY_HOURS || jobStartMs(j.date, j.start) < reopen) && nobodyYet(j);
   });
   for (const j of soon) {
     if (!(await claimRun(admin, `nobody:${j.id}:${j.date}`))) continue;
-    const msg = { ...buildNobodyAlert(j, now), silent };
+    const msg = buildNobodyAlert(j, now);
     for (const p of people) {
       const r = await sendTelegram(p.telegramChatId!, msg);
       if (r.ok) nobody += 1;

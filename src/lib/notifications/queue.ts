@@ -24,6 +24,7 @@ import { LAST_RUN_KEY, RETRY_TAG, isTransientFailure } from "@/lib/notifications
 import { budgetAllows, priorityOf, type BudgetState, type Priority } from "@/lib/notifications/budget";
 import { isLineMessagingConfigured, isTelegramConfigured } from "@/lib/env";
 import { addDays } from "@/lib/date";
+import { isWeekday, jobStartMs, mayNotifyJob } from "@/lib/notifications/office-hours";
 import { getQuotaStatus, pushMessages, type LineMessage, type SendResult } from "@/lib/line/api";
 import { sendTelegram, type TgMessage } from "@/lib/telegram/api";
 import { tgAdminReport, tgCancellation, tgDailySummary, tgPostponed, tgRemoved, tgTask } from "@/lib/telegram/messages";
@@ -98,8 +99,11 @@ export const WINDOWS = {
   // job added at 09:17 trigger a second "good morning" push to someone who had
   // no work at 07:00 (found in the 21 Oct 2026 test): a wasted message, since
   // the new job's own card already went out.
-  daily: { from: 7 * 60, to: 7 * 60 + 30 },
-  adminReport: { from: 17 * 60, to: 20 * 60 + 30 }, // 17:00 – 20:29
+  // In office hours (owner via พี่เอิร์ธ, 20 Nov 2026): 08:00 on working days; Saturday
+  // and Sunday keep 07:00 but only for people with a job that very day.
+  daily: { from: 8 * 60, to: 8 * 60 + 30 },
+  dailyWeekend: { from: 7 * 60, to: 7 * 60 + 30 },
+  adminReport: { from: 16 * 60, to: 16 * 60 + 30 }, // 16:00 – 16:29, working days only
 };
 
 /**
@@ -304,6 +308,12 @@ async function processQueue(
       const hold = await latestEventAudit(admin, row.event_id, ["postpone"]);
       reason = typeof hold?.new_values?.reason === "string" ? hold.new_values.reason : null;
     }
+    // Outside office hours only a job starting before the next office morning goes out;
+    // the rest stays queued and is sent from 08:00 (20 Nov 2026).
+    if (task && !mayNotifyJob(jobStartMs(task.event.eventDate, task.event.startTime))) {
+      summary.processed -= 1;
+      continue;
+    }
     const { plan, skipReason } = planForRow(row.notification_type, task, changes, {
       scheduledFor: row.scheduled_for,
       reason,
@@ -401,11 +411,14 @@ async function sendDailySummaries(
   today: string,
   month: string,
   lineEnabled = true,
+  todayOnly = false,
 ) {
   const tomorrow = addDays(today, 1);
   const tasks = await loadTasks(admin, { from: today, to: tomorrow });
   const byPerson = new Map<string, TaskItem[]>();
   for (const t of tasks) byPerson.set(t.personId, [...(byPerson.get(t.personId) ?? []), t]);
+  // Weekend: only those who work that day hear from the bot.
+  if (todayOnly) for (const [id, ts] of [...byPerson]) if (!ts.some((t) => t.event.eventDate === today)) byPerson.delete(id);
 
   // When the budget is tight, people with something still to acknowledge come first.
   const outstanding = (ts: TaskItem[]) => ts.filter((t) => !t.acknowledged && !t.unavailable).length;
@@ -571,10 +584,12 @@ async function runLocked(
   await processQueue(admin, settings, quota, summary, clock.month);
 
   // Telegram people get the summary and the report even when LINE is switched off.
-  if (clock.minutes >= WINDOWS.daily.from && clock.minutes < WINDOWS.daily.to) {
-    summary.dailySummaries = await sendDailySummaries(admin, quota, summary, clock.date, clock.month, settings.lineEnabled);
+  const weekday = isWeekday();
+  const dw = weekday ? WINDOWS.daily : WINDOWS.dailyWeekend;
+  if (clock.minutes >= dw.from && clock.minutes < dw.to) {
+    summary.dailySummaries = await sendDailySummaries(admin, quota, summary, clock.date, clock.month, settings.lineEnabled, !weekday);
   }
-  if (clock.minutes >= WINDOWS.adminReport.from && clock.minutes < WINDOWS.adminReport.to) {
+  if (weekday && clock.minutes >= WINDOWS.adminReport.from && clock.minutes < WINDOWS.adminReport.to) {
     summary.adminReports = await sendAdminReport(admin, quota, summary, clock.date, clock.month, settings.lineEnabled);
   }
   if (settings.lineEnabled && isLineMessagingConfigured()) {

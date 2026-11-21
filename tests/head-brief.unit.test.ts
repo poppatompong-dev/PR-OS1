@@ -6,10 +6,10 @@ import { briefDue, buildHeadBrief, buildHeadIntro, buildNobodyAlert, followUps, 
 const job = (o: Partial<BriefJob> = {}): BriefJob => ({ id: "e1", title: "พิธีเปิดงาน", icon: null, date: "2026-11-17", start: "09:00", place: "หอประชุม", people: [], ...o });
 const p = (name: string, ack = false, off = false, reason: string | null = null) => ({ id: name, name, ack, off, reason });
 
-test("briefDue: วันทำการส่งเสมอ เสาร์-อาทิตย์เฉพาะมีงาน", () => {
+test("briefDue: วันทำการเท่านั้น (20 Nov 2026)", () => {
   assert.equal(briefDue("2026-11-17", 0), true); // อ.
   assert.equal(briefDue("2026-11-21", 0), false); // ส.
-  assert.equal(briefDue("2026-11-22", 2), true); // อา. มีงาน
+  assert.equal(briefDue("2026-11-22", 2), false); // อา. มีงานก็ไม่ส่ง
 });
 
 test("isQuietHour: 21:00–07:00", () => {
@@ -66,6 +66,6 @@ test("nobody alert + hoursLeft", () => {
 test("intro: สุภาพ มีวิธีใช้", () => {
   const m = buildHeadIntro("คุณสมัชชา");
   assert.match(m.text, /เรียนคุณสมัชชา/);
-  assert.match(m.text, /07:30/);
+  assert.match(m.text, /08:00/);
   assert.match(m.text, /ใครยังไม่รับทราบ/);
 });

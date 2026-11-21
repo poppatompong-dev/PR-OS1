@@ -5,6 +5,7 @@ import { getAvatarOffIds } from "@/lib/avatar-choice";
 import { getSessionUser } from "@/lib/auth/roles";
 import { buildTeam } from "@/lib/settings/team";
 import { TeamPanel } from "./TeamPanel";
+import { loadDelegate } from "@/lib/auth/job-editor";
 import { TeamRequestsPanel } from "./TeamRequestsPanel";
 import { TeamQuestionsPanel } from "./TeamQuestionsPanel";
 import { loadHelpSignals, loadTeamQuestions } from "@/lib/telegram/questions";
@@ -156,7 +157,7 @@ export default async function SettingsPage({
         </div>
       ) : null}
 
-      <TeamPanel team={team} currentUserId={user?.id ?? null} added={added ?? null} pending={pendingLine} avatarOff={supabase ? await getAvatarOffIds(supabase) : new Set()} />
+      <TeamPanel team={team} currentUserId={user?.id ?? null} added={added ?? null} pending={pendingLine} avatarOff={supabase ? await getAvatarOffIds(supabase) : new Set()} delegateId={live ? (await loadDelegate(createAdminClient()).catch(() => null))?.personId ?? null : null} />
 
       <TeamQuestionsPanel questions={live ? await loadTeamQuestions(createAdminClient()).catch(() => []) : []} help={live ? await loadHelpSignals(createAdminClient()).catch(() => []) : []} />
 
@@ -235,7 +236,7 @@ export default async function SettingsPage({
             </dd>
             <dd className="muted" style={{ fontSize: 13 }}>
               การ์ดงานใหม่ / งานเปลี่ยน / ยกเลิก / แจ้งไม่สะดวก ส่งเสมอ · เตือน 1.5 ชม. ส่งเมื่อยังกันโควต้าการ์ดงานได้ ·
-              สรุปเช้า 07:00 และรายงาน 17:00 ส่งได้ถึง {notifSettings.budget.lowAllowedSoFar} ข้อความถึงวันนี้ (ใช้แล้ว{" "}
+              สรุปเช้า 08:00 และรายงาน 16:00 ส่งได้ถึง {notifSettings.budget.lowAllowedSoFar} ข้อความถึงวันนี้ (ใช้แล้ว{" "}
               {notifSettings.budget.sent.low}) · คิดจากงานประมาณ 40 งาน/เดือน 1–2 คน/งาน
             </dd>
           </div>

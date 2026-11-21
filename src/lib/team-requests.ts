@@ -7,7 +7,7 @@
 //   team_request_status       entity_id = the request row id, new_values { status, topic?, image?, note?, by }
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getAdminRecipientIds, getPeopleByIds } from "@/lib/line/data";
+import { getAdminRecipientIds, getFunRecipientIds, getPeopleByIds } from "@/lib/line/data";
 import { esc, sendTelegram, type TgMessage } from "@/lib/telegram/api";
 import { nickname } from "@/lib/monitor/nicknames";
 import { avatarUrl } from "@/lib/avatars";
@@ -200,7 +200,7 @@ export function requestButtons(requestId: string) {
 
 /** Every admin recipient gets the new request with the status buttons. */
 export async function tellAdminsRequest(admin: SupabaseClient, text: string, requestId: string | null): Promise<number> {
-  const ids = await getAdminRecipientIds(admin);
+  const ids = await getFunRecipientIds(admin); // not พี่เอิร์ธ (20 Nov 2026)
   const people = (await getPeopleByIds(admin, ids)).filter((p) => p.telegramChatId);
   let sent = 0;
   for (const p of people) {

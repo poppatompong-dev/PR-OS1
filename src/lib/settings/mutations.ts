@@ -3,6 +3,7 @@
 import { blockWritesInDemoMode } from "@/lib/demo-guard";
 
 import { revalidatePath } from "next/cache";
+import { officeOpen } from "@/lib/notifications/office-hours";
 import { redirect } from "next/navigation";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { can, getSessionUser, UI_ROLES, type AppRole } from "@/lib/auth/roles";
@@ -403,7 +404,7 @@ export async function setAdminWatcher(formData: FormData) {
     .upsert({ key: "line_admin_person_ids", value: next, updated_by: user.id }, { onConflict: "key" });
   if (error) done(error.message);
   revalidatePath("/settings");
-  done(undefined, on ? "เพิ่มเป็นผู้ติดตามงานแล้ว — จะได้รายงาน 17:00 และแจ้งเตือนเมื่อมีคนกดไม่สะดวก" : "เลิกรับแจ้งเตือนฝั่งแอดมินแล้ว");
+  done(undefined, on ? "เพิ่มเป็นผู้ติดตามงานแล้ว — จะได้รายงาน 16:00 และแจ้งเตือนเมื่อมีคนกดไม่สะดวก" : "เลิกรับแจ้งเตือนฝั่งแอดมินแล้ว");
 }
 
 export async function updateAccount(formData: FormData) {
@@ -689,8 +690,7 @@ export async function broadcastTelegram(formData: FormData) {
   const { user } = await requireAdmin();
   const message = String(formData.get("message") ?? "").trim().slice(0, 1000);
   if (!message) done("พิมพ์ข้อความก่อนส่ง");
-  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
-  if (hour >= 21 || hour < 7) done("ไม่ส่งช่วง 21:00–07:00 น. เพื่อไม่รบกวนทีม — ส่งใหม่ตอนเช้า");
+  if (!officeOpen()) done("ส่งได้เฉพาะเวลาราชการ จ–ศ 08:00–16:30 — ไว้ส่งใหม่ในเวลาราชการ");
   const { sendTelegram, esc } = await import("@/lib/telegram/api");
   const { admin, people } = await telegramTeam();
   // "ถามไถ่": the same message plus 3 answer buttons (lib/telegram/pulse.ts).
@@ -715,8 +715,7 @@ export async function broadcastTelegram(formData: FormData) {
 export async function sendTrialMissions() {
   await blockWritesInDemoMode();
   await requireAdmin();
-  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
-  if (hour >= 21 || hour < 7) done("ไม่ส่งช่วง 21:00–07:00 น. — ส่งใหม่ตอนเช้า");
+  if (!officeOpen()) done("ส่งได้เฉพาะเวลาราชการ จ–ศ 08:00–16:30 — ไว้ส่งใหม่ในเวลาราชการ");
   const { sendTelegram } = await import("@/lib/telegram/api");
   const { tgTrial } = await import("@/lib/telegram/messages");
   const { TRIAL_STEPS, trialDone } = await import("@/lib/trial");
@@ -743,8 +742,7 @@ export async function notifyAvatarReady(formData: FormData) {
   await blockWritesInDemoMode();
   const { user } = await requireAdmin();
   const personId = String(formData.get("personId") ?? "");
-  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
-  if (hour >= 21 || hour < 7) done("ไม่ส่งช่วง 21:00–07:00 น. — ส่งใหม่ตอนเช้า");
+  if (!officeOpen()) done("ส่งได้เฉพาะเวลาราชการ จ–ศ 08:00–16:30 — ไว้ส่งใหม่ในเวลาราชการ");
   const { hasAvatar, avatarUrl } = await import("@/lib/avatars");
   if (!hasAvatar(personId)) done("คนนี้ยังไม่มีรูปการ์ตูนในระบบ");
   const { createAdminClient } = await import("@/lib/supabase/server");
@@ -778,7 +776,7 @@ export async function messagePersonTelegram(formData: FormData) {
   const message = String(formData.get("message") ?? "").trim().slice(0, 1000);
   if (!message) done("พิมพ์ข้อความก่อนส่ง");
   const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
-  if (hour >= 21 || hour < 7) done("ไม่ส่งช่วง 21:00–07:00 น. — ส่งใหม่ตอนเช้า");
+  if (!officeOpen()) done("ส่งได้เฉพาะเวลาราชการ จ–ศ 08:00–16:30 — ไว้ส่งใหม่ในเวลาราชการ");
   const { createAdminClient } = await import("@/lib/supabase/server");
   const admin = createAdminClient();
   const { data: p } = await admin.from("people").select("display_name, telegram_chat_id").eq("id", personId).maybeSingle();
@@ -827,8 +825,7 @@ export async function escalateTeamQuestion(formData: FormData) {
   await requireAdmin();
   const code = String(formData.get("code") ?? "").toUpperCase();
   if (!/^[A-Z0-9]{5}$/.test(code)) done("ไม่พบคำถาม");
-  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
-  if (hour >= 21 || hour < 7) done("ไม่ส่งช่วง 21:00–07:00 น. — ส่งต่อใหม่ตอนเช้า");
+  if (!officeOpen()) done("ส่งได้เฉพาะเวลาราชการ จ–ศ 08:00–16:30 — ไว้ส่งใหม่ในเวลาราชการ");
   const { createAdminClient } = await import("@/lib/supabase/server");
   const { escalateQuestion } = await import("@/lib/telegram/questions");
   const r = await escalateQuestion(createAdminClient(), code);
@@ -855,8 +852,7 @@ export async function setTeamRequestStatus(formData: FormData) {
   const status = asReqStatus(formData.get("status"));
   const requestId = String(formData.get("requestId") ?? "");
   if (!status || !requestId) done("เลือกสถานะก่อน");
-  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
-  const quiet = hour >= 21 || hour < 7;
+  const quiet = !officeOpen();
   const { createAdminClient } = await import("@/lib/supabase/server");
   const r = await setRequestStatus(createAdminClient(), {
     requestId,
@@ -870,7 +866,7 @@ export async function setTeamRequestStatus(formData: FormData) {
   });
   if (!r.ok) done(r.error ?? "บันทึกไม่สำเร็จ");
   revalidatePath("/settings");
-  done(undefined, `คำขอ → ${REQ_STATUS_TH[status]}${r.notified ? " · แจ้งเจ้าของคำขอทาง Telegram แล้ว" : quiet && formData.get("notify") === "on" ? " · ไม่แจ้งช่วง 21:00–07:00" : ""}`);
+  done(undefined, `คำขอ → ${REQ_STATUS_TH[status]}${r.notified ? " · แจ้งเจ้าของคำขอทาง Telegram แล้ว" : quiet && formData.get("notify") === "on" ? " · ไม่แจ้งนอกเวลาราชการ" : ""}`);
 }
 
 /** คำขอจากทีม that came in person: logged for that person so it shows on the TV board. */
@@ -958,8 +954,7 @@ export async function answerTeamQuestion(formData: FormData) {
   const { user } = await requireAdmin();
   const code = String(formData.get("code") ?? "").toUpperCase();
   if (!/^[A-Z0-9]{5}$/.test(code)) done("ไม่พบคำถาม");
-  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
-  if (hour >= 21 || hour < 7) done("ไม่ส่งช่วง 21:00–07:00 น. — ตอบใหม่ตอนเช้า");
+  if (!officeOpen()) done("ส่งได้เฉพาะเวลาราชการ จ–ศ 08:00–16:30 — ไว้ส่งใหม่ในเวลาราชการ");
   const { createAdminClient } = await import("@/lib/supabase/server");
   const { answerQuestionFromWeb } = await import("@/lib/telegram/questions");
   const r = await answerQuestionFromWeb(createAdminClient(), code, String(formData.get("answer") ?? ""), user.id);
@@ -1003,8 +998,7 @@ export async function handleHelpSignal(formData: FormData) {
   const admin = createAdminClient();
   let sent = false;
   if (reply) {
-    const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date()));
-    if (hour >= 21 || hour < 7) done("ไม่ส่งช่วง 21:00–07:00 น. — ตอบใหม่ตอนเช้า");
+    if (!officeOpen()) done("ส่งได้เฉพาะเวลาราชการ จ–ศ 08:00–16:30 — ไว้ส่งใหม่ในเวลาราชการ");
     const { data: p } = await admin.from("people").select("telegram_chat_id").eq("id", personId).maybeSingle();
     if (!p?.telegram_chat_id) done("คนนี้ยังไม่ได้ผูก Telegram");
     const { sendTelegram, esc } = await import("@/lib/telegram/api");
@@ -1029,4 +1023,18 @@ export async function handleHelpSignal(formData: FormData) {
   });
   revalidatePath("/settings");
   done(undefined, sent ? "ส่งคำตอบแล้ว" : "ปิดรายการแล้ว");
+}
+
+/** ⋯ → ให้แก้งานแทนพี่เอิร์ธวันนี้ (owner, 20 Nov 2026): one stand-in, lapses at midnight. */
+export async function setJobDelegate(formData: FormData) {
+  await blockWritesInDemoMode();
+  const { supabase, user } = await requireAdmin();
+  const personId = String(formData.get("personId") ?? "");
+  const on = String(formData.get("on") ?? "") === "true";
+  const { DELEGATE_KEY, endOfBangkokDay } = await import("@/lib/auth/job-editor");
+  const value = on && personId ? { personId, until: endOfBangkokDay(), by: user.id } : {};
+  const { error } = await supabase.from("settings").upsert({ key: DELEGATE_KEY, value, updated_by: user.id, description: "คนแก้งานแทนพี่เอิร์ธ (หมดสิ้นวัน)" }, { onConflict: "key" });
+  if (error) done(error.message);
+  revalidatePath("/settings");
+  done(undefined, on ? "เปิดสิทธิ์แก้งานแทนแล้ว — ใช้ได้ถึงเที่ยงคืนวันนี้" : "ปิดสิทธิ์แก้งานแทนแล้ว");
 }

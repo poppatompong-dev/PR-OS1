@@ -5,8 +5,8 @@ export const NOTIF_TYPE_TH: Record<string, string> = {
   reminder: "เตือน 1.5 ชม.",
   change: "เปลี่ยนแปลง",
   cancellation: "ยกเลิก",
-  daily_summary: "สรุป 07:00",
-  admin_report: "รายงาน 17:00",
+  daily_summary: "สรุปเช้า",
+  admin_report: "รายงาน 16:00",
   unavailable: "แจ้งไม่สะดวก",
   quota_warning: "เตือนโควต้า",
 };

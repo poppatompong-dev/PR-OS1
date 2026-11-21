@@ -6,7 +6,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isLineMessagingConfigured, isTelegramConfigured } from "@/lib/env";
 import { getQuotaStatus, pushMessages } from "@/lib/line/api";
-import { getAdminRecipientIds, getPeopleByIds, logPush, type TaskItem } from "@/lib/line/data";
+import { getAdminRecipientIds, getFunRecipientIds, getPeopleByIds, logPush, type TaskItem } from "@/lib/line/data";
+import { jobStartMs, mayNotifyJob } from "@/lib/notifications/office-hours";
 import { unavailableAlertMessage } from "@/lib/line/messages";
 import { sendTelegram } from "@/lib/telegram/api";
 import { tgUnavailableAlert } from "@/lib/telegram/messages";
@@ -20,6 +21,9 @@ export async function alertAdminsUnavailable(admin: SupabaseClient, task: TaskIt
   const tgOn = isTelegramConfigured();
   const lineOn = isLineMessagingConfigured();
   if (!tgOn && !lineOn) return 0;
+  // Out of office hours only for a job before the next office morning; otherwise the
+  // 08:00 brief carries it (owner via พี่เอิร์ธ, 20 Nov 2026).
+  if (!mayNotifyJob(jobStartMs(task.event.eventDate, task.event.startTime))) return 0;
   const admins = await getPeopleByIds(admin, await getAdminRecipientIds(admin));
   // 21:00–07:00: still sent at once, without a sound (owner, 17 Nov 2026).
   const silent = HEAD_LIVE && isQuietHour(bangkokMinutes());
@@ -60,7 +64,8 @@ export async function alertAdminsUnavailable(admin: SupabaseClient, task: TaskIt
 /** FYI notes for admins (e.g. "a photo came in for a redraw"): Telegram only, so they never cost LINE quota. */
 export async function tellAdminsByTelegram(admin: SupabaseClient, text: string): Promise<number> {
   if (!isTelegramConfigured()) return 0;
-  const admins = await getPeopleByIds(admin, await getAdminRecipientIds(admin));
+  // System / fun notes (links, questions, photos, pulse): not to พี่เอิร์ธ (20 Nov 2026).
+  const admins = await getPeopleByIds(admin, await getFunRecipientIds(admin));
   let sent = 0;
   for (const a of admins) {
     if (!a.telegramChatId) continue;

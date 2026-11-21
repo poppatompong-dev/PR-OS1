@@ -6,7 +6,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CONTEST, contestNumbers } from "@/lib/monitor/contest";
-import { getAdminRecipientIds, getPeopleByIds } from "@/lib/line/data";
+import { getFunRecipientIds, getPeopleByIds } from "@/lib/line/data";
 import { esc, sendTelegram } from "@/lib/telegram/api";
 import { nickname } from "@/lib/monitor/nicknames";
 import { splitJoke } from "@/lib/tv-jokes";
@@ -99,7 +99,7 @@ export async function sendContestReport(admin: SupabaseClient, now = new Date())
   if (!contestReportDue(now, (done ?? []).length > 0)) return 0;
   const entries = await loadContestEntries(admin);
   const parts = buildContestReport(entries);
-  const ids = await getAdminRecipientIds(admin);
+  const ids = await getFunRecipientIds(admin);
   const admins = (await getPeopleByIds(admin, ids)).filter((p) => p.telegramChatId);
   // Guard first so two overlapping runs never send it twice.
   await admin.from("audit_logs").insert({ entity_type: "contest", entity_id: CONTEST.end, action: "contest_report", changed_by: null, summary: `ส่งสรุปมุกประกวดให้กรรมการ ${admins.length} คน`, new_values: { jokes: entries.length, parts: parts.length } });

@@ -1,3 +1,4 @@
+import { requireEditorPage } from "@/lib/auth/require-editor-page";
 import { AppShell } from "@/components/AppShell";
 import { UNREACHABLE_NOTE } from "@/lib/notifications/reach";
 import { IconPicker } from "@/components/IconPicker";
@@ -25,6 +26,7 @@ export default async function NewEventPage({
   searchParams: Promise<{ error?: string; cloneFrom?: string }>;
 }) {
   const { error, cloneFrom } = await searchParams;
+  await requireEditorPage("/schedule");
   const [{ places, departments, eventTypes, roles, people }, clone] =
     await Promise.all([
       getEventFormData(),

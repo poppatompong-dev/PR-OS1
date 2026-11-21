@@ -15,8 +15,9 @@ import { checkConflictsForEvent } from "@/lib/assignments/queries";
 import { conflictLevel } from "@/lib/assignments/conflict";
 import { getEventAttachments } from "@/lib/attachments/queries";
 import { deleteAttachment, uploadAttachment } from "@/lib/attachments/mutations";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { getAvatarOffIds } from "@/lib/avatar-choice";
+import { canEditJobs } from "@/lib/auth/job-editor";
 import { can, getSessionUser, type AppRole } from "@/lib/auth/roles";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
@@ -70,10 +71,13 @@ export default async function EventDetailPage({
   // and RLS still has the final say on every write.
   let role: AppRole = isSupabaseConfigured() ? "assignee" : "staff";
   let avatarOff = new Set<string>();
+  let editor = !isSupabaseConfigured();
   if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const user = await getSessionUser(supabase);
     role = user?.role ?? "assignee";
+    // พี่เอิร์ธ only changes jobs (20 Nov 2026); everyone else reads.
+    editor = await canEditJobs(createAdminClient(), user?.personId);
     avatarOff = await getAvatarOffIds(supabase);
   }
   const audit = await getEventAuditLog(id);
@@ -81,13 +85,13 @@ export default async function EventDetailPage({
   const lastHoldOrPublish = audit.find((a) => a.action === "postpone" || a.action === "publish");
   const onHold = event.status === "draft" && lastHoldOrPublish?.action === "postpone" ? lastHoldOrPublish : null;
 
-  const canEdit = can.editPublished(role) && (event.status === "draft" || event.status === "published");
-  const canPublish = can.publishEvent(role) && event.status === "draft";
-  const canComplete = can.publishEvent(role) && event.status === "published";
-  const canCancel = can.cancelEvent(role) && (event.status === "draft" || event.status === "published");
-  const canDelete = can.cancelEvent(role);
+  const canEdit = editor && can.editPublished(role) && (event.status === "draft" || event.status === "published");
+  const canPublish = editor && can.publishEvent(role) && event.status === "draft";
+  const canComplete = editor && can.publishEvent(role) && event.status === "published";
+  const canCancel = editor && can.cancelEvent(role) && (event.status === "draft" || event.status === "published");
+  const canDelete = editor && can.cancelEvent(role);
   const canManageAssignments =
-    can.manageAssignments(role) && (event.status === "draft" || event.status === "published");
+    editor && can.manageAssignments(role) && (event.status === "draft" || event.status === "published");
 
   const formData = canManageAssignments ? await getEventFormData() : null;
   const personIds = event.assignments.map((a) => a.person.id).filter(Boolean);

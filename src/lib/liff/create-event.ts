@@ -9,6 +9,7 @@
 // reminder goes out only to whoever has not acknowledged by then. Saving a
 // draft sends nothing.
 
+import { NOT_EDITOR_MSG, canEditJobs } from "@/lib/auth/job-editor";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LiffCaller } from "@/lib/liff/auth";
 import { parseStagedList, type StagedAttachment } from "@/lib/attachments/rules";
@@ -124,6 +125,8 @@ export async function createEventFromLiff(
   caller: LiffCaller,
   input: LiffEventInput,
 ): Promise<{ ok: true; eventId: string; notified: number } | { ok: false; error: string }> {
+  // พี่เอิร์ธ only adds jobs (20 Nov 2026).
+  if (!(await canEditJobs(admin, caller.personId))) return { ok: false, error: NOT_EDITOR_MSG };
   // Only active people and roles from the lists the form showed.
   if (input.assignees.length > 0) {
     const personIds = [...new Set(input.assignees.map((a) => a.personId))];

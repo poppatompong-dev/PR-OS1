@@ -5,7 +5,7 @@
 // is done. Logged as audit team_question / team_answer. Free: Telegram only.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getAdminRecipientIds, getPeopleByIds, type LinePerson } from "@/lib/line/data";
+import { getAdminRecipientIds, getFunRecipientIds, getPeopleByIds, type LinePerson } from "@/lib/line/data";
 import { esc, sendTelegram, type TgMessage } from "@/lib/telegram/api";
 import { titleFor } from "@/lib/telegram/chat";
 
@@ -52,7 +52,7 @@ export function isHoldTime(now = new Date()): boolean {
 export const holdNow = (now = new Date()) => process.env.QUESTION_HOLD === "on" && isHoldTime(now);
 
 async function sendQuestionToAdmins(admin: SupabaseClient, askerId: string, who: string, text: string, code: string, late = false): Promise<number> {
-  const ids = (await getAdminRecipientIds(admin)).filter((id) => id !== askerId);
+  const ids = (await getFunRecipientIds(admin)).filter((id) => id !== askerId);
   const admins = (await getPeopleByIds(admin, ids)).filter((a) => a.telegramChatId);
   let sent = 0;
   for (const a of admins) {
@@ -70,7 +70,7 @@ export async function forwardQuestion(admin: SupabaseClient, person: LinePerson,
   // The system owner's own test questions stay put; any other admin (the new head of
   // section, 12 Nov 2026) gets their question to the *other* admins.
   if (OWNER_IDS.has(person.id)) return 0;
-  const ids = (await getAdminRecipientIds(admin)).filter((id) => id !== person.id);
+  const ids = (await getFunRecipientIds(admin)).filter((id) => id !== person.id);
   const admins = (await getPeopleByIds(admin, ids)).filter((a) => a.telegramChatId);
   if (!admins.length) return 0;
   const text = raw.trim().slice(0, 800);
@@ -216,7 +216,7 @@ export async function answerQuestionFromWeb(admin: SupabaseClient, code: string,
   const { data: fwd } = held ? await admin.from("audit_logs").select("new_values").eq("action", "team_question_fwd").eq("entity_id", q.entity_id).limit(50) : { data: [] };
   const pinged = !held || ((fwd ?? []) as { new_values: { code?: string } | null }[]).some((r) => r.new_values?.code === code);
   if (pinged) {
-    for (const a of await getPeopleByIds(admin, await getAdminRecipientIds(admin))) {
+    for (const a of await getPeopleByIds(admin, await getFunRecipientIds(admin))) {
       if (a.telegramChatId) await sendTelegram(a.telegramChatId, { text: `✅ ตอบคำถาม #Q${code} ของ${esc(who)}แล้ว (ทางเว็บ)` });
     }
   }
