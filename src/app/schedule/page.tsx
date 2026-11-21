@@ -27,6 +27,7 @@ export default async function SchedulePage({
     departmentId?: string;
     search?: string;
     view?: "table" | "month" | "week" | "board";
+    error?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -54,6 +55,7 @@ export default async function SchedulePage({
 
   return (
     <AppShell>
+      {sp.error ? <div className="login-error">{sp.error}</div> : null}
       <header className="page-header">
         <div>
           <h1 className="page-title">ตารางงานประชาสัมพันธ์</h1>
